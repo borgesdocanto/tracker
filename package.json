@@ -16,7 +16,9 @@
     "recharts": "^2.12.7",
     "lucide-react": "^0.408.0",
     "googleapis": "^140.0.1",
-    "date-fns": "^3.6.0"
+    "date-fns": "^3.6.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "mercadopago": "^2.0.15"
   },
   "devDependencies": {
     "@types/node": "^22",

@@ -2,6 +2,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LineChart, Line
@@ -149,10 +150,18 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [days, setDays] = useState(30);
   const [activeTab, setActiveTab] = useState<"resumen" | "dias" | "eventos">("resumen");
+  const [subPlan, setSubPlan] = useState<string>("free");
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
   }, [status, router]);
+
+  // Fetch subscription
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetch("/api/subscription").then(r => r.json()).then(d => setSubPlan(d.plan?.id ?? "free"));
+    }
+  }, [status]);
 
   const sync = async () => {
     setLoading(true);
@@ -225,6 +234,12 @@ export default function HomePage() {
               <div className="font-display font-black text-base leading-none" style={{ color: GALAS_RED }}>GALAS</div>
               <div className="text-xs text-slate-300 font-semibold leading-none">MANAGEMENT</div>
             </div>
+            <Link href="/pricing">
+              <span className="ml-1 text-xs font-black px-2 py-0.5 rounded-lg uppercase cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ background: subPlan === "free" ? "#f1f5f9" : "#f9e6e6", color: subPlan === "free" ? "#94a3b8" : GALAS_RED }}>
+                {subPlan}
+              </span>
+            </Link>
           </div>
 
           {/* Days filter */}
