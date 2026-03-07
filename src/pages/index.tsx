@@ -1,6 +1,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
+import Head from "next/head";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LineChart, Line
@@ -206,6 +207,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Head>
+        <title>GALAS Management</title>
+        <meta name="description" content="GALAS Management - Sistema de productividad inmobiliaria" />
+      </Head>
       <div className="h-1 fixed top-0 left-0 right-0 z-50"
         style={{ background: `linear-gradient(90deg, ${GALAS_RED}, #6b0000, ${GALAS_RED})` }} />
 

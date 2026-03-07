@@ -1,6 +1,7 @@
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Head from "next/head";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -27,6 +28,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
+      <Head>
+        <title>GALAS Management — Ingresar</title>
+      </Head>
       {/* Barra superior */}
       <div className="fixed top-0 left-0 right-0 h-1"
         style={{ background: "linear-gradient(90deg, #aa0000, #6b0000, #aa0000)" }} />
