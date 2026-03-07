@@ -8,11 +8,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
-  const { totals, productivityRate, productiveDays, totalDays, productivityGoal } = req.body;
+  const { totals, productivityRate, productiveDays, totalDays, productivityGoal, userName } = req.body;
 
-  const prompt = `Sos Insta Coach, un coach de ventas inmobiliarias argentino, directo y motivador. Como si fueras un colega que sabe mucho y te habla con confianza de igual a igual.
+  const firstName = (userName || "").split(" ")[0] || "vos";
 
-Analizá este embudo y dá un consejo concreto en 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, hablale de vos a vos. Motivá a actuar HOY con una acción específica.
+  const prompt = `Sos Insta Coach, un coach de ventas inmobiliarias argentino, directo y motivador. Como si fueras un colega que sabe mucho y habla con confianza de igual a igual.
+
+Analizá este embudo y dá un consejo concreto en 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, hablale de vos a vos. Cuando hables directamente a la persona usá su nombre: ${firstName}. Motivá a actuar HOY con una acción específica.
 
 DATOS:
 - Tasaciones: ${totals.tasaciones}

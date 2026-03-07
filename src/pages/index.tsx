@@ -245,6 +245,7 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
           productiveDays: data.productiveDays,
           totalDays: data.totalDays,
           productivityGoal: data.productivityGoal,
+          userName: data.user.name,
         }),
       });
       const json = await res.json();
