@@ -550,7 +550,7 @@ export default function HomePage() {
               <Users size={11} />
               <span className="hidden sm:inline">Mi equipo</span>
             </button>
-          ) : !hasTeam && (
+          ) : (
             <button onClick={async () => {
               await fetch("/api/teams/init", { method: "POST" });
               setIsOwner(true); setHasTeam(true);
