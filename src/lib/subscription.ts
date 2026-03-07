@@ -1,6 +1,10 @@
 import { supabaseAdmin } from "./supabase";
 import { getPlanById, isVipEmail, PlanId } from "./plans";
-import { FREEMIUM_DAYS } from "./brand";
+import { FREEMIUM_DAYS, SUPER_ADMIN_EMAIL } from "./brand";
+
+function isSuperAdmin(email: string) {
+  return email === SUPER_ADMIN_EMAIL;
+}
 
 export interface Subscription {
   email: string;
@@ -20,6 +24,7 @@ export async function getOrCreateSubscription(
   avatar?: string
 ): Promise<Subscription> {
   const vip = isVipEmail(email);
+  const superAdmin = isSuperAdmin(email);
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
@@ -28,7 +33,12 @@ export async function getOrCreateSubscription(
     .single();
 
   if (data && !error) {
-    // VIP siempre activo en individual
+    // Super admin — siempre teams owner
+    if (superAdmin && (data.plan !== "teams" || data.team_role !== "owner")) {
+      await ensureSuperAdminTeam(email, name);
+      return { ...mapSub(data), plan: "teams", status: "active", teamRole: "owner", isVip: true };
+    }
+    // VIP domain — siempre individual activo
     if (vip && data.plan === "free") {
       await supabaseAdmin
         .from("subscriptions")
@@ -39,22 +49,52 @@ export async function getOrCreateSubscription(
     return { ...mapSub(data), isVip: vip };
   }
 
-  // Primera vez — crear
+  // Primera vez
+  if (superAdmin) {
+    await ensureSuperAdminTeam(email, name);
+    return { email, name, plan: "teams", status: "active", createdAt: new Date().toISOString(), teamRole: "owner", isVip: true };
+  }
+
   const plan = vip ? "individual" : "free";
-  const { data: newSub } = await supabaseAdmin
+  await supabaseAdmin
     .from("subscriptions")
-    .insert({ email, name, avatar, plan, status: "active" })
-    .select()
+    .insert({ email, name, avatar, plan, status: "active" });
+
+  return { email, name, plan, status: "active", createdAt: new Date().toISOString(), isVip: vip };
+}
+
+async function ensureSuperAdminTeam(email: string, name?: string) {
+  // Crear o recuperar el equipo con max_agents ilimitado
+  const { data: existingTeam } = await supabaseAdmin
+    .from("teams")
+    .select("id")
+    .eq("owner_email", email)
     .single();
 
-  return {
-    email,
-    name,
-    plan,
-    status: "active",
-    createdAt: new Date().toISOString(),
-    isVip: vip,
-  };
+  let teamId: string;
+  if (existingTeam) {
+    teamId = existingTeam.id;
+    // Asegurar que max_agents sea ilimitado (9999)
+    await supabaseAdmin.from("teams").update({ max_agents: 9999 }).eq("id", teamId);
+  } else {
+    const { data: newTeam } = await supabaseAdmin
+      .from("teams")
+      .insert({ name: `Equipo ${name || email.split("@")[0]}`, owner_email: email, max_agents: 9999 })
+      .select()
+      .single();
+    teamId = newTeam!.id;
+  }
+
+  await supabaseAdmin
+    .from("subscriptions")
+    .upsert({
+      email,
+      name,
+      plan: "teams",
+      status: "active",
+      team_id: teamId,
+      team_role: "owner",
+    }, { onConflict: "email" });
 }
 
 function mapSub(data: any): Subscription {
