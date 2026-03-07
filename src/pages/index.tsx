@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
-import { LogOut, RefreshCw, AlertTriangle, Calendar, Target, Eye, Zap, TrendingUp, Brain, ChevronDown, ChevronLeft, ChevronRight, Award, Loader2, DollarSign, Mail, CheckCircle } from "lucide-react";
+import { LogOut, RefreshCw, AlertTriangle, Calendar, Target, Eye, Zap, TrendingUp, Brain, ChevronDown, ChevronLeft, ChevronRight, Award, Loader2, DollarSign, Mail, CheckCircle, Users } from "lucide-react";
 
 const RED = "#aa0000";
 const GREEN = "#16a34a";
@@ -444,6 +444,7 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [days, setDays] = useState(60);
   const [subPlan, setSubPlan] = useState("free");
+  const [isOwner, setIsOwner] = useState(false);
   const [calView, setCalView] = useState<"week" | "month">("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -456,6 +457,7 @@ export default function HomePage() {
     if (status === "authenticated") {
       fetch("/api/subscription").then(r => r.json()).then(d => {
         setSubPlan(d.plan?.id ?? "free");
+        setIsOwner(d.subscription?.teamRole === "owner");
         if (d.subscription?.isExpired) router.push("/expired");
       });
     }
@@ -532,6 +534,14 @@ export default function HomePage() {
             </select>
             <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
+
+          {isOwner && (
+            <button onClick={() => router.push("/equipo")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors border border-gray-200">
+              <Users size={11} />
+              <span className="hidden sm:inline">Mi equipo</span>
+            </button>
+          )}
 
           <button onClick={sync} disabled={loading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors border border-gray-200">

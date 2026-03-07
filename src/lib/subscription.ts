@@ -10,6 +10,7 @@ export interface Subscription {
   currentPeriodEnd?: string;
   createdAt: string;
   teamId?: string;
+  teamRole?: string;
   isVip: boolean;
 }
 
@@ -65,6 +66,7 @@ function mapSub(data: any): Subscription {
     currentPeriodEnd: data.current_period_end,
     createdAt: data.created_at,
     teamId: data.team_id,
+    teamRole: data.team_role,
     isVip: isVipEmail(data.email),
   };
 }
