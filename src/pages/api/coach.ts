@@ -2,13 +2,12 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
 
-const WEEKLY_GOAL_MEETINGS = 15; // reuniones comerciales semanales de referencia
-const WEEKLY_GOAL_PROCESSES = 3;  // procesos nuevos por semana
+const WEEKLY_GOAL = 15;
 
-function diagnose(greenTotal: number, productiveDays: number, totalDays: number): string {
+function diagnose(greenTotal: number, goal: number, productiveDays: number, totalDays: number): string {
   if (greenTotal === 0) return "semana_sin_actividad";
-  if (greenTotal >= WEEKLY_GOAL_MEETINGS) return "semana_productiva";
-  if (greenTotal >= 8) return "semana_ocupada";
+  if (greenTotal >= goal) return "semana_productiva";
+  if (greenTotal >= goal * 0.5) return "semana_ocupada";
   if (productiveDays <= 1) return "semana_reactiva";
   return "semana_riesgo";
 }
@@ -19,88 +18,91 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
-  const { dailySummaries, productivityGoal, userName } = req.body;
+  const { dailySummaries, productivityGoal, userName, periodStart, periodEnd, calView, goal, periodLabel } = req.body;
 
   if (!dailySummaries || !Array.isArray(dailySummaries)) {
     return res.status(400).json({ error: "Faltan datos del calendario" });
   }
 
-  // Filtrar solo los últimos 7 días con actividad
-  const today = new Date();
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 6); // últimos 7 días incl. hoy
-  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+  // Filtrar según el período enviado desde el frontend
+  const start = periodStart || (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0, 10); })();
+  const end = periodEnd || new Date().toISOString().slice(0, 10);
+  const effectiveGoal = goal || WEEKLY_GOAL;
+  const isMonthly = calView === "month";
 
-  const weekSummaries = (dailySummaries as any[]).filter(d => d.date >= sevenDaysAgoStr);
+  const periodSummaries = (dailySummaries as any[]).filter(d => d.date >= start && d.date <= end);
 
-  // Calcular totales reales de la semana
-  const allWeekEvents = weekSummaries.flatMap((d: any) => d.events || []);
-  const greenWeekEvents = allWeekEvents.filter((e: any) => e.isGreen);
+  const allEvents = periodSummaries.flatMap((d: any) => d.events || []);
+  const greenEvents = allEvents.filter((e: any) => e.isGreen);
 
-  const weekTotals = {
-    totalGreen: greenWeekEvents.length,
-    tasaciones: greenWeekEvents.filter((e: any) => e.type === "tasacion").length,
-    visitas: greenWeekEvents.filter((e: any) => e.type === "visita").length,
-    propuestas: greenWeekEvents.filter((e: any) => e.type === "propuesta").length,
-    reuniones: greenWeekEvents.filter((e: any) => e.type === "reunion").length,
+  const totals = {
+    totalGreen: greenEvents.length,
+    tasaciones: greenEvents.filter((e: any) => e.type === "tasacion").length,
+    visitas: greenEvents.filter((e: any) => e.type === "visita").length,
+    propuestas: greenEvents.filter((e: any) => e.type === "propuesta").length,
+    reuniones: greenEvents.filter((e: any) => e.type === "reunion").length,
   };
 
-  const productiveDays = weekSummaries.filter((d: any) => d.greenCount >= (productivityGoal || 2)).length;
-  const totalDays = weekSummaries.length || 1;
+  const productiveDays = periodSummaries.filter((d: any) => d.greenCount >= (productivityGoal || 2)).length;
+  const totalDays = periodSummaries.length || 1;
   const productivityRate = Math.round((productiveDays / totalDays) * 100);
+  const faltaron = Math.max(0, effectiveGoal - totals.totalGreen);
+  const perfil = diagnose(totals.totalGreen, effectiveGoal, productiveDays, totalDays);
 
   const firstName = (userName || "").split(" ")[0] || "";
   const nombreStr = firstName ? `El nombre del usuario es ${firstName}.` : "";
-  const faltaron = Math.max(0, WEEKLY_GOAL_MEETINGS - weekTotals.totalGreen);
-  const perfil = diagnose(weekTotals.totalGreen, productiveDays, totalDays);
 
-  // Construir lista de eventos para contexto
-  const eventLines = weekSummaries.map((d: any) => {
+  // Contexto de eventos reales
+  const eventLines = periodSummaries.map((d: any) => {
     const fecha = new Date(d.date + "T12:00:00").toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
     const evs = (d.events || []).map((e: any) => `    ${e.isGreen ? "🟢" : "⚪"} ${e.title}`).join("\n");
     return `  ${fecha} (${d.greenCount} verdes):\n${evs || "    Sin eventos"}`;
   }).join("\n");
 
   const perfilDescripcion: Record<string, string> = {
-    semana_sin_actividad: "SIN ACTIVIDAD COMERCIAL — no hubo ningún evento productivo. Situación crítica.",
-    semana_productiva: "SEMANA PRODUCTIVA — superó el nivel de referencia.",
-    semana_ocupada: "SEMANA OCUPADA PERO INSUFICIENTE — actividad por debajo del nivel necesario.",
-    semana_reactiva: "SEMANA REACTIVA — actividad concentrada en muy pocos días, sin consistencia.",
-    semana_riesgo: "SEMANA CON RIESGO COMERCIAL — nivel insuficiente que compromete resultados futuros.",
+    semana_sin_actividad: "SIN ACTIVIDAD COMERCIAL — no hubo ningún evento productivo.",
+    semana_productiva: "PERÍODO PRODUCTIVO — superó la meta de referencia.",
+    semana_ocupada: "OCUPADO PERO INSUFICIENTE — actividad por debajo de la meta.",
+    semana_reactiva: "PERÍODO REACTIVO — actividad concentrada en muy pocos días.",
+    semana_riesgo: "RIESGO COMERCIAL — nivel insuficiente que compromete resultados futuros.",
   };
 
-  const prompt = `Sos InstaCoach, un entrenador de productividad comercial que analiza agendas reales. ${nombreStr}
+  const periodoStr = isMonthly
+    ? `el mes de ${periodLabel} (meta: ${effectiveGoal} reuniones = 15/semana × 4 semanas)`
+    : `los últimos 7 días (meta: ${effectiveGoal} reuniones semanales)`;
+
+  const accionLabel = isMonthly ? "LA ACCIÓN PARA EL PRÓXIMO MES" : "LA ACCIÓN PARA ESTA SEMANA";
+
+  const prompt = `Sos InstaCoach, entrenador de productividad comercial que analiza agendas reales. ${nombreStr}
 
 Hablás en segunda persona, tono directo, claro y constructivo. Nunca juzgás, siempre orientás. Español rioplatense (vos, tenés, hacés). Usás el nombre cuando corresponde.
 
-EVENTOS REALES DE LOS ÚLTIMOS 7 DÍAS:
+PERÍODO ANALIZADO: ${periodoStr}
+
+EVENTOS REALES:
 ${eventLines}
 
-MÉTRICAS DE LA SEMANA:
-- Reuniones comerciales (verdes): ${weekTotals.totalGreen} de ${WEEKLY_GOAL_MEETINGS} de referencia
-- Tasaciones: ${weekTotals.tasaciones}
-- Visitas: ${weekTotals.visitas}
-- Propuestas de valor: ${weekTotals.propuestas}
-- Días con actividad: ${productiveDays} de ${totalDays}
+MÉTRICAS:
+- Reuniones comerciales (verdes): ${totals.totalGreen} de ${effectiveGoal} de referencia
+- Tasaciones: ${totals.tasaciones}
+- Visitas: ${totals.visitas}
+- Propuestas de valor: ${totals.propuestas}
+- Días con actividad: ${productiveDays} de ${totalDays} (${productivityRate}%)
 - Diagnóstico: ${perfilDescripcion[perfil]}
-- Reuniones que faltaron para el óptimo: ${faltaron}
+- Reuniones que faltaron: ${faltaron}
 
-REGLAS DEL EMBUDO (de mayor a menor importancia):
-1. Tasaciones — capturar propiedades para vender
-2. Propuestas de valor entregadas — presentar al propietario
-3. Visitas — llevar compradores a ver propiedades
-4. Reuniones 1 a 1 cara a cara en total
+EMBUDO (mayor a menor importancia): Tasaciones → Propuestas → Visitas → Reuniones en total
 
-RESPONDÉ con exactamente 3 bloques separados por línea en blanco. Sin títulos ni bullets, solo texto corrido:
+RESPONDÉ con exactamente 3 bloques separados por línea en blanco. Sin títulos ni bullets:
 
-BLOQUE 1 — LO QUE HICISTE BIEN: Reconocé algo real y concreto de esta semana. Si la semana fue floja, encontrá el punto de partida. Máximo 2 oraciones.
+BLOQUE 1 — LO QUE HICISTE BIEN: Algo real y concreto de este período. Máximo 2 oraciones.
 
-BLOQUE 2 — DÓNDE PERDÉS OPORTUNIDADES: El cuello de botella principal con números reales de esta semana. Qué actividad falta o está desequilibrada. 2-3 oraciones.
+BLOQUE 2 — DÓNDE PERDÉS OPORTUNIDADES: El cuello de botella principal con números reales. 2-3 oraciones.
 
-BLOQUE 3 — LA ACCIÓN CONCRETA: Una sola acción específica y ejecutable esta semana. No genérica — basada en los eventos reales que tuvo. Máximo 2 oraciones.
+BLOQUE 3 — ${accionLabel}: Una sola acción específica y ejecutable. Basada en los eventos reales. Máximo 2 oraciones.
 
-Después de los 3 bloques, en línea separada:
-"Número crítico: esta semana tuviste ${weekTotals.totalGreen} reuniones comerciales. ${faltaron > 0 ? `Te faltaron ${faltaron} para alcanzar el nivel óptimo de ${WEEKLY_GOAL_MEETINGS}.` : `Superaste el nivel de referencia de ${WEEKLY_GOAL_MEETINGS}. Sostenerlo es el desafío.`}"`;
+Después, en línea separada:
+"Número crítico: en ${periodLabel} tuviste ${totals.totalGreen} reuniones comerciales. ${faltaron > 0 ? `Te faltaron ${faltaron} para alcanzar el objetivo de ${effectiveGoal}.` : `Superaste el objetivo de ${effectiveGoal}. El desafío ahora es sostenerlo.`}"`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -126,7 +128,7 @@ Después de los 3 bloques, en línea separada:
     const text = data.content?.map((b: any) => b.text || "").join("") || "";
     if (!text) return res.status(500).json({ error: "Sin respuesta del coach" });
 
-    return res.status(200).json({ advice: text, profile: perfil, faltaron, weekTotals, productiveDays, totalDays });
+    return res.status(200).json({ advice: text, profile: perfil, faltaron, weekTotals: totals, productiveDays, totalDays });
   } catch (err: any) {
     console.error("Insta Coach error:", err);
     return res.status(500).json({ error: "Error al generar el análisis" });

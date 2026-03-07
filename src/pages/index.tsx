@@ -228,7 +228,7 @@ function MonthlyView({ summaries, monthOffset, onPrev, onNext }: {
 }
 
 // ─── Insta Coach Panel ────────────────────────────────────────────────────────
-function InstaCoacPanel({ data }: { data: CalendarData }) {
+function InstaCoacPanel({ data, calView, monthOffset }: { data: CalendarData; calView: "week" | "month"; monthOffset: number }) {
   const [advice, setAdvice] = useState("");
   const [profile, setProfile] = useState("");
   const [weekTotals, setWeekTotals] = useState<any>(null);
@@ -236,15 +236,42 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Calcular métricas de los últimos 7 días para mostrar antes de analizar
+  // Reset cuando cambia la vista o el mes
+  useEffect(() => { setAdvice(""); setProfile(""); setWeekTotals(null); }, [calView, monthOffset]);
+
   const today = new Date();
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 6);
-  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
-  const weekSummaries = data.dailySummaries.filter(d => d.date >= sevenDaysAgoStr);
-  const weekGreen = weekSummaries.flatMap(d => d.events).filter(e => e.isGreen).length;
-  const weekDays = weekSummaries.length;
-  const weekProductiveDays = weekSummaries.filter(d => d.greenCount >= 2).length;
+
+  const { periodStart, periodEnd, periodLabel, goal, goalLabel } = useMemo(() => {
+    if (calView === "week") {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 6);
+      return {
+        periodStart: start.toISOString().slice(0, 10),
+        periodEnd: today.toISOString().slice(0, 10),
+        periodLabel: "últimos 7 días",
+        goal: 15,
+        goalLabel: "meta semanal",
+      };
+    } else {
+      const target = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+      const firstDay = new Date(target.getFullYear(), target.getMonth(), 1);
+      const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0);
+      const monthName = target.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+      return {
+        periodStart: firstDay.toISOString().slice(0, 10),
+        periodEnd: lastDay.toISOString().slice(0, 10),
+        periodLabel: monthName,
+        goal: 60,
+        goalLabel: "meta mensual (15×4)",
+      };
+    }
+  }, [calView, monthOffset]);
+
+  const periodSummaries = data.dailySummaries.filter(d => d.date >= periodStart && d.date <= periodEnd);
+  const periodGreen = periodSummaries.flatMap(d => d.events).filter(e => e.isGreen).length;
+  const periodActiveDays = periodSummaries.filter(d => d.greenCount > 0).length;
+  const periodPct = Math.min(100, Math.round((periodGreen / goal) * 100));
+  const barColor = periodPct >= 100 ? "#16a34a" : periodPct >= 50 ? "#b45309" : RED;
 
   const analyze = async () => {
     setLoading(true);
@@ -259,6 +286,11 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
           dailySummaries: data.dailySummaries,
           productivityGoal: data.productivityGoal,
           userName: data.user.name,
+          periodStart,
+          periodEnd,
+          calView,
+          goal,
+          periodLabel,
         }),
       });
       const json = await res.json();
@@ -289,14 +321,14 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
   const sectionConfig = [
     { label: "Lo que hiciste bien", color: "#16a34a", bg: "#f0fdf4" },
     { label: "Dónde perdés oportunidades", color: "#b45309", bg: "#fffbeb" },
-    { label: "La acción para esta semana", color: RED, bg: "#fef2f2" },
+    { label: calView === "week" ? "La acción para esta semana" : "La acción para el próximo mes", color: RED, bg: "#fef2f2" },
   ];
 
   const profileLabel: Record<string, string> = {
-    semana_productiva: "Semana productiva",
-    semana_ocupada: "Semana ocupada, poco productiva",
-    semana_reactiva: "Semana reactiva",
-    semana_riesgo: "Semana con riesgo comercial",
+    semana_productiva: "Período productivo",
+    semana_ocupada: "Ocupado, poco productivo",
+    semana_reactiva: "Período reactivo",
+    semana_riesgo: "Riesgo comercial",
     semana_sin_actividad: "Sin actividad comercial",
   };
 
@@ -322,7 +354,7 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
                 <span className="font-semibold" style={{ color: profileColor[profile] || "#6b7280" }}>
                   {profileLabel[profile]}
                 </span>
-              ) : "análisis de tu semana"}
+              ) : `análisis — ${periodLabel}`}
             </div>
           </div>
         </div>
@@ -342,31 +374,36 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
         </div>
       </div>
 
-      {/* Preview de lo que va a analizar — visible ANTES de hacer clic */}
       {!advice && (
-        <div className="bg-gray-50 rounded-xl p-4 mb-0">
-          <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Últimos 7 días — lo que se va a analizar</div>
+        <div className="bg-gray-50 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-black text-gray-400 uppercase tracking-widest">
+              {calView === "week" ? "Últimos 7 días" : `Mes: ${periodLabel}`}
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div className="text-center">
-              <div className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{weekGreen}</div>
+              <div className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{periodGreen}</div>
               <div className="text-xs text-gray-400 font-medium">reuniones comerciales</div>
             </div>
             <div className="text-center border-x border-gray-200">
-              <div className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{weekProductiveDays}</div>
+              <div className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{periodActiveDays}</div>
               <div className="text-xs text-gray-400 font-medium">días con actividad</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-black" style={{ fontFamily: "Georgia, serif", color: weekGreen >= 15 ? "#16a34a" : RED }}>15</div>
-              <div className="text-xs text-gray-400 font-medium">meta semanal</div>
+              <div className="text-2xl font-black" style={{ fontFamily: "Georgia, serif", color: periodGreen >= goal ? "#16a34a" : RED }}>{goal}</div>
+              <div className="text-xs text-gray-400 font-medium">{goalLabel}</div>
             </div>
           </div>
           <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
-            <div className="h-full rounded-full transition-all" style={{
-              width: `${Math.min(100, Math.round((weekGreen / 15) * 100))}%`,
-              background: weekGreen >= 15 ? "#16a34a" : weekGreen >= 8 ? "#b45309" : RED
-            }} />
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${periodPct}%`, background: barColor }} />
           </div>
-          <div className="text-xs text-gray-400 mt-1.5 text-right">{Math.min(100, Math.round((weekGreen / 15) * 100))}% del objetivo semanal</div>
+          <div className="flex items-center justify-between mt-1.5">
+            <div className="text-xs text-gray-400">
+              {calView === "month" && <span>15/semana × 4 semanas = {goal} reuniones</span>}
+            </div>
+            <div className="text-xs font-semibold" style={{ color: barColor }}>{periodPct}% del objetivo</div>
+          </div>
         </div>
       )}
 
@@ -626,7 +663,7 @@ export default function HomePage() {
             </div>
 
             {/* Insta Coach */}
-            <InstaCoacPanel data={data} />
+            <InstaCoacPanel data={data} calView={calView} monthOffset={monthOffset} />
           </>
         )}
       </main>
