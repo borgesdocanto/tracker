@@ -3,6 +3,7 @@ import MercadoPagoConfig, { Payment } from "mercadopago";
 import { upgradePlan } from "../../../lib/subscription";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { PlanId } from "../../../lib/plans";
+import { getOrCreateTeam } from "../../../lib/teams";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -13,7 +14,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { type, data } = req.body;
 
-  // Solo procesamos notificaciones de pago
   if (type !== "payment") return res.status(200).json({ ok: true });
 
   try {
@@ -24,17 +24,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true, status: paymentData.status });
     }
 
-    // external_reference = "email|planId"
     const [email, planId] = (paymentData.external_reference ?? "").split("|");
     if (!email || !planId) return res.status(400).json({ error: "Referencia inválida" });
 
-    // Actualizar plan en Supabase
-    await upgradePlan(
-      email,
-      planId as PlanId,
-      String(paymentData.id),
-      String(paymentData.payer?.id ?? "")
-    );
+    // Actualizar plan
+    await upgradePlan(email, planId as PlanId, String(paymentData.id), String(paymentData.payer?.id ?? ""));
+
+    // Si compró Teams → asignar owner + crear equipo automáticamente
+    if (planId === "teams") {
+      // Obtener nombre del usuario
+      const { data: sub } = await supabaseAdmin
+        .from("subscriptions")
+        .select("name")
+        .eq("email", email)
+        .single();
+
+      const brokerName = sub?.name || email.split("@")[0];
+
+      // Crear equipo y asignar rol owner
+      const team = await getOrCreateTeam(email, `Equipo de ${brokerName}`);
+
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({ team_id: team.id, team_role: "owner" })
+        .eq("email", email);
+    }
 
     // Registrar pago
     await supabaseAdmin.from("payments").insert({
