@@ -230,13 +230,15 @@ function MonthlyView({ summaries, monthOffset, onPrev, onNext }: {
 // ─── Insta Coach Panel ────────────────────────────────────────────────────────
 function InstaCoacPanel({ data }: { data: CalendarData }) {
   const [advice, setAdvice] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const analyze = async () => {
     setLoading(true);
     setAdvice("");
+    setProfile("");
     try {
       const res = await fetch("/api/coach", {
         method: "POST",
@@ -252,6 +254,7 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
       });
       const json = await res.json();
       setAdvice(json.advice || "No se pudo obtener el análisis.");
+      setProfile(json.profile || "");
     } catch { setAdvice("Error al conectar. Intentá de nuevo."); }
     setLoading(false);
   };
@@ -267,6 +270,35 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
     setEmailSending(false);
   };
 
+  // Parse the 3 blocks + número crítico
+  const blocks = advice ? advice.split(/\n\n+/).filter(b => b.trim()) : [];
+  const lastBlock = blocks[blocks.length - 1] || "";
+  const isNumeroCritico = lastBlock.toLowerCase().startsWith("número crítico");
+  const sections = isNumeroCritico ? blocks.slice(0, -1) : blocks;
+  const numeroCritico = isNumeroCritico ? lastBlock : "";
+
+  const sectionConfig = [
+    { label: "Lo que hiciste bien", color: "#16a34a", bg: "#f0fdf4" },
+    { label: "Dónde perdés oportunidades", color: "#b45309", bg: "#fffbeb" },
+    { label: "La acción para esta semana", color: RED, bg: "#fef2f2" },
+  ];
+
+  const profileLabel: Record<string, string> = {
+    semana_productiva: "Semana productiva",
+    semana_ocupada: "Semana ocupada, poco productiva",
+    semana_reactiva: "Semana reactiva",
+    semana_riesgo: "Semana con riesgo comercial",
+    semana_sin_actividad: "Sin actividad comercial",
+  };
+
+  const profileColor: Record<string, string> = {
+    semana_productiva: "#16a34a",
+    semana_ocupada: "#b45309",
+    semana_reactiva: "#7c3aed",
+    semana_riesgo: RED,
+    semana_sin_actividad: "#374151",
+  };
+
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
@@ -276,7 +308,13 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
           </div>
           <div>
             <div className="font-black text-sm text-gray-900">Insta Coach</div>
-            <div className="text-xs text-gray-400">análisis de tu semana</div>
+            <div className="text-xs text-gray-400">
+              {profile ? (
+                <span className="font-semibold" style={{ color: profileColor[profile] || "#6b7280" }}>
+                  {profileLabel[profile] || "análisis de tu semana"}
+                </span>
+              ) : "análisis de tu semana"}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -294,11 +332,29 @@ function InstaCoacPanel({ data }: { data: CalendarData }) {
           </button>
         </div>
       </div>
+
       {advice ? (
-        <p className="text-sm text-gray-600 leading-relaxed">{advice}</p>
+        <div className="space-y-3">
+          {sections.map((block, i) => {
+            const cfg = sectionConfig[i] || { label: "", color: "#374151", bg: "#f9fafb" };
+            return (
+              <div key={i} className="rounded-xl p-4" style={{ background: cfg.bg }}>
+                <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: cfg.color }}>
+                  {i === 0 ? "✓ " : i === 1 ? "↓ " : "→ "}{cfg.label}
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">{block.trim()}</p>
+              </div>
+            );
+          })}
+          {numeroCritico && (
+            <div className="border-t border-gray-100 pt-3 mt-1">
+              <p className="text-xs font-semibold text-gray-400">{numeroCritico}</p>
+            </div>
+          )}
+        </div>
       ) : (
         <p className="text-sm text-gray-400">
-          Presioná "Analizar" para recibir el consejo más importante basado en tu actividad real.
+          Presioná "Analizar" para recibir el diagnóstico de tu semana y la acción concreta para mejorar.
         </p>
       )}
     </div>
