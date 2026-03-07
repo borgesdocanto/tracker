@@ -13,20 +13,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")
-    .select("plan, team_role")
+    .select("plan, team_role, team_id")
     .eq("email", session.user.email)
     .single();
 
-  if (!sub || sub.plan !== "teams" || sub.team_role !== "owner") {
-    return res.status(403).json({ error: "Solo los brokers con plan Teams pueden invitar agentes" });
+  // Freemium también puede usar teams — solo owner y team_leader
+  const canManage = sub && ["owner", "team_leader"].includes(sub.team_role);
+  if (!canManage) {
+    return res.status(403).json({ error: "Solo owners y team leaders pueden gestionar el equipo" });
   }
 
   if (req.method === "GET") {
-    const [members, pending] = await Promise.all([
+    const [{ members, requesterRole }, pending] = await Promise.all([
       getTeamMembers(session.user.email),
       getPendingInvitations(session.user.email),
     ]);
-    return res.status(200).json({ members, pending });
+    return res.status(200).json({ members, pending, requesterRole, brokerPlan: sub.plan });
   }
 
   if (req.method === "POST") {
@@ -36,8 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const brokerName = session.user.name || session.user.email;
     const team = await getOrCreateTeam(session.user.email, `Equipo de ${brokerName}`);
 
-    const members = await getTeamMembers(session.user.email);
-    if (members.filter(m => m.teamRole === "member").length >= team.maxAgents) {
+    const { members } = await getTeamMembers(session.user.email);
+    if (members.filter(m => m.teamRole === "member" || m.teamRole === "team_leader").length >= team.maxAgents) {
       return res.status(400).json({ error: `Límite de ${team.maxAgents} agentes alcanzado` });
     }
 

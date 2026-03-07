@@ -445,6 +445,7 @@ export default function HomePage() {
   const [days, setDays] = useState(60);
   const [subPlan, setSubPlan] = useState("free");
   const [isOwner, setIsOwner] = useState(false);
+  const [hasTeam, setHasTeam] = useState(false);
   const [calView, setCalView] = useState<"week" | "month">("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -457,7 +458,8 @@ export default function HomePage() {
     if (status === "authenticated") {
       fetch("/api/subscription").then(r => r.json()).then(d => {
         setSubPlan(d.plan?.id ?? "free");
-        setIsOwner(d.subscription?.teamRole === "owner");
+        setIsOwner(d.subscription?.teamRole === "owner" || d.subscription?.teamRole === "team_leader");
+        setHasTeam(!!d.subscription?.teamId);
         if (d.subscription?.isExpired) router.push("/expired");
       });
     }
@@ -542,11 +544,22 @@ export default function HomePage() {
             <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
 
-          {isOwner && (
+          {isOwner ? (
             <button onClick={() => router.push("/equipo")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors border border-gray-200">
               <Users size={11} />
               <span className="hidden sm:inline">Mi equipo</span>
+            </button>
+          ) : !hasTeam && (
+            <button onClick={async () => {
+              await fetch("/api/teams/init", { method: "POST" });
+              setIsOwner(true); setHasTeam(true);
+              router.push("/equipo");
+            }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold hover:opacity-90 transition-all border"
+              style={{ background: "#fef2f2", color: RED, borderColor: "#fecaca" }}>
+              <Users size={11} />
+              <span className="hidden sm:inline">Crear equipo</span>
             </button>
           )}
 

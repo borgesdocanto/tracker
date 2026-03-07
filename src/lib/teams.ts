@@ -1,11 +1,14 @@
 import { supabaseAdmin } from "./supabase";
 
+export type TeamRole = "owner" | "team_leader" | "member";
+
 export interface TeamMember {
   email: string;
   name?: string;
   avatar?: string;
   plan: string;
-  teamRole: "owner" | "member";
+  teamRole: TeamRole;
+  teamId: string;
   createdAt: string;
 }
 
@@ -33,12 +36,11 @@ export async function getOrCreateTeam(ownerEmail: string, teamName: string): Pro
     .select()
     .single();
 
-  return mapTeam(newTeam);
+  return mapTeam(newTeam!);
 }
 
 // Invitar agente al equipo
 export async function inviteAgent(teamId: string, agentEmail: string, invitedBy: string): Promise<{ token: string }> {
-  // Verificar si ya existe invitación pendiente
   const { data: existing } = await supabaseAdmin
     .from("team_invitations")
     .select("*")
@@ -55,12 +57,11 @@ export async function inviteAgent(teamId: string, agentEmail: string, invitedBy:
     .select()
     .single();
 
-  return { token: data.token };
+  return { token: data!.token };
 }
 
 // Aceptar invitación — Opción A: team absorbe al agente
 export async function acceptInvitation(token: string, agentEmail: string): Promise<{ ok: boolean; error?: string }> {
-  // Buscar invitación
   const { data: inv } = await supabaseAdmin
     .from("team_invitations")
     .select("*, teams(*)")
@@ -71,20 +72,26 @@ export async function acceptInvitation(token: string, agentEmail: string): Promi
   if (!inv) return { ok: false, error: "Invitación inválida o ya usada" };
   if (inv.email !== agentEmail) return { ok: false, error: "Esta invitación no es para tu email" };
 
-  // Actualizar suscripción del agente: pasa a ser cubierto por el team
+  // Verificar si el broker tiene plan Teams activo (no freemium)
+  const { data: brokerSub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("plan")
+    .eq("email", inv.teams.owner_email)
+    .single();
+
+  // Si el broker es freemium, el agente entra pero con su propio freemium
+  const agentPlan = brokerSub?.plan === "teams" ? "teams" : "free";
+
   await supabaseAdmin
     .from("subscriptions")
     .upsert({
       email: agentEmail,
-      plan: "teams",
+      plan: agentPlan,
       status: "active",
       team_id: inv.team_id,
       team_role: "member",
-      // Cancelar cualquier suscripción individual al fin del ciclo actual
-      // (no tocamos current_period_end si existe, se usa para mostrar "hasta cuándo")
     }, { onConflict: "email" });
 
-  // Marcar invitación como aceptada
   await supabaseAdmin
     .from("team_invitations")
     .update({ status: "accepted" })
@@ -93,45 +100,97 @@ export async function acceptInvitation(token: string, agentEmail: string): Promi
   return { ok: true };
 }
 
-// Obtener miembros del equipo del broker
-export async function getTeamMembers(ownerEmail: string): Promise<TeamMember[]> {
-  const { data: team } = await supabaseAdmin
-    .from("teams")
-    .select("id")
-    .eq("owner_email", ownerEmail)
+// Cambiar rol de un miembro (owner puede dar/quitar team_leader)
+export async function updateMemberRole(
+  ownerEmail: string,
+  memberEmail: string,
+  newRole: "team_leader" | "member"
+): Promise<{ ok: boolean; error?: string }> {
+  // Verificar que el que pide es owner del equipo
+  const { data: ownerSub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("team_id, team_role")
+    .eq("email", ownerEmail)
     .single();
 
-  if (!team) return [];
+  if (!ownerSub || ownerSub.team_role !== "owner") {
+    return { ok: false, error: "Solo el owner puede cambiar roles" };
+  }
+
+  // Verificar que el miembro pertenece al mismo equipo
+  const { data: memberSub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("team_id, team_role")
+    .eq("email", memberEmail)
+    .single();
+
+  if (!memberSub || memberSub.team_id !== ownerSub.team_id) {
+    return { ok: false, error: "El agente no pertenece a tu equipo" };
+  }
+
+  if (memberSub.team_role === "owner") {
+    return { ok: false, error: "No podés cambiar el rol del owner" };
+  }
+
+  await supabaseAdmin
+    .from("subscriptions")
+    .update({ team_role: newRole })
+    .eq("email", memberEmail);
+
+  return { ok: true };
+}
+
+// Obtener miembros — owner y team_leader ven todos
+export async function getTeamMembers(requesterEmail: string): Promise<{ members: TeamMember[]; requesterRole: TeamRole | null }> {
+  const { data: reqSub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("team_id, team_role, plan")
+    .eq("email", requesterEmail)
+    .single();
+
+  if (!reqSub?.team_id) return { members: [], requesterRole: null };
+
+  const role = reqSub.team_role as TeamRole;
+
+  // Solo owner y team_leader pueden ver el equipo completo
+  if (role !== "owner" && role !== "team_leader") {
+    return { members: [], requesterRole: role };
+  }
 
   const { data: members } = await supabaseAdmin
     .from("subscriptions")
     .select("*")
-    .eq("team_id", team.id);
+    .eq("team_id", reqSub.team_id);
 
-  return (members || []).map(m => ({
-    email: m.email,
-    name: m.name,
-    avatar: m.avatar,
-    plan: m.plan,
-    teamRole: m.team_role,
-    createdAt: m.created_at,
-  }));
+  return {
+    members: (members || []).map(m => ({
+      email: m.email,
+      name: m.name,
+      avatar: m.avatar,
+      plan: m.plan,
+      teamRole: m.team_role as TeamRole,
+      teamId: m.team_id,
+      createdAt: m.created_at,
+    })),
+    requesterRole: role,
+  };
 }
 
 // Obtener invitaciones pendientes del equipo
-export async function getPendingInvitations(ownerEmail: string) {
-  const { data: team } = await supabaseAdmin
-    .from("teams")
-    .select("id")
-    .eq("owner_email", ownerEmail)
+export async function getPendingInvitations(requesterEmail: string) {
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("team_id, team_role")
+    .eq("email", requesterEmail)
     .single();
 
-  if (!team) return [];
+  if (!sub?.team_id) return [];
+  if (sub.team_role !== "owner" && sub.team_role !== "team_leader") return [];
 
   const { data } = await supabaseAdmin
     .from("team_invitations")
     .select("*")
-    .eq("team_id", team.id)
+    .eq("team_id", sub.team_id)
     .eq("status", "pending");
 
   return data || [];

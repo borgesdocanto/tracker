@@ -2,15 +2,18 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Head from "next/head";
-import { ArrowLeft, UserPlus, Loader2, Mail, Users, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, UserPlus, Loader2, Mail, Users, CheckCircle, Clock, ChevronDown, AlertTriangle } from "lucide-react";
 
 const RED = "#aa0000";
+
+type TeamRole = "owner" | "team_leader" | "member";
 
 interface Member {
   email: string;
   name?: string;
   avatar?: string;
-  teamRole: "owner" | "member";
+  teamRole: TeamRole;
+  plan: string;
   createdAt: string;
 }
 
@@ -19,6 +22,18 @@ interface Pending {
   created_at: string;
   token: string;
 }
+
+const ROLE_LABEL: Record<TeamRole, string> = {
+  owner: "Broker",
+  team_leader: "Team Leader",
+  member: "Agente",
+};
+
+const ROLE_COLOR: Record<TeamRole, string> = {
+  owner: RED,
+  team_leader: "#7c3aed",
+  member: "#16a34a",
+};
 
 export default function BrokerDashboard() {
   const { data: session, status } = useSession();
@@ -29,6 +44,9 @@ export default function BrokerDashboard() {
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState("");
   const [loading, setLoading] = useState(true);
+  const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);
+  const [brokerPlan, setBrokerPlan] = useState<string>("free");
+  const [roleLoading, setRoleLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -42,10 +60,12 @@ export default function BrokerDashboard() {
     setLoading(true);
     try {
       const res = await fetch("/api/teams/invite");
-      if (res.status === 403) { router.replace("/pricing"); return; }
+      if (res.status === 403) { router.replace("/"); return; }
       const data = await res.json();
       setMembers(data.members || []);
       setPending(data.pending || []);
+      setRequesterRole(data.requesterRole);
+      setBrokerPlan(data.brokerPlan || "free");
     } catch { }
     setLoading(false);
   };
@@ -72,7 +92,24 @@ export default function BrokerDashboard() {
     setInviting(false);
   };
 
-  const activeMembers = members.filter(m => m.teamRole === "member");
+  const changeRole = async (memberEmail: string, newRole: "team_leader" | "member") => {
+    setRoleLoading(memberEmail);
+    try {
+      const res = await fetch("/api/teams/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberEmail, newRole }),
+      });
+      const data = await res.json();
+      if (data.ok) loadTeam();
+      else alert(data.error);
+    } catch { alert("Error al cambiar rol"); }
+    setRoleLoading(null);
+  };
+
+  const activeMembers = members.filter(m => m.teamRole !== "owner");
+  const isOwner = requesterRole === "owner";
+  const isFreemium = brokerPlan === "free";
 
   if (status === "loading" || loading) {
     return (
@@ -102,47 +139,72 @@ export default function BrokerDashboard() {
       <main className="max-w-4xl mx-auto px-5 py-8 space-y-5">
 
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Mi Equipo</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {activeMembers.length} agente{activeMembers.length !== 1 ? "s" : ""} activo{activeMembers.length !== 1 ? "s" : ""} · {10 - activeMembers.length} lugar{10 - activeMembers.length !== 1 ? "es" : ""} disponible{10 - activeMembers.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-
-        {/* Invitar */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <UserPlus size={15} className="text-gray-400" />
-            <span className="font-black text-sm text-gray-900">Invitar agente</span>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={newEmail}
-              onChange={e => setNewEmail(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && invite()}
-              placeholder="email@dominio.com"
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400 transition-colors"
-            />
-            <button onClick={invite} disabled={inviting || !newEmail}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50 transition-all hover:opacity-90"
-              style={{ background: RED }}>
-              {inviting ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
-              {inviting ? "Enviando..." : "Invitar"}
-            </button>
-          </div>
-          {inviteMsg && (
-            <p className={`text-xs mt-2 font-medium ${inviteMsg.includes("nviada") ? "text-green-600" : "text-red-500"}`}>
-              {inviteMsg}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Mi Equipo</h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {activeMembers.length} agente{activeMembers.length !== 1 ? "s" : ""} activo{activeMembers.length !== 1 ? "s" : ""} · {10 - activeMembers.length} lugar{10 - activeMembers.length !== 1 ? "es" : ""} disponible{10 - activeMembers.length !== 1 ? "s" : ""}
             </p>
-          )}
+          </div>
+          <div className="text-xs font-bold px-3 py-1.5 rounded-xl"
+            style={{ background: isFreemium ? "#f3f4f6" : "#f0fdf4", color: isFreemium ? "#9ca3af" : "#16a34a" }}>
+            {isFreemium ? "Trial — 7 días" : "Teams activo"}
+          </div>
         </div>
 
-        {/* Miembros activos */}
+        {/* Banner freemium */}
+        {isFreemium && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+            <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Estás en el período de prueba</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Podés invitar agentes y probar el equipo. Al activar Teams, su acceso queda cubierto por vos — no pagan nada extra.
+              </p>
+              <button onClick={() => router.push("/pricing")}
+                className="mt-2 text-xs font-bold underline text-amber-700 hover:text-amber-900">
+                Activar plan Teams →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Invitar — solo owner puede invitar */}
+        {isOwner && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <UserPlus size={15} className="text-gray-400" />
+              <span className="font-black text-sm text-gray-900">Invitar agente</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && invite()}
+                placeholder="email@dominio.com"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400 transition-colors"
+              />
+              <button onClick={invite} disabled={inviting || !newEmail}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50 transition-all hover:opacity-90"
+                style={{ background: RED }}>
+                {inviting ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                {inviting ? "Enviando..." : "Invitar"}
+              </button>
+            </div>
+            {inviteMsg && (
+              <p className={`text-xs mt-2 font-medium ${inviteMsg.includes("nviada") ? "text-green-600" : "text-red-500"}`}>
+                {inviteMsg}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Miembros */}
         <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
             <Users size={13} className="text-gray-400" />
-            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Agentes activos</span>
+            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Agentes del equipo</span>
             <span className="ml-auto text-xs font-bold text-gray-300">{activeMembers.length}/10</span>
           </div>
           {activeMembers.length === 0 ? (
@@ -151,7 +213,7 @@ export default function BrokerDashboard() {
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {activeMembers.map(m => (
+              {members.map(m => (
                 <div key={m.email} className="flex items-center gap-3 px-5 py-3">
                   {m.avatar ? (
                     <img src={m.avatar} alt="" className="w-8 h-8 rounded-full" />
@@ -164,10 +226,29 @@ export default function BrokerDashboard() {
                     <div className="text-sm font-semibold text-gray-800 truncate">{m.name || m.email}</div>
                     {m.name && <div className="text-xs text-gray-400 truncate">{m.email}</div>}
                   </div>
-                  <div className="flex items-center gap-1 text-xs font-medium text-green-600">
-                    <CheckCircle size={11} />
-                    Activo
+
+                  {/* Badge de rol */}
+                  <div className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                    style={{ background: `${ROLE_COLOR[m.teamRole]}15`, color: ROLE_COLOR[m.teamRole] }}>
+                    {ROLE_LABEL[m.teamRole]}
                   </div>
+
+                  {/* Cambio de rol — solo owner puede cambiar roles de no-owners */}
+                  {isOwner && m.teamRole !== "owner" && (
+                    <div className="relative">
+                      {roleLoading === m.email ? (
+                        <Loader2 size={13} className="animate-spin text-gray-400" />
+                      ) : (
+                        <select
+                          value={m.teamRole}
+                          onChange={e => changeRole(m.email, e.target.value as "team_leader" | "member")}
+                          className="text-xs font-semibold text-gray-500 bg-gray-100 border-0 rounded-lg px-2 py-1 cursor-pointer focus:outline-none appearance-none pr-5">
+                          <option value="member">Agente</option>
+                          <option value="team_leader">Team Leader</option>
+                        </select>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
