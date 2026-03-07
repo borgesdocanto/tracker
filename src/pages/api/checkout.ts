@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         items: [
           {
             id: planId,
-            title: `GALAS Management — Plan ${plan.name}`,
+            title: `InstaCoach — Plan ${plan.name}`,
             description: plan.description,
             quantity: 1,
             unit_price: plan.priceARS,
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         auto_return: "approved",
         external_reference: `${session.user.email}|${planId}`,
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-        statement_descriptor: "GALAS Management",
+        statement_descriptor: "InstaCoach",
       },
     });
 

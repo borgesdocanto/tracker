@@ -16,7 +16,7 @@ export default function PagoExito() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <Head><title>Pago aprobado — GALAS Management</title></Head>
+      <Head><title>Pago aprobado — InstaCoach</title></Head>
       <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100 text-center max-w-sm w-full">
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 size={32} className="text-green-600" />

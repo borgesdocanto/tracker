@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { Resend } from "resend";
-import { getAllActiveSubscriptions } from "../../lib/subscription";
-import { fetchCalendarEvents, computeWeekStats } from "../../lib/calendarSync";
-import { generateWeeklyEmailHtml } from "../../lib/emailTemplate";
-import { supabaseAdmin } from "../../lib/supabase";
-import { FREEMIUM_DAYS, PRODUCTIVITY_GOAL } from "../../lib/brand";
-import { getPlanById } from "../../lib/plans";
+import { getAllActiveSubscriptions } from "../../../lib/subscription";
+import { fetchCalendarEvents, computeWeekStats } from "../../../lib/calendarSync";
+import { generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { FREEMIUM_DAYS, PRODUCTIVITY_GOAL } from "../../../lib/brand";
+import { getPlanById } from "../../../lib/plans";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
