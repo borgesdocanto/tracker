@@ -362,7 +362,7 @@ export default function Landing() {
               {
                 id: "free",
                 name: "Gratis",
-                price: "USD 0",
+                price: "$ 0",
                 period: "7 días",
                 desc: "Para conocer la herramienta",
                 features: ["Sincronización con Google Calendar", "Dashboard semanal y mensual", "Insta Coach con IA", "Sin tarjeta de crédito"],
@@ -372,7 +372,7 @@ export default function Landing() {
               {
                 id: "individual",
                 name: "Individual",
-                price: "USD 7",
+                price: "$ 10.500",
                 period: "por mes",
                 desc: "Para el inmobiliario que quiere crecer",
                 features: ["Todo lo del plan gratis", "Acceso permanente", "Reporte semanal por email", "Insta Coach ilimitado", "Historial de 90 días"],
@@ -382,10 +382,10 @@ export default function Landing() {
               {
                 id: "teams",
                 name: "Teams",
-                price: "USD 50",
+                price: "$ 75.000",
                 period: "por mes",
                 desc: "Para brokers con equipo",
-                features: ["Todo lo de Individual", "Hasta 10 agentes incluidos", "Dashboard del broker", "Invitaciones por email", "Roles: Team Leader", "Agentes adicionales: USD 7/c.u."],
+                features: ["Todo lo de Individual", "Hasta 10 agentes incluidos", "Dashboard del broker", "Invitaciones por email", "Roles: Team Leader", "Adicionales: $ 10.500/agente"],
                 cta: "Suscribir equipo",
                 featured: false,
               },

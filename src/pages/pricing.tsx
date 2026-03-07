@@ -37,9 +37,8 @@ function PlanCard({ plan, current, onSelect, loading }: {
           </div>
         ) : (
           <div>
-            <span className="font-black text-4xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>USD {plan.price}</span>
+            <span className="font-black text-3xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>$ {plan.priceARS.toLocaleString("es-AR")}</span>
             <span className="text-gray-400 text-sm"> / mes</span>
-            <div className="text-xs text-gray-400 mt-1">≈ ARS {plan.priceARS.toLocaleString("es-AR")} / mes</div>
           </div>
         )}
       </div>
@@ -59,7 +58,7 @@ function PlanCard({ plan, current, onSelect, loading }: {
           ? { background: "#111827", color: "#fff" }
           : { background: "#f3f4f6", color: "#374151" }}>
         {isLoading && <Loader2 size={13} className="animate-spin" />}
-        {isCurrent ? "Plan actual" : plan.price === 0 ? "Empezar gratis" : `Suscribirse — USD ${plan.price}/mes`}
+        {isCurrent ? "Plan actual" : plan.price === 0 ? "Empezar gratis" : `Suscribirse — $ ${plan.priceARS.toLocaleString("es-AR")}/mes`}
       </button>
     </div>
   );
@@ -130,8 +129,8 @@ export default function PricingPage() {
             <div className="font-black text-sm text-gray-900 mb-1">Cómo funciona Teams</div>
             <p className="text-xs text-gray-400 leading-relaxed">
               Con Teams activado cargás los emails de tus inmobiliarios y el sistema les manda una invitación.
-              Hasta 10 incluidos en USD 50/mes — son USD 5/inmobiliario vs USD 7 del plan Individual.
-              Si necesitás más de 10, agregás adicionales a USD 7/mes cada uno.
+              Hasta 10 agentes incluidos en $ 75.000/mes — son $ 7.500/agente vs $ 10.500 del plan Individual.
+              Si necesitás más de 10, agregás adicionales a $ 10.500/mes cada uno.
             </p>
           </div>
         </div>
