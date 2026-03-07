@@ -1,290 +1,148 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
+import { CheckCircle, TrendingUp, Users, Brain, Mail, Calendar, BarChart2, ArrowRight, Target } from "lucide-react";
 
 const RED = "#aa0000";
-const DARK = "#0a0a0a";
 
 export default function Landing() {
   const router = useRouter();
 
   return (
-    <>
+    <div style={{ background: "#f9fafb", minHeight: "100vh", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", color: "#111827" }}>
       <Head>
-        <title>InstaCoach — El 80% de los inmobiliarios trabaja mucho. El 20% produce.</title>
-        <meta name="description" content="InstaCoach sincroniza tu agenda, mide tus reuniones cara a cara y te da feedback real de tu negocio cada semana. Dejá de adivinar. Empezá a medir." />
+        <title>InstaCoach — El 80% trabaja. El 20% produce.</title>
+        <meta name="description" content="InstaCoach sincroniza tu Google Calendar, mide tus reuniones cara a cara y te da feedback real de tu negocio cada semana." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+        <style>{`
+          @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+          .f1{animation:fadeUp 0.6s ease forwards;animation-delay:0.05s;opacity:0}
+          .f2{animation:fadeUp 0.6s ease forwards;animation-delay:0.15s;opacity:0}
+          .f3{animation:fadeUp 0.6s ease forwards;animation-delay:0.25s;opacity:0}
+          .f4{animation:fadeUp 0.6s ease forwards;animation-delay:0.35s;opacity:0}
+          .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;transition:box-shadow 0.2s,border-color 0.2s}
+          .card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.07);border-color:#d1d5db}
+          a{text-decoration:none}
+        `}</style>
       </Head>
 
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body { background: ${DARK}; color: white; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
-        .bebas { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.02em; }
-
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(28px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes lineGrow {
-          from { width: 0; }
-          to { width: 100%; }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        @keyframes ticker {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-
-        .fade-1 { animation: fadeUp 0.7s ease forwards; animation-delay: 0.1s; opacity: 0; }
-        .fade-2 { animation: fadeUp 0.7s ease forwards; animation-delay: 0.3s; opacity: 0; }
-        .fade-3 { animation: fadeUp 0.7s ease forwards; animation-delay: 0.5s; opacity: 0; }
-        .fade-4 { animation: fadeUp 0.7s ease forwards; animation-delay: 0.7s; opacity: 0; }
-
-        .stat-card {
-          background: #141414;
-          border: 1px solid #222;
-          border-radius: 16px;
-          padding: 28px;
-          transition: border-color 0.2s, transform 0.2s;
-        }
-        .stat-card:hover { border-color: ${RED}; transform: translateY(-4px); }
-
-        .feature-card {
-          background: #111;
-          border: 1px solid #1e1e1e;
-          border-radius: 20px;
-          padding: 32px;
-          transition: all 0.25s;
-          position: relative;
-          overflow: hidden;
-        }
-        .feature-card::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 2px;
-          background: ${RED};
-          transform: scaleX(0);
-          transform-origin: left;
-          transition: transform 0.3s ease;
-        }
-        .feature-card:hover::before { transform: scaleX(1); }
-        .feature-card:hover { border-color: #2a2a2a; }
-
-        .plan-card {
-          background: #111;
-          border: 1px solid #222;
-          border-radius: 20px;
-          padding: 36px 28px;
-          transition: all 0.25s;
-        }
-        .plan-card.featured {
-          background: ${RED};
-          border-color: ${RED};
-          position: relative;
-        }
-        .plan-card:not(.featured):hover { border-color: #444; transform: translateY(-4px); }
-
-        .cta-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          background: ${RED};
-          color: white;
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 700;
-          font-size: 15px;
-          padding: 16px 32px;
-          border-radius: 14px;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s;
-          text-decoration: none;
-        }
-        .cta-btn:hover { background: #cc0000; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(170,0,0,0.4); }
-
-        .cta-btn-outline {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          background: transparent;
-          color: white;
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 700;
-          font-size: 15px;
-          padding: 16px 32px;
-          border-radius: 14px;
-          border: 1px solid #333;
-          cursor: pointer;
-          transition: all 0.2s;
-          text-decoration: none;
-        }
-        .cta-btn-outline:hover { border-color: #666; background: #1a1a1a; }
-
-        .ticker-wrap { overflow: hidden; white-space: nowrap; }
-        .ticker { display: inline-flex; animation: ticker 25s linear infinite; }
-
-        .testimonial {
-          background: #111;
-          border: 1px solid #1e1e1e;
-          border-radius: 16px;
-          padding: 28px;
-        }
-
-        .number-big {
-          font-family: 'Bebas Neue', sans-serif;
-          font-size: clamp(64px, 10vw, 120px);
-          line-height: 1;
-          color: ${RED};
-        }
-
-        section { padding: 80px 20px; }
-        .container { max-width: 1100px; margin: 0 auto; }
-
-        @media (max-width: 768px) {
-          section { padding: 60px 20px; }
-          .grid-3 { grid-template-columns: 1fr !important; }
-          .grid-2 { grid-template-columns: 1fr !important; }
-          .hero-title { font-size: clamp(56px, 15vw, 100px) !important; }
-        }
-      `}</style>
+      <div style={{ height: 3, background: RED }} />
 
       {/* NAV */}
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, padding: "0 20px", background: "rgba(10,10,10,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid #1a1a1a" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", height: 60 }}>
-          <div className="bebas" style={{ fontSize: 24, letterSpacing: "0.05em" }}>
+      <nav style={{ background: "#fff", borderBottom: "1px solid #f3f4f6", position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 28 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontWeight: 900, fontSize: 20, color: "#111827", marginRight: "auto" }}>
             Insta<span style={{ color: RED }}>Coach</span>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
-            <a href="#precios" style={{ color: "#888", fontSize: 13, fontWeight: 500, textDecoration: "none" }}>Precios</a>
-            <button className="cta-btn" style={{ padding: "10px 20px", fontSize: 13 }} onClick={() => router.push("/login")}>
-              Empezar gratis
-            </button>
-          </div>
+          <a href="#como-funciona" style={{ color: "#6b7280", fontSize: 13, fontWeight: 500 }}>Cómo funciona</a>
+          <a href="#precios" style={{ color: "#6b7280", fontSize: 13, fontWeight: 500 }}>Precios</a>
+          <button onClick={() => router.push("/login")}
+            style={{ background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "9px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            Empezar gratis
+          </button>
         </div>
       </nav>
 
       {/* HERO */}
-      <section style={{ paddingTop: 140, paddingBottom: 80, paddingLeft: 20, paddingRight: 20, position: "relative", overflow: "hidden" }}>
-        {/* Background grid */}
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(#1a1a1a 1px, transparent 1px), linear-gradient(90deg, #1a1a1a 1px, transparent 1px)", backgroundSize: "60px 60px", opacity: 0.3, pointerEvents: "none" }} />
-        {/* Red glow */}
-        <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 600, height: 400, background: `radial-gradient(ellipse, ${RED}22 0%, transparent 70%)`, pointerEvents: "none" }} />
-
-        <div className="container" style={{ position: "relative", textAlign: "center" }}>
-          <div className="fade-1" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#1a0000", border: `1px solid ${RED}44`, borderRadius: 100, padding: "8px 16px", marginBottom: 32 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: RED, animation: "pulse 2s infinite" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#ff4444", letterSpacing: "0.05em", textTransform: "uppercase" }}>El 80% trabaja. El 20% produce.</span>
+      <section style={{ padding: "80px 24px 72px", textAlign: "center" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          <div className="f1" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff1f1", border: "1px solid #fecaca", borderRadius: 100, padding: "6px 16px", marginBottom: 28 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: RED }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: RED, letterSpacing: "0.05em", textTransform: "uppercase" }}>Solo el 20% de los inmobiliarios produce resultados reales</span>
           </div>
-
-          <h1 className="bebas hero-title fade-2" style={{ fontSize: "clamp(72px, 12vw, 140px)", lineHeight: 0.92, marginBottom: 32 }}>
-            Dejá de<br />
-            <span style={{ color: RED }}>adivinar</span><br />
-            tu negocio
+          <h1 className="f2" style={{ fontFamily: "Georgia, serif", fontSize: "clamp(40px, 6vw, 68px)", fontWeight: 900, lineHeight: 1.05, marginBottom: 24, color: "#111827" }}>
+            Dejá de adivinar<br /><span style={{ color: RED }}>cómo está tu negocio</span>
           </h1>
-
-          <p className="fade-3" style={{ fontSize: "clamp(16px, 2vw, 20px)", color: "#999", maxWidth: 560, margin: "0 auto 40px", lineHeight: 1.6 }}>
-            InstaCoach mide tus reuniones cara a cara, analiza tu semana y te dice exactamente qué estás haciendo mal — y qué tenés que hacer distinto.
+          <p className="f3" style={{ fontSize: "clamp(15px, 2vw, 18px)", color: "#6b7280", maxWidth: 540, margin: "0 auto 40px", lineHeight: 1.7 }}>
+            InstaCoach sincroniza tu agenda, mide tus reuniones cara a cara y te dice exactamente qué estás haciendo bien, qué perdés y cuál es la próxima acción concreta.
           </p>
-
-          <div className="fade-4" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="cta-btn" onClick={() => router.push("/login")} style={{ fontSize: 16, padding: "18px 36px" }}>
-              Probalo 7 días gratis →
+          <div className="f4" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={() => router.push("/login")}
+              style={{ background: RED, color: "#fff", border: "none", borderRadius: 12, padding: "15px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+              Probalo 7 días gratis <ArrowRight size={15} />
             </button>
-            <a href="#como-funciona" className="cta-btn-outline" style={{ fontSize: 16, padding: "18px 36px" }}>
+            <a href="#como-funciona"
+              style={{ background: "#fff", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 12, padding: "15px 32px", fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center" }}>
               Cómo funciona
             </a>
           </div>
-
-          <p style={{ marginTop: 20, fontSize: 12, color: "#555" }}>Sin tarjeta de crédito · 7 días completos · Cancelás cuando querés</p>
+          <p style={{ marginTop: 16, fontSize: 12, color: "#9ca3af" }}>Sin tarjeta de crédito · 7 días completos · Cancelás cuando querés</p>
         </div>
       </section>
 
-      {/* TICKER */}
-      <div style={{ borderTop: "1px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", padding: "14px 0", overflow: "hidden", background: "#0d0d0d" }}>
-        <div className="ticker">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} style={{ display: "flex", gap: 0 }}>
-              {["MEDÍ TU PRODUCTIVIDAD", "•", "FEEDBACK SEMANAL CON IA", "•", "SINCRONIZACIÓN CON GOOGLE CALENDAR", "•", "REUNIONES CARA A CARA", "•", "COACH SIEMPRE ACTIVO", "•", "EQUIPOS CON DASHBOARD", "•"].map((t, j) => (
-                <span key={j} style={{ fontSize: 12, fontWeight: t === "•" ? 400 : 700, color: t === "•" ? RED : "#555", letterSpacing: "0.08em", padding: "0 20px", whiteSpace: "nowrap" }}>{t}</span>
-              ))}
+      {/* STATS */}
+      <section style={{ padding: "0 24px 72px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+          {[
+            { num: "80%", label: "de los inmobiliarios no mide su actividad comercial" },
+            { num: "15", label: "reuniones cara a cara por semana es el estándar del top producer" },
+            { num: "3x", label: "más operaciones cierra quien mide y ajusta su semana" },
+            { num: "7 días", label: "son suficientes para ver el patrón que frena tu negocio" },
+          ].map((s, i) => (
+            <div key={i} className="card" style={{ padding: 24 }}>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 40, fontWeight: 900, color: RED, lineHeight: 1, marginBottom: 8 }}>{s.num}</div>
+              <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>{s.label}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* EL PROBLEMA */}
-      <section>
-        <div className="container">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }} className="grid-2">
-            <div>
-              <p style={{ color: RED, fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>El problema real</p>
-              <h2 className="bebas" style={{ fontSize: "clamp(48px, 6vw, 80px)", lineHeight: 0.95, marginBottom: 24 }}>
-                Ocupado no es<br />lo mismo que<br /><span style={{ color: RED }}>productivo</span>
-              </h2>
-              <p style={{ color: "#888", fontSize: 16, lineHeight: 1.7, marginBottom: 16 }}>
-                El inmobiliario promedio cree que trabaja mucho. Llega a fin de mes y no entiende por qué no cerró más operaciones. La respuesta es simple: <strong style={{ color: "white" }}>nunca midió nada.</strong>
-              </p>
-              <p style={{ color: "#888", fontSize: 16, lineHeight: 1.7 }}>
-                Sin datos reales, tomás decisiones por percepción. Y la percepción siempre te miente.
-              </p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {[
-                { pct: "80%", label: "de los inmobiliarios no mide su actividad comercial" },
-                { pct: "3x", label: "más operaciones cierra quien lleva registro de sus reuniones" },
-                { pct: "15", label: "reuniones cara a cara por semana es el estándar de un top producer" },
-              ].map((s, i) => (
-                <div key={i} className="stat-card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                  <div className="bebas" style={{ fontSize: 52, color: RED, minWidth: 80, lineHeight: 1 }}>{s.pct}</div>
-                  <p style={{ color: "#aaa", fontSize: 14, lineHeight: 1.5 }}>{s.label}</p>
+      <section style={{ padding: "72px 24px", background: "#fff", borderTop: "1px solid #f3f4f6", borderBottom: "1px solid #f3f4f6" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 800, color: RED, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 14 }}>El problema real</p>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>
+              Ocupado no es<br />lo mismo que<br /><span style={{ color: RED }}>productivo</span>
+            </h2>
+            <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.8, marginBottom: 16 }}>
+              El inmobiliario promedio trabaja todo el día pero llega a fin de mes sin entender por qué no cerró más. La respuesta es siempre la misma: <strong style={{ color: "#111827" }}>nunca midió nada.</strong>
+            </p>
+            <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.8 }}>
+              Sin datos reales operás por percepción. Y la percepción siempre te miente — te hace sentir ocupado cuando en realidad estás reactivo.
+            </p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[
+              { icon: "📊", title: "No saben cuántas reuniones hicieron", desc: "Trabajan de intuición, no de números." },
+              { icon: "🔄", title: "Trabajan mucho pero no producen", desc: "Actividad ≠ productividad comercial." },
+              { icon: "🚫", title: "Nadie les da feedback de su negocio", desc: "Solos, sin espejo, sin dirección." },
+              { icon: "📉", title: "Viven en piloto automático", desc: "El 80% opera así. Vos podés ser el 20%." },
+            ].map((p, i) => (
+              <div key={i} className="card" style={{ padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ fontSize: 20, lineHeight: 1, marginTop: 2 }}>{p.icon}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 2 }}>{p.title}</div>
+                  <div style={{ fontSize: 13, color: "#9ca3af" }}>{p.desc}</div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CÓMO FUNCIONA */}
-      <section id="como-funciona" style={{ background: "#0d0d0d" }}>
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <p style={{ color: RED, fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Cómo funciona</p>
-            <h2 className="bebas" style={{ fontSize: "clamp(48px, 6vw, 80px)", lineHeight: 0.95 }}>
-              Conectás. Medís.<br /><span style={{ color: RED }}>Mejorás.</span>
+      <section id="como-funciona" style={{ padding: "72px 24px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <p style={{ fontSize: 11, fontWeight: 800, color: RED, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Cómo funciona</p>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 900, lineHeight: 1.1 }}>
+              Conectás. Medís. <span style={{ color: RED }}>Mejorás.</span>
             </h2>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="grid-3">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
             {[
-              {
-                num: "01",
-                title: "Conectás tu agenda",
-                desc: "InstaCoach se sincroniza con tu Google Calendar. Sin cargar nada manualmente. Cada vez que abrís la app, tus datos están actualizados.",
-                icon: "📅"
-              },
-              {
-                num: "02",
-                title: "Detectamos lo que importa",
-                desc: "Filtramos automáticamente tus reuniones cara a cara: tasaciones, visitas, propuestas, cierres. Las separamos del ruido administrativo.",
-                icon: "🎯"
-              },
-              {
-                num: "03",
-                title: "Tu coach te habla claro",
-                desc: "Insta Coach analiza tu semana y te dice en qué perfil caíste, qué perdiste y cuál es la única acción que más impacto tiene para la próxima semana.",
-                icon: "🧠"
-              },
-            ].map((f, i) => (
-              <div key={i} className="feature-card">
-                <div style={{ fontSize: 32, marginBottom: 16 }}>{f.icon}</div>
-                <div className="bebas" style={{ fontSize: 48, color: `${RED}44`, marginBottom: 8, lineHeight: 1 }}>{f.num}</div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>{f.title}</h3>
-                <p style={{ color: "#777", fontSize: 14, lineHeight: 1.7 }}>{f.desc}</p>
+              { num: "01", icon: <Calendar size={18} style={{ color: RED }} />, title: "Conectás tu Google Calendar", desc: "Un solo click. Sin cargar nada manualmente. InstaCoach lee tus eventos y detecta automáticamente tus reuniones comerciales cara a cara." },
+              { num: "02", icon: <Target size={18} style={{ color: RED }} />, title: "Medimos lo que importa", desc: "Tasaciones, visitas, propuestas, cierres. Filtramos el ruido administrativo y te mostramos solo la actividad que genera negocio real." },
+              { num: "03", icon: <Brain size={18} style={{ color: RED }} />, title: "Tu coach te habla claro", desc: "Insta Coach analiza tu semana con IA y te dice en qué perfil caíste, qué oportunidades perdiste y cuál es la única acción que más impacto tiene." },
+            ].map((s, i) => (
+              <div key={i} className="card" style={{ padding: 28 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                  <div style={{ width: 40, height: 40, background: "#fff1f1", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.icon}</div>
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: 36, fontWeight: 900, color: "#f3f4f6", lineHeight: 1 }}>{s.num}</div>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>{s.title}</h3>
+                <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.7 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -292,53 +150,55 @@ export default function Landing() {
       </section>
 
       {/* FEATURES */}
-      <section>
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <h2 className="bebas" style={{ fontSize: "clamp(48px, 6vw, 80px)", lineHeight: 0.95 }}>
+      <section style={{ padding: "72px 24px", background: "#fff", borderTop: "1px solid #f3f4f6", borderBottom: "1px solid #f3f4f6" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 900, lineHeight: 1.1 }}>
               Todo lo que necesitás<br /><span style={{ color: RED }}>para medir y crecer</span>
             </h2>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }} className="grid-3">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
             {[
-              { icon: "📊", title: "Dashboard semanal y mensual", desc: "Visualizá tu actividad comercial por semana o mes. Ves el calendario real, no lo que creés que hiciste." },
-              { icon: "🤖", title: "Insta Coach con IA", desc: "Diagnóstico personalizado basado en tus números reales. No frases genéricas — análisis específico de tu semana." },
-              { icon: "📧", title: "Reporte semanal por email", desc: "Todos los lunes recibís un resumen de tu semana anterior con el análisis del coach. Sin excusas para no saber cómo arrancás." },
-              { icon: "👥", title: "Dashboard de equipo", desc: "Para brokers: ves la actividad de todos tus agentes en un solo lugar. Identificás quién necesita coaching antes de que sea tarde." },
-              { icon: "📈", title: "Tendencia de 90 días", desc: "Gráfico de evolución para ver si estás mejorando o en caída libre. Los números no mienten." },
-              { icon: "🎯", title: "Meta diaria de 10 reuniones", desc: "Un objetivo claro: 10 reuniones cara a cara por día es un día productivo. Simple, medible, alcanzable." },
+              { icon: <BarChart2 size={16} style={{ color: RED }} />, title: "Dashboard semanal y mensual", desc: "Visualizá tu actividad real en calendario. Ves exactamente qué días fuiste productivo y cuáles solo estuviste ocupado." },
+              { icon: <Brain size={16} style={{ color: RED }} />, title: "Insta Coach con IA", desc: "Diagnóstico personalizado con tu actividad real. No frases genéricas — análisis específico de tu semana con acción concreta." },
+              { icon: <Mail size={16} style={{ color: RED }} />, title: "Reporte semanal por email", desc: "Todos los lunes recibís tu semana anterior analizada. Arrancás la semana con datos, no con sensaciones." },
+              { icon: <Users size={16} style={{ color: RED }} />, title: "Dashboard de equipo (Teams)", desc: "Para brokers: ves la actividad de todos tus agentes en un solo lugar. Sabés quién necesita coaching antes de que sea tarde." },
+              { icon: <TrendingUp size={16} style={{ color: RED }} />, title: "Tendencia de 90 días", desc: "Gráfico de evolución para saber si estás mejorando o en caída libre. Los números no mienten." },
+              { icon: <Target size={16} style={{ color: RED }} />, title: "Meta de productividad diaria", desc: "10 reuniones cara a cara = día productivo. Un objetivo claro, medible y alcanzable para cada jornada." },
             ].map((f, i) => (
-              <div key={i} className="feature-card">
-                <div style={{ fontSize: 28, marginBottom: 14 }}>{f.icon}</div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{f.title}</h3>
-                <p style={{ color: "#666", fontSize: 13, lineHeight: 1.6 }}>{f.desc}</p>
+              <div key={i} className="card" style={{ padding: "22px 24px", display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <div style={{ width: 36, height: 36, background: "#fff1f1", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{f.icon}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{f.title}</div>
+                  <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>{f.desc}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* SOCIAL PROOF */}
-      <section style={{ background: "#0d0d0d" }}>
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <h2 className="bebas" style={{ fontSize: "clamp(48px, 6vw, 72px)", lineHeight: 0.95 }}>
+      {/* TESTIMONIOS */}
+      <section style={{ padding: "72px 24px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <p style={{ fontSize: 11, fontWeight: 800, color: RED, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Resultados reales</p>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 900, lineHeight: 1.1 }}>
               Lo que dicen los que<br /><span style={{ color: RED }}>ya miden</span>
             </h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="grid-3">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
             {[
-              { name: "Marcela R.", role: "Inmobiliaria independiente, CABA", text: "Siempre creí que era productiva. Cuando empecé a medir, me di cuenta que el 70% de mis reuniones eran administrativas. Eso cambió todo." },
-              { name: "Rodrigo T.", role: "Broker, 12 agentes, GBA", text: "El dashboard del equipo es lo mejor. Ahora sé exactamente quién necesita ayuda sin esperar a fin de mes para ver los resultados." },
-              { name: "Valeria M.", role: "Top producer, Córdoba", text: "No entendía por qué algunas semanas cerraba y otras no. Ahora tengo los datos. El patrón era claro: cuando bajo de 12 reuniones cara a cara, bajo las operaciones." },
+              { name: "Marcela R.", role: "Inmobiliaria independiente, CABA", text: "Siempre creí que era productiva. Cuando empecé a medir me di cuenta que el 70% de mis reuniones eran administrativas. Eso cambió todo." },
+              { name: "Rodrigo T.", role: "Broker con 12 agentes, GBA", text: "El dashboard del equipo es lo mejor. Ahora sé exactamente quién necesita ayuda sin esperar a fin de mes para ver los resultados." },
+              { name: "Valeria M.", role: "Top producer, Córdoba", text: "No entendía por qué algunas semanas cerraba y otras no. El patrón era claro: menos de 12 reuniones cara a cara = menos operaciones." },
             ].map((t, i) => (
-              <div key={i} className="testimonial">
-                <div style={{ color: RED, fontSize: 32, marginBottom: 12, lineHeight: 1 }}>"</div>
-                <p style={{ color: "#bbb", fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>{t.text}</p>
-                <div style={{ borderTop: "1px solid #222", paddingTop: 16 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{t.name}</div>
-                  <div style={{ color: "#555", fontSize: 12, marginTop: 2 }}>{t.role}</div>
+              <div key={i} className="card" style={{ padding: 28 }}>
+                <div style={{ color: RED, fontSize: 28, fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: 14 }}>"</div>
+                <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, marginBottom: 20 }}>{t.text}</p>
+                <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{t.name}</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{t.role}</div>
                 </div>
               </div>
             ))}
@@ -347,82 +207,40 @@ export default function Landing() {
       </section>
 
       {/* PRECIOS */}
-      <section id="precios">
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <p style={{ color: RED, fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Precios</p>
-            <h2 className="bebas" style={{ fontSize: "clamp(48px, 6vw, 80px)", lineHeight: 0.95 }}>
+      <section id="precios" style={{ padding: "72px 24px", background: "#fff", borderTop: "1px solid #f3f4f6", borderBottom: "1px solid #f3f4f6" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <p style={{ fontSize: 11, fontWeight: 800, color: RED, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Precios</p>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 900, lineHeight: 1.1 }}>
               Empezás gratis.<br /><span style={{ color: RED }}>Seguís cuando lo vivís.</span>
             </h2>
-            <p style={{ color: "#666", fontSize: 15, marginTop: 16 }}>7 días completos sin tarjeta de crédito. Sin límites. Sin trampa.</p>
+            <p style={{ color: "#9ca3af", fontSize: 14, marginTop: 12 }}>7 días sin tarjeta. Sin límites. Sin trampa.</p>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, maxWidth: 900, margin: "0 auto" }} className="grid-3">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, maxWidth: 900, margin: "0 auto" }}>
             {[
-              {
-                id: "free",
-                name: "Gratis",
-                price: "$ 0",
-                period: "7 días",
-                desc: "Para conocer la herramienta",
-                features: ["Sincronización con Google Calendar", "Dashboard semanal y mensual", "Insta Coach con IA", "Sin tarjeta de crédito"],
-                cta: "Empezar ahora",
-                featured: false,
-              },
-              {
-                id: "individual",
-                name: "Individual",
-                price: "$ 10.500",
-                period: "por mes",
-                desc: "Para el inmobiliario que quiere crecer",
-                features: ["Todo lo del plan gratis", "Acceso permanente", "Reporte semanal por email", "Insta Coach ilimitado", "Historial de 90 días"],
-                cta: "Suscribirse",
-                featured: true,
-              },
-              {
-                id: "teams",
-                name: "Teams",
-                price: "$ 75.000",
-                period: "por mes",
-                desc: "Para brokers con equipo",
-                features: ["Todo lo de Individual", "Hasta 10 agentes incluidos", "Dashboard del broker", "Invitaciones por email", "Roles: Team Leader", "Adicionales: $ 10.500/agente"],
-                cta: "Suscribir equipo",
-                featured: false,
-              },
-            ].map((plan) => (
-              <div key={plan.id} className={`plan-card ${plan.featured ? "featured" : ""}`}>
-                {plan.featured && (
-                  <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: "white", color: RED, fontSize: 11, fontWeight: 800, padding: "4px 14px", borderRadius: 100, letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
-                    MÁS POPULAR
-                  </div>
+              { name: "Gratis", price: "$ 0", period: "7 días", desc: "Para conocer la experiencia completa", features: ["Google Calendar sync", "Dashboard semanal y mensual", "Insta Coach con IA", "Sin tarjeta de crédito"], cta: "Empezar ahora", highlight: false },
+              { name: "Individual", price: "$ 10.500", period: "/ mes", desc: "Para el inmobiliario que quiere crecer", features: ["Todo lo del plan Gratis", "Acceso permanente", "Reporte semanal por email", "Insta Coach ilimitado", "Historial completo"], cta: "Suscribirse", highlight: true },
+              { name: "Teams", price: "$ 75.000", period: "/ mes", desc: "Para brokers con equipo de hasta 10", features: ["Todo lo de Individual", "Hasta 10 agentes incluidos", "Dashboard del broker", "Invitaciones por email", "Roles: Team Leader", "Adicionales: $ 10.500/agente"], cta: "Suscribir equipo", highlight: false },
+            ].map((plan, i) => (
+              <div key={i} style={{ background: plan.highlight ? "#111827" : "#fff", border: `1px solid ${plan.highlight ? "#111827" : "#e5e7eb"}`, borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", position: "relative", boxShadow: plan.highlight ? "0 8px 32px rgba(0,0,0,0.12)" : "none" }}>
+                {plan.highlight && (
+                  <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: RED, color: "#fff", fontSize: 11, fontWeight: 800, padding: "4px 14px", borderRadius: 100, whiteSpace: "nowrap" }}>MÁS POPULAR</div>
                 )}
-                <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: plan.featured ? "rgba(255,255,255,0.7)" : "#555", textTransform: "uppercase", letterSpacing: "0.08em" }}>{plan.name}</span>
-                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{plan.name}</div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
-                  <span className="bebas" style={{ fontSize: 52, lineHeight: 1, color: plan.featured ? "white" : "white" }}>{plan.price}</span>
-                  <span style={{ color: plan.featured ? "rgba(255,255,255,0.6)" : "#555", fontSize: 13 }}>{plan.period}</span>
+                  <span style={{ fontFamily: "Georgia, serif", fontSize: 34, fontWeight: 900, color: plan.highlight ? "#fff" : "#111827", lineHeight: 1 }}>{plan.price}</span>
+                  <span style={{ fontSize: 13, color: "#9ca3af" }}>{plan.period}</span>
                 </div>
-                <p style={{ color: plan.featured ? "rgba(255,255,255,0.7)" : "#666", fontSize: 13, marginBottom: 24 }}>{plan.desc}</p>
-                <ul style={{ listStyle: "none", marginBottom: 28 }}>
-                  {plan.features.map((f, i) => (
-                    <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, fontSize: 13, color: plan.featured ? "rgba(255,255,255,0.85)" : "#888" }}>
-                      <span style={{ color: plan.featured ? "white" : RED, marginTop: 1, flexShrink: 0 }}>✓</span>
-                      {f}
+                <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 24 }}>{plan.desc}</p>
+                <ul style={{ listStyle: "none", marginBottom: 28, flex: 1 }}>
+                  {plan.features.map((f, j) => (
+                    <li key={j} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, fontSize: 13, color: plan.highlight ? "#d1d5db" : "#6b7280" }}>
+                      <CheckCircle size={13} style={{ color: plan.highlight ? "#fff" : RED, flexShrink: 0, marginTop: 1 }} />{f}
                     </li>
                   ))}
                 </ul>
-                <button
-                  onClick={() => router.push("/login")}
-                  style={{
-                    width: "100%", padding: "14px", borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: "pointer", border: "none",
-                    background: plan.featured ? "white" : "#1a1a1a",
-                    color: plan.featured ? RED : "white",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={e => { (e.target as HTMLButtonElement).style.opacity = "0.85"; }}
-                  onMouseLeave={e => { (e.target as HTMLButtonElement).style.opacity = "1"; }}
-                >
+                <button onClick={() => router.push("/login")}
+                  style={{ width: "100%", padding: "13px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none", background: plan.highlight ? RED : "#f3f4f6", color: plan.highlight ? "#fff" : "#374151" }}>
                   {plan.cta}
                 </button>
               </div>
@@ -432,37 +250,34 @@ export default function Landing() {
       </section>
 
       {/* CTA FINAL */}
-      <section style={{ background: "#0a0a0a", borderTop: "1px solid #1a1a1a" }}>
-        <div className="container" style={{ textAlign: "center" }}>
-          <div style={{ maxWidth: 700, margin: "0 auto" }}>
-            <h2 className="bebas" style={{ fontSize: "clamp(56px, 8vw, 100px)", lineHeight: 0.9, marginBottom: 24 }}>
-              El próximo lunes<br />vas a saber<br /><span style={{ color: RED }}>exactamente</span><br />cómo estás
-            </h2>
-            <p style={{ color: "#666", fontSize: 16, marginBottom: 40, lineHeight: 1.6 }}>
-              Conectás tu Google Calendar hoy. El lunes que viene recibís tu primer reporte. Sin excusas, sin adivinanzas.
-            </p>
-            <button className="cta-btn" onClick={() => router.push("/login")} style={{ fontSize: 17, padding: "20px 44px" }}>
-              Empezar 7 días gratis →
-            </button>
-            <p style={{ marginTop: 16, color: "#444", fontSize: 12 }}>Sin tarjeta · Sin contrato · Cancelás cuando querés</p>
-          </div>
+      <section style={{ padding: "80px 24px", textAlign: "center" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto" }}>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>
+            El próximo lunes vas a saber<br /><span style={{ color: RED }}>exactamente cómo estás</span>
+          </h2>
+          <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 36, lineHeight: 1.7 }}>
+            Conectás tu Google Calendar hoy. El lunes siguiente recibís tu primer análisis. Sin excusas, sin adivinanzas.
+          </p>
+          <button onClick={() => router.push("/login")}
+            style={{ background: RED, color: "#fff", border: "none", borderRadius: 12, padding: "16px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10 }}>
+            Empezar 7 días gratis <ArrowRight size={16} />
+          </button>
+          <p style={{ marginTop: 14, fontSize: 12, color: "#9ca3af" }}>Sin tarjeta · Sin contrato · Cancelás cuando querés</p>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer style={{ borderTop: "1px solid #141414", padding: "32px 20px" }}>
-        <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-          <div className="bebas" style={{ fontSize: 20, letterSpacing: "0.05em" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
-          </div>
+      <footer style={{ background: "#fff", borderTop: "1px solid #f3f4f6", padding: "28px 24px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontWeight: 900, fontSize: 16 }}>Insta<span style={{ color: RED }}>Coach</span></div>
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            <a href="/privacidad" style={{ color: "#555", fontSize: 12, textDecoration: "none" }}>Política de privacidad</a>
-            <a href="/terminos" style={{ color: "#555", fontSize: 12, textDecoration: "none" }}>Términos de uso</a>
-            <a href="/login" style={{ color: "#555", fontSize: 12, textDecoration: "none" }}>Iniciar sesión</a>
+            <a href="/privacidad" style={{ color: "#9ca3af", fontSize: 12 }}>Política de privacidad</a>
+            <a href="/terminos" style={{ color: "#9ca3af", fontSize: 12 }}>Términos de uso</a>
+            <a href="/login" style={{ color: "#9ca3af", fontSize: 12 }}>Iniciar sesión</a>
           </div>
-          <p style={{ color: "#333", fontSize: 12 }}>© 2025 InstaCoach. Todos los derechos reservados.</p>
+          <p style={{ color: "#d1d5db", fontSize: 12 }}>© 2025 InstaCoach · instacoach.com.ar</p>
         </div>
       </footer>
-    </>
+    </div>
   );
 }
