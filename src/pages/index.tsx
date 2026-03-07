@@ -389,7 +389,7 @@ export default function HomePage() {
 
           {session?.user?.image ? (
             <img src={session.user.image} alt="" className="w-7 h-7 rounded-full cursor-pointer ring-2"
-              style={{ ringColor: RED }} onClick={() => signOut({ callbackUrl: "/login" })} />
+              style={{ outline: `2px solid ${RED}`, outlineOffset: "2px" }} onClick={() => signOut({ callbackUrl: "/login" })} />
           ) : (
             <button onClick={() => signOut({ callbackUrl: "/login" })} className="text-gray-400 hover:text-gray-700">
               <LogOut size={15} />
