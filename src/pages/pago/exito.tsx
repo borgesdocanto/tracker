@@ -2,12 +2,12 @@ import { useRouter } from "next/router";
 import { useEffect } from "react";
 import Head from "next/head";
 import { CheckCircle2 } from "lucide-react";
-import { PLANS } from "../../lib/plans";
+import { getPlanById } from "../../lib/plans";
 
 export default function PagoExito() {
   const router = useRouter();
   const { plan } = router.query;
-  const planData = PLANS[(plan as string) ?? "pro"];
+  const planData = getPlanById((plan as string) ?? "individual");
 
   useEffect(() => {
     const t = setTimeout(() => router.push("/"), 4000);
