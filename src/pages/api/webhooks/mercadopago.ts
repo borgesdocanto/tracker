@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import MercadoPagoConfig, { Payment } from "mercadopago";
-import { upgradePlan } from "../../lib/subscription";
-import { supabaseAdmin } from "../../lib/supabase";
-import { PlanId } from "../../lib/plans";
+import { upgradePlan } from "../../../lib/subscription";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { PlanId } from "../../../lib/plans";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN!,
