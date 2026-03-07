@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
-import { getOrCreateSubscription } from "../../lib/subscription";
+import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { getPlanById } from "../../lib/plans";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const plan = getPlanById(sub.plan);
 
   return res.status(200).json({
-    subscription: sub,
+    subscription: { ...sub, isExpired: isFreemiumExpired(sub) },
     plan,
     isActive: sub.status === "active",
     isPaid: sub.plan !== "free",

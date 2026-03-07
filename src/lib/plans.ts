@@ -1,18 +1,20 @@
-export type PlanId = "free" | "pro" | "agencia";
+export type PlanId = "free" | "individual" | "teams";
 
 export interface Plan {
   id: PlanId;
   name: string;
-  price: number;        // USD
-  priceARS: number;     // ARS (referencia)
+  price: number;
+  priceARS: number;
   period: "mes" | "gratis";
   description: string;
-  color: string;
+  badge?: string;
   features: string[];
   limits: {
-    historyDays: number;       // días de historial de Calendar
-    coachMessages: number;     // análisis de Coach IA por mes (-1 = ilimitado)
-    agents: number;            // agentes del equipo (-1 = ilimitado)
+    historyDays: number;
+    coachMessages: number;
+    agents: number;
+    weeklyEmail: boolean;
+    teamsAccess: boolean;
   };
   highlight?: boolean;
 }
@@ -24,66 +26,58 @@ export const PLANS: Record<PlanId, Plan> = {
     price: 0,
     priceARS: 0,
     period: "gratis",
-    description: "Para conocer la herramienta",
-    color: "#64748b",
+    description: "7 días completos para que vivas la experiencia",
+    badge: "7 días gratis",
     features: [
-      "7 días de historial",
-      "Eventos verdes automáticos",
-      "Dashboard básico",
-      "1 agente (vos)",
+      "Sync completo con Google Calendar",
+      "Insta Coach ilimitado",
+      "Dashboard de productividad",
+      "Informe semanal por email",
+      "Todo desbloqueado por 7 días",
     ],
-    limits: {
-      historyDays: 7,
-      coachMessages: 3,
-      agents: 1,
-    },
+    limits: { historyDays: -1, coachMessages: -1, agents: -1, weeklyEmail: true, teamsAccess: false },
   },
-  pro: {
-    id: "pro",
-    name: "Pro",
-    price: 12,
-    priceARS: 12000,
+  individual: {
+    id: "individual",
+    name: "Individual",
+    price: 7,
+    priceARS: 7000,
     period: "mes",
     description: "Para el inmobiliario que quiere escalar",
-    color: "#aa0000",
     highlight: true,
     features: [
-      "90 días de historial",
-      "Coach IA ilimitado",
-      "Análisis de tendencias",
-      "Hasta 5 agentes",
+      "Todo del plan Free para siempre",
+      "Insta Coach ilimitado",
+      "Historial completo sin límite",
+      "Informe semanal personalizado",
       "Soporte prioritario",
     ],
-    limits: {
-      historyDays: 90,
-      coachMessages: -1,
-      agents: 5,
-    },
+    limits: { historyDays: -1, coachMessages: -1, agents: -1, weeklyEmail: true, teamsAccess: false },
   },
-  agencia: {
-    id: "agencia",
-    name: "Agencia",
-    price: 39,
-    priceARS: 39000,
+  teams: {
+    id: "teams",
+    name: "Teams",
+    price: 50,
+    priceARS: 50000,
     period: "mes",
-    description: "Para brokers con equipo completo",
-    color: "#1e293b",
+    description: "Para brokers con equipo — hasta 10 agentes",
+    badge: "Ahorrás USD 20/mes vs 10 individuales",
     features: [
-      "Historial ilimitado",
-      "Coach IA ilimitado",
-      "Agentes ilimitados",
-      "Dashboard del broker",
-      "Reportes exportables",
-      "Onboarding personalizado",
+      "Todo del plan Individual",
+      "Hasta 10 agentes incluidos",
+      "Dashboard unificado del broker",
+      "Invitación de agentes por email",
+      "Informe semanal de todo el equipo",
+      "Agentes adicionales a USD 7/mes c/u",
     ],
-    limits: {
-      historyDays: 365,
-      coachMessages: -1,
-      agents: -1,
-    },
+    limits: { historyDays: -1, coachMessages: -1, agents: 10, weeklyEmail: true, teamsAccess: true },
   },
 };
 
 export function getPlanById(id: string): Plan {
   return PLANS[id as PlanId] ?? PLANS.free;
+}
+
+export function isVipEmail(email: string): boolean {
+  return email.toLowerCase().endsWith("@galas.com.ar");
 }

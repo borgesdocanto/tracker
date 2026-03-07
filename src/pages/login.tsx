@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
       <Head>
-        <title>GALAS Management — Ingresar</title>
+        <title>InstaCoach — Ingresar</title>
       </Head>
       {/* Barra superior */}
       <div className="fixed top-0 left-0 right-0 h-1"

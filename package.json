@@ -9,16 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "date-fns": "^3.6.0",
+    "googleapis": "^140.0.1",
+    "lucide-react": "^0.408.0",
+    "mercadopago": "^2.0.15",
     "next": "^15.2.3",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.12.7",
-    "lucide-react": "^0.408.0",
-    "googleapis": "^140.0.1",
-    "date-fns": "^3.6.0",
-    "@supabase/supabase-js": "^2.45.4",
-    "mercadopago": "^2.0.15"
+    "resend": "^6.9.3"
   },
   "devDependencies": {
     "@types/node": "^22",

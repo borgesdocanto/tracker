@@ -13,7 +13,7 @@ import {
   ChevronDown, Award, Users, Loader2, Flame
 } from "lucide-react";
 
-const GALAS_RED = "#aa0000";
+const GALAS_RED = "${BRAND.color}";
 const PRODUCTIVITY_GOAL = parseInt(process.env.NEXT_PUBLIC_PRODUCTIVITY_GOAL || "10");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -159,7 +159,13 @@ export default function HomePage() {
   // Fetch subscription
   useEffect(() => {
     if (status === "authenticated") {
-      fetch("/api/subscription").then(r => r.json()).then(d => setSubPlan(d.plan?.id ?? "free"));
+      fetch("/api/subscription").then(r => r.json()).then(d => {
+        setSubPlan(d.plan?.id ?? "free");
+        // Redirigir si el freemium expiró
+        if (d.subscription?.isExpired) {
+          router.push("/expired");
+        }
+      });
     }
   }, [status]);
 
@@ -217,8 +223,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Head>
-        <title>GALAS Management</title>
-        <meta name="description" content="GALAS Management - Sistema de productividad inmobiliaria" />
+        <title>InstaCoach</title>
+        <meta name="description" content="InstaCoach - Sistema de productividad inmobiliaria" />
       </Head>
       <div className="h-1 fixed top-0 left-0 right-0 z-50"
         style={{ background: `linear-gradient(90deg, ${GALAS_RED}, #6b0000, ${GALAS_RED})` }} />
@@ -231,7 +237,7 @@ export default function HomePage() {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-sm shadow"
               style={{ background: `linear-gradient(135deg, ${GALAS_RED}, #6b0000)` }}>G</div>
             <div>
-              <div className="font-display font-black text-base leading-none" style={{ color: GALAS_RED }}>GALAS</div>
+              <div className="font-display font-black text-base leading-none" style={{ color: GALAS_RED }}>InstaCoach</div>
               <div className="text-xs text-slate-300 font-semibold leading-none">MANAGEMENT</div>
             </div>
             <Link href="/pricing">
