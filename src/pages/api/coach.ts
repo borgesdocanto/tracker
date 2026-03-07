@@ -34,13 +34,19 @@ Identificá el cuello de botella más crítico y dá el consejo más valioso y e
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-5",
         max_tokens: 400,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Anthropic error:", JSON.stringify(data));
+      return res.status(500).json({ error: `API error: ${data?.error?.message || response.status}` });
+    }
+
     const text = data.content?.map((b: any) => b.text || "").join("") || "";
 
     if (!text) return res.status(500).json({ error: "Sin respuesta del coach" });
