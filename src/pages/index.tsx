@@ -235,9 +235,11 @@ function InstaCoacPanel({ data, calView, monthOffset }: { data: CalendarData; ca
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
+  const [isClosed, setIsClosed] = useState(false);
 
   // Reset cuando cambia la vista o el mes
-  useEffect(() => { setAdvice(""); setProfile(""); setWeekTotals(null); }, [calView, monthOffset]);
+  useEffect(() => { setAdvice(""); setProfile(""); setWeekTotals(null); setFromCache(false); setIsClosed(false); }, [calView, monthOffset]);
 
   const today = new Date();
 
@@ -273,11 +275,12 @@ function InstaCoacPanel({ data, calView, monthOffset }: { data: CalendarData; ca
   const periodPct = Math.min(100, Math.round((periodGreen / goal) * 100));
   const barColor = periodPct >= 100 ? "#16a34a" : periodPct >= 50 ? "#b45309" : RED;
 
-  const analyze = async () => {
+  const analyze = async (forceRegenerate = false) => {
     setLoading(true);
     setAdvice("");
     setProfile("");
     setWeekTotals(null);
+    setFromCache(false);
     try {
       const res = await fetch("/api/coach", {
         method: "POST",
@@ -291,12 +294,15 @@ function InstaCoacPanel({ data, calView, monthOffset }: { data: CalendarData; ca
           calView,
           goal,
           periodLabel,
+          forceRegenerate,
         }),
       });
       const json = await res.json();
       setAdvice(json.advice || "No se pudo obtener el análisis.");
       setProfile(json.profile || "");
       setWeekTotals(json.weekTotals || null);
+      setFromCache(json.fromCache || false);
+      setIsClosed(json.isClosed || false);
     } catch { setAdvice("Error al conectar. Intentá de nuevo."); }
     setLoading(false);
   };
@@ -359,13 +365,23 @@ function InstaCoacPanel({ data, calView, monthOffset }: { data: CalendarData; ca
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {fromCache && (
+            <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 text-gray-400 flex items-center gap-1">
+              Guardado
+              {!isClosed && (
+                <button onClick={() => analyze(true)} className="ml-1 underline hover:text-gray-600 transition-colors">
+                  actualizar
+                </button>
+              )}
+            </span>
+          )}
           <button onClick={sendTestEmail} disabled={emailSending || emailSent}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
             style={{ color: emailSent ? "#16a34a" : "#6b7280" }}>
             {emailSending ? <Loader2 size={11} className="animate-spin" /> : emailSent ? <CheckCircle size={11} /> : <Mail size={11} />}
             {emailSent ? "Enviado!" : emailSending ? "Enviando..." : "Mail de prueba"}
           </button>
-          <button onClick={analyze} disabled={loading}
+          <button onClick={() => analyze(false)} disabled={loading}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
             style={{ background: RED }}>
             {loading ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}

@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { supabaseAdmin } from "../../lib/supabase";
 
 const WEEKLY_GOAL = 15;
 
@@ -12,26 +13,66 @@ function diagnose(greenTotal: number, goal: number, productiveDays: number, tota
   return "semana_riesgo";
 }
 
+// Genera la clave única del período: "week:2025-W04" o "month:2025-01"
+function buildPeriodKey(calView: string, periodStart: string): string {
+  if (calView === "month") {
+    return `month:${periodStart.slice(0, 7)}`; // "month:2025-01"
+  }
+  // Para semana usamos la fecha de inicio de la semana
+  return `week:${periodStart}`; // "week:2025-01-27"
+}
+
+// Un período está cerrado si su fecha de fin es anterior a hoy
+function isClosed(periodEnd: string): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  return periodEnd < today;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
-  const { dailySummaries, productivityGoal, userName, periodStart, periodEnd, calView, goal, periodLabel } = req.body;
+  const {
+    dailySummaries, productivityGoal, userName,
+    periodStart, periodEnd, calView, goal, periodLabel,
+    forceRegenerate = false,
+  } = req.body;
 
   if (!dailySummaries || !Array.isArray(dailySummaries)) {
     return res.status(400).json({ error: "Faltan datos del calendario" });
   }
 
-  // Filtrar según el período enviado desde el frontend
-  const start = periodStart || (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0, 10); })();
-  const end = periodEnd || new Date().toISOString().slice(0, 10);
+  const userEmail = session.user.email;
   const effectiveGoal = goal || WEEKLY_GOAL;
   const isMonthly = calView === "month";
+  const start = periodStart || (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0, 10); })();
+  const end = periodEnd || new Date().toISOString().slice(0, 10);
+  const periodKey = buildPeriodKey(calView, start);
+  const closed = isClosed(end);
 
+  // ── Buscar informe guardado ───────────────────────────────────────────────
+  const { data: cached } = await supabaseAdmin
+    .from("coach_reports")
+    .select("*")
+    .eq("user_email", userEmail)
+    .eq("period_key", periodKey)
+    .single();
+
+  // Si existe y el período está cerrado (y no se forzó regenerar) → devolver cache
+  if (cached && (closed || !forceRegenerate)) {
+    return res.status(200).json({
+      advice: cached.advice,
+      profile: cached.profile,
+      weekTotals: cached.week_totals,
+      fromCache: true,
+      isClosed: closed,
+    });
+  }
+
+  // ── Calcular métricas ─────────────────────────────────────────────────────
   const periodSummaries = (dailySummaries as any[]).filter(d => d.date >= start && d.date <= end);
-
   const allEvents = periodSummaries.flatMap((d: any) => d.events || []);
   const greenEvents = allEvents.filter((e: any) => e.isGreen);
 
@@ -52,7 +93,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const firstName = (userName || "").split(" ")[0] || "";
   const nombreStr = firstName ? `El nombre del usuario es ${firstName}.` : "";
 
-  // Contexto de eventos reales
   const eventLines = periodSummaries.map((d: any) => {
     const fecha = new Date(d.date + "T12:00:00").toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
     const evs = (d.events || []).map((e: any) => `    ${e.isGreen ? "🟢" : "⚪"} ${e.title}`).join("\n");
@@ -70,7 +110,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const periodoStr = isMonthly
     ? `el mes de ${periodLabel} (meta: ${effectiveGoal} reuniones = 15/semana × 4 semanas)`
     : `los últimos 7 días (meta: ${effectiveGoal} reuniones semanales)`;
-
   const accionLabel = isMonthly ? "LA ACCIÓN PARA EL PRÓXIMO MES" : "LA ACCIÓN PARA ESTA SEMANA";
 
   const prompt = `Sos InstaCoach, entrenador de productividad comercial que analiza agendas reales. ${nombreStr}
@@ -128,7 +167,34 @@ Después, en línea separada:
     const text = data.content?.map((b: any) => b.text || "").join("") || "";
     if (!text) return res.status(500).json({ error: "Sin respuesta del coach" });
 
-    return res.status(200).json({ advice: text, profile: perfil, faltaron, weekTotals: totals, productiveDays, totalDays });
+    // ── Guardar en Supabase ───────────────────────────────────────────────
+    await supabaseAdmin
+      .from("coach_reports")
+      .upsert({
+        user_email: userEmail,
+        period_key: periodKey,
+        period_label: periodLabel,
+        period_start: start,
+        period_end: end,
+        is_closed: closed,
+        advice: text,
+        profile: perfil,
+        week_totals: totals,
+        green_total: totals.totalGreen,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_email,period_key" });
+
+    return res.status(200).json({
+      advice: text,
+      profile: perfil,
+      faltaron,
+      weekTotals: totals,
+      productiveDays,
+      totalDays,
+      fromCache: false,
+      isClosed: closed,
+    });
+
   } catch (err: any) {
     console.error("Insta Coach error:", err);
     return res.status(500).json({ error: "Error al generar el análisis" });
