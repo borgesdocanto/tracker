@@ -46,7 +46,7 @@ function isoToDate(iso: string) { return iso?.slice(0, 10); }
 function KpiCard({ label, value, sub, accent, delay = 0, tooltip }: any) {
   const [show, setShow] = useState(false);
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 animate-fade-up relative"
+    <div className="bg-white border border-gray-100 rounded-2xl p-5 animate-fade-up relative overflow-visible"
       style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{label}</div>
@@ -749,7 +749,8 @@ export default function HomePage() {
                 <ResponsiveContainer width="100%" height={140}>
                   <LineChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#d1d5db", fontWeight: 600 }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#d1d5db", fontWeight: 600 }} axisLine={false} tickLine={false}
+                      tickFormatter={(v) => { const d = new Date(v + "T12:00:00"); return `${d.getDate()}/${d.getMonth()+1}`; }} />
                     <YAxis tick={{ fontSize: 9, fill: "#d1d5db" }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{ borderRadius: 10, border: "none", fontSize: 11, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }} />
                     <Line type="monotone" dataKey="meta" stroke="#e5e7eb" strokeWidth={1.5} dot={false} strokeDasharray="4 4" name="Meta" />
