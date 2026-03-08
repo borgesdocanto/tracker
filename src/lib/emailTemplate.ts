@@ -162,8 +162,8 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
           <!-- CTA -->
           <tr>
             <td style="background:#fff;padding:0 32px 32px;text-align:center;">
-              <a href="https://instacoach.app"
-                style="display:inline-block;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;font-weight:900;font-size:14px;padding:14px 32px;border-radius:14px;text-decoration:none;letter-spacing:0.5px;">
+              <a href="https://instacoach.com.ar"
+                style="display:inline-block;background:#aa0000;color:#fff;font-weight:900;font-size:14px;padding:14px 32px;border-radius:12px;text-decoration:none;letter-spacing:0.5px;">
                 Ver mi dashboard completo →
               </a>
             </td>
@@ -171,11 +171,14 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
 
           <!-- Footer -->
           <tr>
-            <td style="background:#0f172a;border-radius:0 0 24px 24px;padding:20px 32px;text-align:center;">
-              <p style="margin:0 0 4px;font-size:13px;font-weight:900;color:#fff;">InstaCoach</p>
-              <p style="margin:0;font-size:11px;color:#475569;">
-                Recibís este mail porque usás InstaCoach.
-                <a href="https://instacoach.app/unsubscribe?email=${data.email}" style="color:#38bdf8;">Cancelar suscripción</a>
+            <td style="background:#f9fafb;border-top:1px solid #e5e7eb;border-radius:0 0 20px 20px;padding:24px 32px;text-align:center;">
+              <p style="margin:0 0 6px;font-family:Georgia,serif;font-size:15px;font-weight:900;color:#111827;">Insta<span style="color:#aa0000;">Coach</span></p>
+              <p style="margin:0 0 8px;font-size:11px;color:#9ca3af;line-height:1.6;">
+                Este es un email automático — por favor no respondas este mensaje.<br/>
+                Para consultas escribí a <a href="mailto:hola@instacoach.com.ar" style="color:#aa0000;text-decoration:none;">hola@instacoach.com.ar</a>
+              </p>
+              <p style="margin:0;font-size:11px;color:#d1d5db;">
+                Recibís este mail porque usás InstaCoach · <a href="https://instacoach.com.ar" style="color:#9ca3af;text-decoration:none;">instacoach.com.ar</a>
               </p>
             </td>
           </tr>

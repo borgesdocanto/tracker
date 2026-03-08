@@ -112,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       await resend.emails.send({
-        from: "Insta Coach <coach@instacoach.app>",
+        from: "Insta Coach <coach@instacoach.com.ar>",
         to: sub.email,
         subject: `Tu semana en números: ${stats.productivityRate}% productividad — ${stats.weekDates}`,
         html,

@@ -83,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const result = await resend.emails.send({
-      from: "Insta Coach <onboarding@resend.dev>",
+      from: "Insta Coach <coach@instacoach.com.ar>",
       to: session.user.email,
       subject: `Tu informe semanal — ${stats.productivityRate}% productividad · ${stats.weekDates}`,
       html,
