@@ -1,0 +1,85 @@
+import { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../lib/auth";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { isSuperAdmin } from "../../../lib/adminGuard";
+import { FREEMIUM_DAYS } from "../../../lib/brand";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const session = await getServerSession(req, res, authOptions);
+  if (!isSuperAdmin(session?.user?.email)) return res.status(403).json({ error: "Forbidden" });
+
+  // GET — listar usuarios con filtros opcionales
+  if (req.method === "GET") {
+    const { plan, search } = req.query;
+    let query = supabaseAdmin
+      .from("subscriptions")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (plan && plan !== "all") query = query.eq("plan", plan);
+    if (search) query = query.ilike("email", `%${search}%`);
+
+    const { data } = await query.limit(200);
+    const now = new Date();
+
+    const users = (data || []).map(u => {
+      const created = new Date(u.created_at);
+      const daysSince = Math.floor((now.getTime() - created.getTime()) / 86400000);
+      const freemiumExpired = u.plan === "free" && daysSince > FREEMIUM_DAYS;
+      return {
+        email: u.email,
+        name: u.name,
+        avatar: u.avatar,
+        plan: u.plan,
+        status: u.status,
+        teamId: u.team_id,
+        teamRole: u.team_role,
+        hasCalendar: !!u.google_access_token,
+        createdAt: u.created_at,
+        daysSince,
+        freemiumExpired,
+        freemiumDaysLeft: u.plan === "free" ? Math.max(0, FREEMIUM_DAYS - daysSince) : null,
+      };
+    });
+
+    return res.status(200).json({ users });
+  }
+
+  // POST — modificar usuario
+  if (req.method === "POST") {
+    const { action, email, plan, daysExtension } = req.body;
+    if (!email) return res.status(400).json({ error: "Email requerido" });
+
+    if (action === "change_plan") {
+      if (!["free", "individual", "teams"].includes(plan)) return res.status(400).json({ error: "Plan inválido" });
+      await supabaseAdmin.from("subscriptions").update({ plan, status: "active" }).eq("email", email);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === "extend_trial") {
+      const days = parseInt(daysExtension) || 7;
+      const { data: sub } = await supabaseAdmin.from("subscriptions").select("created_at").eq("email", email).single();
+      if (!sub) return res.status(404).json({ error: "Usuario no encontrado" });
+      const newCreated = new Date(sub.created_at);
+      newCreated.setDate(newCreated.getDate() + days);
+      // Mover created_at hacia adelante para dar más días
+      await supabaseAdmin.from("subscriptions").update({ created_at: newCreated.toISOString() }).eq("email", email);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === "deactivate") {
+      await supabaseAdmin.from("subscriptions").update({ status: "cancelled" }).eq("email", email);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === "reactivate") {
+      await supabaseAdmin.from("subscriptions").update({ status: "active" }).eq("email", email);
+      return res.status(200).json({ ok: true });
+    }
+
+    return res.status(400).json({ error: "Acción inválida" });
+  }
+
+  return res.status(405).end();
+}
