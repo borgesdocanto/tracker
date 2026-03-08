@@ -623,10 +623,10 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 hidden sm:flex">
-            {([7, 14, 30, 90] as const).map(d => (
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 hidden sm:flex">
+            {([7, 14, 30, 60, 90] as const).map(d => (
               <button key={d} onClick={() => setDays(d)}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
                 style={days === d ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" } : { color: "#9ca3af" }}>
                 {d}d
               </button>
@@ -797,11 +797,11 @@ export default function HomePage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                  Calendario · {days <= 30 ? "vista semana" : "vista mes"}
+                  Calendario · {days < 30 ? "vista semana" : "vista mes"}
                 </div>
               </div>
 
-              {days <= 30 ? (
+              {days < 30 ? (
                 <WeeklyView
                   summaries={data.dailySummaries}
                   weekOffset={weekOffset}
@@ -831,7 +831,7 @@ export default function HomePage() {
             </div>
 
             {/* Insta Coach */}
-            <InstaCoacPanel data={data} calView={days <= 30 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
+            <InstaCoacPanel data={data} calView={days < 30 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
           </>
         )}
       </main>
