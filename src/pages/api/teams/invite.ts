@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
-import { getOrCreateTeam, inviteAgent, getPendingInvitations, getTeamMembers } from "../../../lib/teams";
+import { getOrCreateTeam, inviteAgent, getPendingInvitations, getTeamMembers, getTeamByOwner, getDisplayName } from "../../../lib/teams";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { Resend } from "resend";
 import { EMAIL_FROM, emailWrapper } from "../../../lib/email";
@@ -36,8 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { email } = req.body;
     if (!email || !email.includes("@")) return res.status(400).json({ error: "Email inválido" });
 
-    const brokerName = session.user.name || session.user.email;
+    const brokerName = session.user.name || session.user.email!;
     const team = await getOrCreateTeam(session.user.email, `Equipo de ${brokerName}`);
+    const teamData = await getTeamByOwner(session.user.email);
+    const displayName = getDisplayName(team, brokerName);
+    const agencyName = teamData?.agencyName || null;
 
     const { members } = await getTeamMembers(session.user.email);
     if (members.filter(m => m.teamRole === "member" || m.teamRole === "team_leader").length >= team.maxAgents) {

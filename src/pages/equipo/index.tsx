@@ -109,6 +109,10 @@ export default function BrokerDashboard() {
   const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);
   const [brokerPlan, setBrokerPlan] = useState("free");
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const [agencyName, setAgencyName] = useState("");
+  const [agencyInput, setAgencyInput] = useState("");
+  const [agencySaving, setAgencySaving] = useState(false);
+  const [agencyMsg, setAgencyMsg] = useState("");
 
   useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [status, router]);
   useEffect(() => { if (status === "authenticated") { loadTeam(); loadAnalytics(); } }, [status]);
@@ -122,6 +126,9 @@ export default function BrokerDashboard() {
       setPending(data.pending || []);
       setRequesterRole(data.requesterRole);
       setBrokerPlan(data.brokerPlan || "free");
+      // Cargar nombre de inmobiliaria
+      const agRes = await fetch("/api/teams/agency");
+      if (agRes.ok) { const ag = await agRes.json(); setAgencyName(ag.agencyName || ""); setAgencyInput(ag.agencyName || ""); }
     } catch { }
     setLoading(false);
   };
@@ -167,6 +174,20 @@ export default function BrokerDashboard() {
     setRoleLoading(null);
   };
 
+  const saveAgency = async () => {
+    setAgencySaving(true); setAgencyMsg("");
+    try {
+      const res = await fetch("/api/teams/agency", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agencyName: agencyInput }),
+      });
+      const data = await res.json();
+      if (data.ok) { setAgencyName(agencyInput); setAgencyMsg("Guardado"); setTimeout(() => setAgencyMsg(""), 2000); }
+      else setAgencyMsg(data.error || "Error");
+    } catch { setAgencyMsg("Error de conexión"); }
+    setAgencySaving(false);
+  };
+
   const isOwner = requesterRole === "owner";
   const isFreemium = brokerPlan === "free";
 
@@ -203,6 +224,31 @@ export default function BrokerDashboard() {
             {isFreemium ? "Trial — 7 días" : "Teams activo"}
           </div>
         </div>
+
+        {/* Nombre de inmobiliaria — solo owner */}
+        {isOwner && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="font-black text-sm text-gray-900">Nombre de la inmobiliaria</span>
+              <span className="text-xs text-gray-400">(aparece en mails e invitaciones)</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={agencyInput}
+                onChange={e => setAgencyInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && saveAgency()}
+                placeholder="Ej: GALAS Propiedades"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400 transition-colors"
+              />
+              <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 transition-all hover:opacity-90"
+                style={{ background: RED }}>
+                {agencySaving ? "..." : "Guardar"}
+              </button>
+            </div>
+            {agencyMsg && <p className="text-xs mt-2 font-medium text-green-600">{agencyMsg}</p>}
+          </div>
+        )}
 
         {/* Banner freemium */}
         {isFreemium && (
