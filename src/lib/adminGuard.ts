@@ -1,6 +1,6 @@
 import { GetServerSidePropsContext } from "next";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../lib/auth";
+import { authOptions } from "./auth";
 import { SUPER_ADMIN_EMAIL } from "./brand";
 
 export async function requireSuperAdmin(ctx: GetServerSidePropsContext) {
