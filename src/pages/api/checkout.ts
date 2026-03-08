@@ -26,8 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     if (planMPId) {
       // ── Modo correcto: redirigir al init_point del plan compartido ────────
-      // El init_point del preapproval_plan es fijo y permanente — no hay que crear nada
-      const checkoutUrl = `https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=${planMPId}`;
+      // Pasamos payer_email y external_reference para que el webhook pueda identificar al usuario
+      const params = new URLSearchParams({
+        preapproval_plan_id: planMPId,
+        payer_email: session.user.email,
+        external_reference: `${session.user.email}|${planId}`,
+      });
+      const checkoutUrl = `https://www.mercadopago.com.ar/subscriptions/checkout?${params.toString()}`;
       return res.status(200).json({ checkoutUrl });
 
     } else {

@@ -48,8 +48,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ ok: true });
       }
 
-      const [email, planId] = (sub.external_reference ?? "").split("|");
-      if (!email || !planId) return res.status(200).json({ ok: true });
+      let [email, planId] = (sub.external_reference ?? "").split("|");
+
+      // Fallback: si no hay external_reference, buscar por payer email en Supabase
+      if (!email && sub.payer_id) {
+        const { data: found } = await supabaseAdmin
+          .from("subscriptions")
+          .select("email, plan")
+          .eq("mp_payer_id", String(sub.payer_id))
+          .single();
+        if (found) email = found.email;
+      }
+
+      // Determinar planId desde el preapproval_plan_id si no viene en external_reference
+      if (!planId && sub.preapproval_plan_id) {
+        if (sub.preapproval_plan_id === process.env.MP_PLAN_INDIVIDUAL_ID) planId = "individual";
+        if (sub.preapproval_plan_id === process.env.MP_PLAN_TEAMS_ID) planId = "teams";
+      }
+
+      if (!email || !planId) {
+        console.warn("Webhook: no se pudo identificar email o planId", { external_reference: sub.external_reference, payer_id: sub.payer_id });
+        return res.status(200).json({ ok: true });
+      }
 
       await activatePlan(email, planId as PlanId, String(sub.id), String(sub.payer_id ?? ""), sub);
       return res.status(200).json({ ok: true });
