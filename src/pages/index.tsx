@@ -28,6 +28,7 @@ interface CalendarData {
   productivityRate: number;
   dailySummaries: DaySummary[];
   recentEvents: CalendarEvent[];
+  onboardingDone?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -572,6 +573,13 @@ export default function HomePage() {
   };
 
   useEffect(() => { if (status === "authenticated") sync(); }, [status, days]);
+
+  // Mostrar onboarding si el usuario no lo completó todavía
+  useEffect(() => {
+    if (data && data.onboardingDone === false) {
+      setShowOnboarding(true);
+    }
+  }, [data]);
 
   const trendData = useMemo(() => {
     if (!data) return [];
