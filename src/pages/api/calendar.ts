@@ -3,22 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
 import { google } from "googleapis";
 import { startOfDay, endOfDay, subDays, formatISO } from "date-fns";
+import { syncAndPersist } from "../../lib/calendarSync";
+import { supabaseAdmin } from "../../lib/supabase";
 
-// ─── Colores de Google Calendar que se consideran "VERDE" ──────────────────
-// Google usa colorId del 1 al 11. Verde = "2" (Sage), "10" (Basil), "5" (Banana no, ese es amarillo)
-// Referencia: https://developers.google.com/calendar/api/v3/reference/colors
-const GREEN_COLOR_IDS = new Set(["2", "10"]); // Sage y Basil
-
-// Palabras clave en el título que identifican eventos productivos
+const GREEN_COLOR_IDS = new Set(["2", "10"]);
 const PRODUCTIVE_KEYWORDS = [
-  "tasacion", "tasación",
-  "visita",
-  "propuesta",
-  "reunion", "reunión",
-  "meeting",
-  "seguimiento",
-  "cierre",
-  "entrevista",
+  "tasacion", "tasación", "visita", "propuesta", "reunion", "reunión",
+  "meeting", "seguimiento", "cierre", "entrevista",
 ];
 
 export interface CalendarEvent {
@@ -28,15 +19,15 @@ export interface CalendarEvent {
   end: string;
   colorId?: string;
   isGreen: boolean;
-  type: "tasacion" | "visita" | "propuesta" | "reunion" | "otro";
+  type: "tasacion" | "visita" | "propuesta" | "cierre" | "reunion" | "seguimiento" | "entrevista" | "otro";
   attendees: string[];
 }
 
 export interface DailySummary {
-  date: string;           // "2025-06-12"
+  date: string;
   greenCount: number;
   events: CalendarEvent[];
-  isProductive: boolean;  // >= PRODUCTIVITY_GOAL
+  isProductive: boolean;
 }
 
 function detectType(title: string): CalendarEvent["type"] {
@@ -44,14 +35,15 @@ function detectType(title: string): CalendarEvent["type"] {
   if (t.includes("tasac")) return "tasacion";
   if (t.includes("visit")) return "visita";
   if (t.includes("propuesta")) return "propuesta";
+  if (t.includes("cierr")) return "cierre";
+  if (t.includes("seguim")) return "seguimiento";
+  if (t.includes("entrevist")) return "entrevista";
   if (t.includes("reuni") || t.includes("meeting")) return "reunion";
   return "otro";
 }
 
 function isGreenEvent(event: any): boolean {
-  // Verde por colorId
   if (event.colorId && GREEN_COLOR_IDS.has(event.colorId)) return true;
-  // Verde por palabra clave en título
   const title = (event.summary || "").toLowerCase();
   return PRODUCTIVE_KEYWORDS.some(kw => title.includes(kw));
 }
@@ -70,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const auth = new google.auth.OAuth2();
     auth.setCredentials({ access_token: accessToken });
-
     const calendar = google.calendar({ version: "v3", auth });
 
     const now = new Date();
@@ -83,12 +74,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       timeMax,
       singleEvents: true,
       orderBy: "startTime",
-      maxResults: 500,
+      maxResults: 2500,
     });
 
     const items = response.data.items || [];
 
-    // Mapear y filtrar
     const mappedEvents: CalendarEvent[] = items
       .filter(e => e.status !== "cancelled" && e.summary)
       .map(e => ({
@@ -99,10 +89,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         colorId: e.colorId ?? undefined,
         isGreen: isGreenEvent(e),
         type: detectType(e.summary!),
-        attendees: (e.attendees || [])
-          .filter(a => !a.self)
-          .map(a => a.email || a.displayName || ""),
+        attendees: (e.attendees || []).filter((a: any) => !a.self).map((a: any) => a.email || a.displayName || ""),
       }));
+
+    // Persistir en background sin bloquear la respuesta
+    const { data: sub } = await supabaseAdmin
+      .from("subscriptions")
+      .select("team_id")
+      .eq("email", session.user?.email!)
+      .single();
+
+    syncAndPersist(accessToken, session.user?.email!, sub?.team_id, days)
+      .catch(e => console.error("Persist error:", e));
 
     // Agrupar por día
     const byDay: Record<string, CalendarEvent[]> = {};
@@ -118,22 +116,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, events]) => {
         const greenCount = events.filter(e => e.isGreen).length;
-        return {
-          date,
-          greenCount,
-          events,
-          isProductive: greenCount >= productivityGoal,
-        };
+        return { date, greenCount, events, isProductive: greenCount >= productivityGoal };
       });
 
-    // Totales por tipo
     const greenEvents = mappedEvents.filter(e => e.isGreen);
     const totals = {
       tasaciones: greenEvents.filter(e => e.type === "tasacion").length,
       visitas: greenEvents.filter(e => e.type === "visita").length,
       propuestas: greenEvents.filter(e => e.type === "propuesta").length,
+      cierres: greenEvents.filter(e => e.type === "cierre").length,
       reuniones: greenEvents.filter(e => e.type === "reunion").length,
-      otros: greenEvents.filter(e => e.type === "otro").length,
+      seguimientos: greenEvents.filter(e => e.type === "seguimiento").length,
+      entrevistas: greenEvents.filter(e => e.type === "entrevista").length,
       totalGreen: greenEvents.length,
       totalEvents: mappedEvents.length,
     };
@@ -142,11 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const totalDays = dailySummaries.length;
 
     return res.status(200).json({
-      user: {
-        name: session.user?.name,
-        email: session.user?.email,
-        image: session.user?.image,
-      },
+      user: { name: session.user?.name, email: session.user?.email, image: session.user?.image },
       syncedAt: new Date().toISOString(),
       period: { from: timeMin, to: timeMax, days },
       totals,
