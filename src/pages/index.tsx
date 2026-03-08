@@ -623,11 +623,12 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 hidden sm:flex">
+          <div style={{ display: "flex", alignItems: "center", background: "#f3f4f6", borderRadius: "12px", padding: "4px", gap: "2px" }} className="hidden sm:flex">
             {([7, 14, 30, 60, 90] as const).map(d => (
               <button key={d} onClick={() => setDays(d)}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
-                style={days === d ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" } : { color: "#9ca3af" }}>
+                style={days === d
+                  ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", borderRadius: "8px", padding: "4px 8px", fontSize: "11px", fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }
+                  : { color: "#9ca3af", borderRadius: "8px", padding: "4px 8px", fontSize: "11px", fontWeight: 700, border: "none", cursor: "pointer", background: "transparent", whiteSpace: "nowrap" }}>
                 {d}d
               </button>
             ))}
