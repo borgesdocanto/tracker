@@ -1,4 +1,5 @@
 import { useSession, signOut } from "next-auth/react";
+import OnboardingModal from "../components/OnboardingModal";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
@@ -535,6 +536,7 @@ export default function HomePage() {
   // calView is derived from days selector — no separate state needed
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -550,6 +552,13 @@ export default function HomePage() {
       });
     }
   }, [status]);
+
+  const handleOnboardingClose = async (dontShow: boolean) => {
+    setShowOnboarding(false);
+    if (dontShow) {
+      await fetch("/api/onboarding", { method: "POST" });
+    }
+  };
 
   const sync = async () => {
     setLoading(true);
@@ -848,6 +857,7 @@ export default function HomePage() {
           </>
         )}
       </main>
+      {showOnboarding && <OnboardingModal onClose={handleOnboardingClose} />}
     </div>
   );
 }

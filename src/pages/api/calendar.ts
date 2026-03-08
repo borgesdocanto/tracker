@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Persistir en background
     const { data: sub } = await supabaseAdmin
       .from("subscriptions")
-      .select("team_id")
+      .select("team_id, onboarding_done")
       .eq("email", session.user?.email!)
       .single();
 
@@ -185,6 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       productivityRate: totalDays > 0 ? Math.round((productiveDays / totalDays) * 100) : 0,
       dailySummaries,
       recentEvents: mappedEvents.slice(-50).reverse(),
+      onboardingDone: sub?.onboarding_done ?? false,
     });
   } catch (err: any) {
     console.error("Calendar API error:", err?.message);
