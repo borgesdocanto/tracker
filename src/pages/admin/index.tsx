@@ -39,7 +39,7 @@ export default function AdminPanel() {
   const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [tab, setTab] = useState<"overview" | "users" | "teams" | "ops">("overview");
+  const [tab, setTab] = useState<"overview" | "users" | "teams" | "ops" | "precios">("overview");
   const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [loadingStats, setLoadingStats] = useState(true);
@@ -48,9 +48,15 @@ export default function AdminPanel() {
   const [actionMsg, setActionMsg] = useState<Record<string, string>>({});
   const [opsLoading, setOpsLoading] = useState(false);
   const [opsMsg, setOpsMsg] = useState("");
+  const [plans, setPlans] = useState<Record<string, any>>({});
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [planInputs, setPlanInputs] = useState<Record<string, string>>({});
+  const [planSaving, setPlanSaving] = useState<string | null>(null);
+  const [planMsg, setPlanMsg] = useState<Record<string, string>>({});
 
   useEffect(() => { loadStats(); }, []);
   useEffect(() => { if (tab === "users" || tab === "teams") loadUsers(); }, [tab, planFilter, search]);
+  useEffect(() => { if (tab === "precios") loadPlans(); }, [tab]);
 
   const loadStats = async () => {
     setLoadingStats(true);
@@ -73,6 +79,45 @@ export default function AdminPanel() {
       setUsers(data.users || []);
     } catch { }
     setLoadingUsers(false);
+  };
+
+  const loadPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const r = await fetch("/api/admin/plans");
+      const d = await r.json();
+      setPlans(d);
+      const inputs: Record<string, string> = {};
+      for (const [id, p] of Object.entries(d) as any) {
+        if (p.amount) inputs[id] = String(p.amount);
+      }
+      setPlanInputs(inputs);
+    } catch {}
+    setPlansLoading(false);
+  };
+
+  const updatePlanPrice = async (planId: string) => {
+    const amount = planInputs[planId];
+    if (!amount || isNaN(Number(amount))) return;
+    setPlanSaving(planId);
+    setPlanMsg(prev => ({ ...prev, [planId]: "" }));
+    try {
+      const r = await fetch("/api/admin/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, amount: Number(amount) }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        setPlanMsg(prev => ({ ...prev, [planId]: `✓ Actualizado a $ ${Number(d.newAmount).toLocaleString("es-AR")}` }));
+        loadPlans();
+      } else {
+        setPlanMsg(prev => ({ ...prev, [planId]: d.error || "Error" }));
+      }
+    } catch {
+      setPlanMsg(prev => ({ ...prev, [planId]: "Error de conexion" }));
+    }
+    setPlanSaving(null);
   };
 
   const userAction = async (email: string, action: string, extra?: any) => {
@@ -136,6 +181,7 @@ export default function AdminPanel() {
             { key: "users", label: "Usuarios", icon: <Users size={13} /> },
             { key: "teams", label: "Equipos", icon: <Shield size={13} /> },
             { key: "ops", label: "Operaciones", icon: <Zap size={13} /> },
+            { key: "precios", label: "Precios", icon: <CreditCard size={13} /> },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors"
@@ -413,6 +459,81 @@ export default function AdminPanel() {
               <div className="text-xs text-gray-400 mb-4">Útil para debugging o reenvíos manuales.</div>
               <SendToUser onSend={(email) => triggerOp("send_weekly_email", email)} loading={opsLoading} />
             </div>
+          </div>
+        )}
+
+        {/* PRECIOS */}
+        {tab === "precios" && (
+          <div className="space-y-4">
+            <div className="bg-white border border-gray-100 rounded-2xl p-5">
+              <p className="text-xs text-gray-400 leading-relaxed mb-4">
+                Modificá el precio de los planes en MercadoPago. El cambio aplica a todos los nuevos suscriptores inmediatamente.
+                Los suscriptores activos continúan pagando el precio anterior hasta su próxima renovación.
+              </p>
+            </div>
+
+            {plansLoading ? (
+              <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-gray-300" /></div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { id: "individual", label: "Plan Individual", desc: "Inmobiliario solo" },
+                  { id: "teams", label: "Plan Teams", desc: "Broker con equipo" },
+                ].map(({ id, label, desc }) => {
+                  const p = plans[id] || {};
+                  return (
+                    <div key={id} className="bg-white border border-gray-100 rounded-2xl p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="font-black text-base text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{label}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">{desc}</div>
+                        </div>
+                        <div className={`text-xs font-bold px-2 py-1 rounded-lg ${p.status === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                          {p.status || "—"}
+                        </div>
+                      </div>
+
+                      {p.error ? (
+                        <p className="text-xs text-red-400">{p.error}</p>
+                      ) : (
+                        <>
+                          <div className="mb-1 text-xs text-gray-400">Precio actual en MP</div>
+                          <div className="text-3xl font-black mb-4" style={{ color: RED, fontFamily: "Georgia, serif" }}>
+                            $ {p.amount ? Number(p.amount).toLocaleString("es-AR") : "—"}
+                            <span className="text-sm font-normal text-gray-400 ml-1">/mes</span>
+                          </div>
+
+                          <div className="mb-1 text-xs text-gray-400">Nuevo precio (ARS)</div>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              value={planInputs[id] || ""}
+                              onChange={e => setPlanInputs(prev => ({ ...prev, [id]: e.target.value }))}
+                              onKeyDown={e => e.key === "Enter" && updatePlanPrice(id)}
+                              placeholder="Ej: 12000"
+                              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400 transition-colors"
+                            />
+                            <button
+                              onClick={() => updatePlanPrice(id)}
+                              disabled={planSaving === id || planInputs[id] === String(p.amount)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 hover:opacity-90 transition-all"
+                              style={{ background: RED }}>
+                              {planSaving === id ? <Loader2 size={12} className="animate-spin" /> : "Actualizar"}
+                            </button>
+                          </div>
+                          {planMsg[id] && (
+                            <p className={`text-xs mt-2 font-semibold ${planMsg[id].startsWith("✓") ? "text-green-600" : "text-red-500"}`}>
+                              {planMsg[id]}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-300 mt-3">ID: {p.id}</p>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
