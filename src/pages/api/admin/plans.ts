@@ -2,7 +2,9 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { isSuperAdmin } from "../../../lib/adminGuard";
+import { updatePricing } from "../../../lib/pricing";
 
+// MP plan IDs — se sincronizan con Supabase tabla pricing
 const MP_PLAN_IDS: Record<string, string | undefined> = {
   individual: process.env.MP_PLAN_INDIVIDUAL_ID,
   teams: process.env.MP_PLAN_TEAMS_ID,
@@ -55,10 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     const d = await r.json();
     if (!r.ok) return res.status(500).json({ error: d.message || "Error en MP" });
+
+    // Sincronizar precio en Supabase para que la landing lo lea en tiempo real
+    const newAmount = d.auto_recurring?.transaction_amount;
+    await updatePricing(planId, newAmount);
+
     return res.status(200).json({
       ok: true,
       planId,
-      newAmount: d.auto_recurring?.transaction_amount,
+      newAmount,
     });
   }
 

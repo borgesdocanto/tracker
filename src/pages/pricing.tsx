@@ -1,22 +1,27 @@
+import { GetServerSideProps } from "next";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import Head from "next/head";
-import { CheckCircle, Zap, Users, Loader2, ArrowLeft } from "lucide-react";
+import { CheckCircle, Users, ArrowLeft } from "lucide-react";
 import { PLANS, Plan } from "../lib/plans";
+import { getPricing, PricingRow, formatPriceARS } from "../lib/pricing";
 
 const RED = "#aa0000";
 
-function PlanCard({ plan, current, onSelect, loading }: {
-  plan: Plan; current?: string;
-  onSelect: (id: string) => void; loading: string | null;
+function PlanCard({ plan, livePrice, current, onSelect, loading }: {
+  plan: Plan;
+  livePrice?: number;
+  current?: string;
+  onSelect: (id: string) => void;
+  loading: string | null;
 }) {
   const isCurrent = current === plan.id;
   const isLoading = loading === plan.id;
-  const isHighlight = plan.highlight;
+  const price = livePrice ?? plan.priceARS;
 
   return (
-    <div className={`bg-white rounded-2xl p-6 flex flex-col border transition-all ${isHighlight ? "border-gray-900 shadow-lg" : "border-gray-100"}`}>
+    <div className={`bg-white rounded-2xl p-6 flex flex-col border transition-all ${plan.highlight ? "border-gray-900 shadow-lg" : "border-gray-100"}`}>
       {plan.badge && (
         <div className="text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg self-start mb-4"
           style={{ background: "#111827", color: "#fff" }}>
@@ -29,42 +34,46 @@ function PlanCard({ plan, current, onSelect, loading }: {
         <div className="text-xs text-gray-400 mt-0.5">{plan.description}</div>
       </div>
 
-      <div className="my-5 pb-5 border-b border-gray-100">
-        {plan.price === 0 ? (
-          <div>
-            <span className="font-black text-4xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Gratis</span>
-            <div className="text-xs text-gray-400 mt-1">7 días completos · sin tarjeta</div>
-          </div>
+      <div className="my-4 flex items-end gap-1">
+        {price === 0 ? (
+          <span className="font-black text-3xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Gratis</span>
         ) : (
-          <div>
-            <span className="font-black text-3xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>$ {plan.priceARS.toLocaleString("es-AR")}</span>
-            <span className="text-gray-400 text-sm"> / mes</span>
-          </div>
+          <>
+            <span className="font-black text-3xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>
+              $ {price.toLocaleString("es-AR")}
+            </span>
+            <span className="text-sm text-gray-400 mb-1">/ mes</span>
+          </>
         )}
       </div>
 
-      <ul className="space-y-2.5 mb-6 flex-1">
-        {plan.features.map(f => (
-          <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-            <CheckCircle size={13} className="shrink-0 mt-0.5" style={{ color: isHighlight ? RED : "#9ca3af" }} />
+      <ul className="space-y-2 mb-6 flex-1">
+        {plan.features.map((f, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+            <CheckCircle size={13} className="shrink-0 mt-0.5" style={{ color: "#16a34a" }} />
             {f}
           </li>
         ))}
       </ul>
 
-      <button onClick={() => onSelect(plan.id)} disabled={isCurrent || isLoading}
-        className="w-full py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
-        style={isHighlight
+      <button
+        onClick={() => onSelect(plan.id)}
+        disabled={isCurrent || isLoading}
+        className="w-full py-3 rounded-xl text-sm font-black transition-all disabled:opacity-50"
+        style={plan.highlight
           ? { background: "#111827", color: "#fff" }
           : { background: "#f3f4f6", color: "#374151" }}>
-        {isLoading && <Loader2 size={13} className="animate-spin" />}
-        {isCurrent ? "Plan actual" : plan.price === 0 ? "Empezar gratis" : `Suscribirse — $ ${plan.priceARS.toLocaleString("es-AR")}/mes`}
+        {isLoading ? "Procesando..." : isCurrent ? "Plan actual" : price === 0 ? "Empezar gratis" : `Suscribirse — $ ${price.toLocaleString("es-AR")}/mes`}
       </button>
     </div>
   );
 }
 
-export default function PricingPage() {
+interface Props {
+  livePricing: Record<string, number>; // planId → price_ars
+}
+
+export default function PricingPage({ livePricing }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
@@ -86,12 +95,16 @@ export default function PricingPage() {
     setLoading(null);
   };
 
+  // Precio de Teams para mostrar en la nota de info
+  const teamsPrice = livePricing["teams"] ?? 75000;
+  const indPrice = livePricing["individual"] ?? 10500;
+  const perAgent = Math.round(teamsPrice / 10);
+
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
       <Head><title>Planes — InstaCoach</title></Head>
       <div className="h-0.5 w-full" style={{ background: RED }} />
 
-      {/* Header */}
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-4">
           <button onClick={() => router.push("/")}
@@ -116,11 +129,17 @@ export default function PricingPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
           {Object.values(PLANS).map(plan => (
-            <PlanCard key={plan.id} plan={plan} current={current} onSelect={handleSelect} loading={loading} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              livePrice={livePricing[plan.id]}
+              current={current}
+              onSelect={handleSelect}
+              loading={loading}
+            />
           ))}
         </div>
 
-        {/* Teams info */}
         <div className="mt-6 bg-white border border-gray-100 rounded-2xl p-5 flex items-start gap-4">
           <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
             <Users size={14} className="text-gray-500" />
@@ -129,8 +148,8 @@ export default function PricingPage() {
             <div className="font-black text-sm text-gray-900 mb-1">Cómo funciona Teams</div>
             <p className="text-xs text-gray-400 leading-relaxed">
               Con Teams activado cargás los emails de tus inmobiliarios y el sistema les manda una invitación.
-              Hasta 10 agentes incluidos en $ 75.000/mes — son $ 7.500/agente vs $ 10.500 del plan Individual.
-              Si necesitás más de 10, agregás adicionales a $ 10.500/mes cada uno.
+              Hasta 10 agentes incluidos en $ {teamsPrice.toLocaleString("es-AR")}/mes — son $ {perAgent.toLocaleString("es-AR")}/agente vs $ {indPrice.toLocaleString("es-AR")} del plan Individual.
+              Si necesitás más de 10, agregás adicionales a $ {indPrice.toLocaleString("es-AR")}/mes cada uno.
             </p>
           </div>
         </div>
@@ -142,3 +161,17 @@ export default function PricingPage() {
     </div>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  try {
+    const pricing = await getPricing();
+    const livePricing: Record<string, number> = {};
+    for (const [id, row] of Object.entries(pricing)) {
+      livePricing[id] = row.price_ars;
+    }
+    return { props: { livePricing } };
+  } catch {
+    // Fallback a precios de plans.ts si Supabase falla
+    return { props: { livePricing: { individual: 10500, teams: 75000 } } };
+  }
+};
