@@ -42,13 +42,31 @@ function formatHour(iso: string) {
 
 function isoToDate(iso: string) { return iso?.slice(0, 10); }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, accent, delay = 0 }: any) {
+// ─── Tooltip KPI Card ─────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, accent, delay = 0, tooltip }: any) {
+  const [show, setShow] = useState(false);
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
-      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">{label}</div>
+    <div className="bg-white border border-gray-100 rounded-2xl p-5 animate-fade-up relative"
+      style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{label}</div>
+        {tooltip && (
+          <button
+            onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}
+            onTouchStart={() => setShow(s => !s)}
+            className="w-4 h-4 rounded-full border border-gray-200 text-gray-400 text-xs flex items-center justify-center shrink-0 hover:border-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Más info">?</button>
+        )}
+      </div>
       <div className="text-4xl font-black leading-none" style={{ color: accent ? RED : "#111827", fontFamily: "Georgia, serif" }}>{value}</div>
       {sub && <div className="text-xs text-gray-400 mt-2">{sub}</div>}
+      {tooltip && show && (
+        <div className="absolute left-0 right-0 bottom-full mb-2 z-50 px-1">
+          <div className="bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed shadow-xl">
+            {tooltip}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -233,7 +251,7 @@ function MonthlyView({ summaries, monthOffset, onPrev, onNext }: {
 }
 
 // ─── Insta Coach Panel ────────────────────────────────────────────────────────
-function InstaCoacPanel({ data, calView, monthOffset, weekOffset }: { data: CalendarData; calView: "week" | "month"; monthOffset: number; weekOffset: number }) {
+function InstaCoacPanel({ data, calView, monthOffset, weekOffset, days = 30 }: { data: CalendarData; calView: "week" | "month"; monthOffset: number; weekOffset: number; days?: number }) {
   const [advice, setAdvice] = useState("");
   const [profile, setProfile] = useState("");
   const [weekTotals, setWeekTotals] = useState<any>(null);
@@ -514,7 +532,7 @@ export default function HomePage() {
   const [subPlan, setSubPlan] = useState("free");
   const [isOwner, setIsOwner] = useState(false);
   const [hasTeam, setHasTeam] = useState(false);
-  const [calView, setCalView] = useState<"week" | "month">("week");
+  // calView is derived from days selector — no separate state needed
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -601,15 +619,14 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="relative hidden sm:block">
-            <select value={days} onChange={e => setDays(parseInt(e.target.value))}
-              className="appearance-none bg-gray-100 rounded-xl px-3 py-1.5 pr-7 text-xs font-semibold text-gray-600 focus:outline-none cursor-pointer border-0">
-              <option value={14}>14 días</option>
-              <option value={30}>30 días</option>
-              <option value={60}>60 días</option>
-              <option value={90}>90 días</option>
-            </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 hidden sm:flex">
+            {([7, 14, 30, 90] as const).map(d => (
+              <button key={d} onClick={() => setDays(d)}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                style={days === d ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" } : { color: "#9ca3af" }}>
+                {d}d
+              </button>
+            ))}
           </div>
 
           {isOwner ? (
@@ -669,41 +686,51 @@ export default function HomePage() {
                   Última sincronización: {new Date(data.syncedAt).toLocaleString("es-AR", { weekday: "long", hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold"
-                  style={{ background: (data.totals.iac ?? 0) >= 100 ? "#f0fdf4" : (data.totals.iac ?? 0) >= 67 ? "#fffbeb" : "#fef2f2", color: (data.totals.iac ?? 0) >= 100 ? GREEN : (data.totals.iac ?? 0) >= 67 ? "#d97706" : RED }}>
-                  IAC {data.totals.iac ?? 0}%
-                </div>
-                <div className="text-xs text-gray-400 mt-1 text-right">{data.totals.procesosNuevos ?? 0} proceso{(data.totals.procesosNuevos ?? 0) !== 1 ? "s" : ""} nuevo{(data.totals.procesosNuevos ?? 0) !== 1 ? "s" : ""}</div>
-              </div>
+              {(() => {
+                const iacPeriod = Math.round((data.totals.totalGreen / Math.max(1, days / 7)) / (data.totals.iacGoal ?? 15) * 100);
+                const iacColor = iacPeriod >= 100 ? GREEN : iacPeriod >= 67 ? "#d97706" : RED;
+                const iacBg = iacPeriod >= 100 ? "#f0fdf4" : iacPeriod >= 67 ? "#fffbeb" : "#fef2f2";
+                return (
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold"
+                      style={{ background: iacBg, color: iacColor }}>
+                      IAC {iacPeriod}%
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1 text-right">
+                      {data.totals.totalGreen} reuniones · {days}d
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* KPIs — IAC model */}
+            {/* KPIs */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* IAC */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col gap-2">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">IAC semanal</div>
-                <div className="text-4xl font-black" style={{ fontFamily: "Georgia, serif", color: (data.totals.iac ?? 0) >= 100 ? GREEN : (data.totals.iac ?? 0) >= 67 ? "#d97706" : RED }}>
-                  {data.totals.iac ?? 0}%
-                </div>
-                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, data.totals.iac ?? 0)}%`, background: (data.totals.iac ?? 0) >= 100 ? GREEN : (data.totals.iac ?? 0) >= 67 ? "#d97706" : RED }} />
-                </div>
-                <div className="text-xs text-gray-400">{data.totals.totalGreen} de {data.totals.iacGoal ?? 15} reuniones/sem</div>
-              </div>
-              {/* Procesos nuevos */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col gap-2">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Procesos nuevos</div>
-                <div className="text-4xl font-black" style={{ fontFamily: "Georgia, serif", color: (data.totals.procesosNuevos ?? 0) >= (data.totals.procesosGoal ?? 3) ? GREEN : RED }}>
-                  {data.totals.procesosNuevos ?? 0}
-                </div>
-                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, ((data.totals.procesosNuevos ?? 0) / (data.totals.procesosGoal ?? 3)) * 100)}%`, background: (data.totals.procesosNuevos ?? 0) >= (data.totals.procesosGoal ?? 3) ? GREEN : RED }} />
-                </div>
-                <div className="text-xs text-gray-400">objetivo: {data.totals.procesosGoal ?? 3} / semana</div>
-              </div>
-              <KpiCard label="Tasaciones" value={data.totals.tasaciones} accent delay={60} sub={`+ ${data.totals.primerasVisitas ?? 0} prim. visitas`} />
-              <KpiCard label="Propuestas" value={data.totals.propuestas} delay={120} sub={`${data.totals.firmas ?? 0} firma${(data.totals.firmas ?? 0) !== 1 ? "s" : ""}`} />
+              <KpiCard
+                label="Eventos verdes"
+                value={data.totals.totalGreen}
+                accent
+                sub={`${days}d · objetivo ${Math.round((data.totals.iacGoal ?? 15) * days / 7)}`}
+                tooltip="Cada vez que estás cara a cara con una persona hablando de tu negocio. Reuniones, visitas, tasaciones, propuestas — todo lo que genera dinero. El motor del negocio."
+              />
+              <KpiCard
+                label="Visitas"
+                value={data.totals.visitas}
+                sub={`venta · alquiler · propiedad`}
+                tooltip="Cantidad de visitas a propiedades: venta, alquiler o conocer propiedad. Toda visita mueve el pipeline. Enfocate en visitas de venta para maximizar ingresos."
+              />
+              <KpiCard
+                label="Tasaciones · Propuestas"
+                value={`${data.totals.tasaciones} · ${data.totals.propuestas}`}
+                sub="captaciones + presentaciones"
+                tooltip={`Tasaciones: captaciones nuevas, el inicio de un proceso de venta (${data.totals.tasaciones} en el período). Propuestas: presentaciones de tu servicio para captar en exclusiva (${data.totals.propuestas}).`}
+              />
+              <KpiCard
+                label="Firmas"
+                value={data.totals.firmas ?? 0}
+                sub="cierres de operación"
+                tooltip='Operaciones cerradas. El evento debe tener la palabra "Firma" en el título (firma de contrato, firma de escritura, etc.).'
+              />
             </div>
 
             {/* Productividad + Trend */}
@@ -721,39 +748,47 @@ export default function HomePage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col justify-center gap-4">
-                <div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Reuniones / semana</div>
-                  <div className="text-4xl font-black" style={{ color: RED, fontFamily: "Georgia, serif" }}>{data.totals.totalGreen}</div>
-                  <div className="text-xs text-gray-400 mt-1">objetivo: {data.totals.iacGoal ?? 15} cara a cara</div>
-                  <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, data.totals.iac ?? 0)}%`, background: (data.totals.iac ?? 0) >= 100 ? GREEN : RED }} />
+              {(() => {
+                const semanas = Math.max(1, days / 7);
+                const iacPeriod = Math.round((data.totals.totalGreen / semanas) / (data.totals.iacGoal ?? 15) * 100);
+                const iacColor = iacPeriod >= 100 ? GREEN : iacPeriod >= 67 ? "#d97706" : RED;
+                const avgSem = Math.round((data.totals.totalGreen / semanas) * 10) / 10;
+                const goalPeriod = Math.round((data.totals.iacGoal ?? 15) * semanas);
+                return (
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col justify-center gap-4">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
+                        IAC · {days}d
+                      </div>
+                      <div className="text-4xl font-black" style={{ color: iacColor, fontFamily: "Georgia, serif" }}>
+                        {iacPeriod}%
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {data.totals.totalGreen} de {goalPeriod} · {avgSem}/sem
+                      </div>
+                      <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, iacPeriod)}%`, background: iacColor }} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Objetivo semanal</div>
+                      <div className="text-4xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{data.totals.iacGoal ?? 15}</div>
+                      <div className="text-xs text-gray-400 mt-1">reuniones cara a cara / semana</div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Procesos / semana</div>
-                  <div className="text-4xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{data.totals.procesosNuevos ?? 0}</div>
-                  <div className="text-xs text-gray-400 mt-1">objetivo: {data.totals.procesosGoal ?? 3} por semana</div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
-            {/* Calendar */}
+            {/* Calendar — auto semana si ≤30d, mes si >30d */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Calendario</div>
-                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                  {(["week", "month"] as const).map(v => (
-                    <button key={v} onClick={() => setCalView(v)}
-                      className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
-                      style={calView === v ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" } : { color: "#9ca3af" }}>
-                      {v === "week" ? "Semana" : "Mes"}
-                    </button>
-                  ))}
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                  Calendario · {days <= 30 ? "vista semana" : "vista mes"}
                 </div>
               </div>
 
-              {calView === "week" ? (
+              {days <= 30 ? (
                 <WeeklyView
                   summaries={data.dailySummaries}
                   weekOffset={weekOffset}
@@ -783,7 +818,7 @@ export default function HomePage() {
             </div>
 
             {/* Insta Coach */}
-            <InstaCoacPanel data={data} calView={calView} monthOffset={monthOffset} weekOffset={weekOffset} />
+            <InstaCoacPanel data={data} calView={days <= 30 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
           </>
         )}
       </main>
