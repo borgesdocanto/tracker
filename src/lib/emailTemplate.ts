@@ -238,3 +238,214 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
 </body>
 </html>`;
 }
+
+export function generateWelcomeEmailHtml(userName: string): string {
+  const firstName = userName?.split(" ")[0] ?? "Inmobiliario";
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenido a InmoCoach</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Barra roja top -->
+        <tr>
+          <td style="background:#aa0000;height:5px;border-radius:12px 12px 0 0;font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+        <!-- Header logo -->
+        <tr>
+          <td style="background:#ffffff;padding:32px 40px 24px;border-bottom:1px solid #f3f4f6;">
+            <p style="margin:0;font-family:Georgia,serif;font-size:28px;font-weight:900;color:#111827;line-height:1;">
+              Inmo<span style="color:#aa0000;">Coach</span>
+            </p>
+            <p style="margin:6px 0 0;font-size:12px;color:#9ca3af;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;">
+              Tu coach de productividad inmobiliaria
+            </p>
+          </td>
+        </tr>
+
+        <!-- Saludo hero -->
+        <tr>
+          <td style="background:#ffffff;padding:36px 40px 8px;">
+            <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#aa0000;text-transform:uppercase;letter-spacing:2px;">
+              Bienvenido al equipo
+            </p>
+            <p style="margin:0;font-family:Georgia,serif;font-size:30px;font-weight:900;color:#111827;line-height:1.2;">
+              Hola, ${firstName}.<br/>Ya estás dentro.
+            </p>
+            <p style="margin:16px 0 0;font-size:15px;color:#374151;line-height:1.8;">
+              InmoCoach ya está leyendo tu Google Calendar y midiendo tu actividad comercial
+              en tiempo real. Sin cargar nada manualmente — solo agendá como siempre.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Separador -->
+        <tr>
+          <td style="background:#ffffff;padding:24px 40px 0;">
+            <div style="height:1px;background:#f3f4f6;"></div>
+          </td>
+        </tr>
+
+        <!-- Objetivo principal -->
+        <tr>
+          <td style="background:#ffffff;padding:28px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#aa0000;border-radius:16px;padding:28px 32px;">
+              <tr>
+                <td>
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:900;color:#ffcccc;text-transform:uppercase;letter-spacing:2px;">
+                    Tu primer objetivo
+                  </p>
+                  <p style="margin:0;font-family:Georgia,serif;font-size:28px;font-weight:900;color:#ffffff;line-height:1.25;">
+                    3 reuniones cara a cara<br/>por día. 15 en la semana.
+                  </p>
+                  <p style="margin:12px 0 0;font-size:14px;color:#ffcccc;line-height:1.6;">
+                    Eso es <strong style="color:#ffffff;">IAC 100%</strong> — el nivel de actividad
+                    de un Top Producer inmobiliario.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- 3 KPIs -->
+        <tr>
+          <td style="background:#ffffff;padding:0 40px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:0 5px 0 0;width:33%;">
+                  <table width="100%" cellpadding="0" cellspacing="0"
+                    style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:20px 16px;text-align:center;">
+                    <tr><td>
+                      <p style="margin:0;font-family:Georgia,serif;font-size:34px;font-weight:900;color:#aa0000;">15</p>
+                      <p style="margin:6px 0 0;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;">reuniones<br/>por semana</p>
+                    </td></tr>
+                  </table>
+                </td>
+                <td style="padding:0 2.5px;width:33%;">
+                  <table width="100%" cellpadding="0" cellspacing="0"
+                    style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:20px 16px;text-align:center;">
+                    <tr><td>
+                      <p style="margin:0;font-family:Georgia,serif;font-size:34px;font-weight:900;color:#111827;">3</p>
+                      <p style="margin:6px 0 0;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;">por día<br/>lun a vie</p>
+                    </td></tr>
+                  </table>
+                </td>
+                <td style="padding:0 0 0 5px;width:33%;">
+                  <table width="100%" cellpadding="0" cellspacing="0"
+                    style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:20px 16px;text-align:center;">
+                    <tr><td>
+                      <p style="margin:0;font-family:Georgia,serif;font-size:34px;font-weight:900;color:#111827;">6→1</p>
+                      <p style="margin:6px 0 0;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;">procesos<br/>por operación</p>
+                    </td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Cómo funciona -->
+        <tr>
+          <td style="background:#ffffff;padding:0 40px 28px;">
+            <p style="margin:0 0 16px;font-size:11px;font-weight:900;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">
+              Cómo funciona
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;">
+              <tr>
+                <td style="padding:16px 20px;border-bottom:1px solid #f3f4f6;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="width:32px;vertical-align:top;">
+                        <p style="margin:0;font-size:18px;">📅</p>
+                      </td>
+                      <td style="padding-left:12px;">
+                        <p style="margin:0;font-size:13px;font-weight:700;color:#111827;">Agendá tus reuniones en Google Calendar</p>
+                        <p style="margin:4px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">Usá palabras como Tasación, Visita, Reunión o pintá el evento de verde.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px 20px;border-bottom:1px solid #f3f4f6;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="width:32px;vertical-align:top;">
+                        <p style="margin:0;font-size:18px;">📊</p>
+                      </td>
+                      <td style="padding-left:12px;">
+                        <p style="margin:0;font-size:13px;font-weight:700;color:#111827;">InmoCoach calcula tu IAC automáticamente</p>
+                        <p style="margin:4px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">Tu Índice de Actividad Comercial se actualiza cada vez que abrís el dashboard.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px 20px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="width:32px;vertical-align:top;">
+                        <p style="margin:0;font-size:18px;">📬</p>
+                      </td>
+                      <td style="padding-left:12px;">
+                        <p style="margin:0;font-size:13px;font-weight:700;color:#111827;">Cada lunes recibís tu informe semanal</p>
+                        <p style="margin:4px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">Con tus números de la semana y un consejo personalizado de Inmo<strong>Coach</strong>.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td style="background:#ffffff;padding:0 40px 40px;text-align:center;">
+            <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.7;">
+              Tu dashboard ya tiene datos de tu calendario.<br/>
+              <strong>Fijate dónde estás parado hoy.</strong>
+            </p>
+            <a href="https://inmocoach.com.ar"
+              style="display:inline-block;background:#aa0000;color:#ffffff;font-weight:900;font-size:15px;padding:16px 40px;border-radius:14px;text-decoration:none;letter-spacing:0.5px;">
+              Ver mi dashboard →
+            </a>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9fafb;border-top:1px solid #e5e7eb;border-radius:0 0 12px 12px;padding:28px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:Georgia,serif;font-size:15px;font-weight:900;color:#111827;">
+              Inmo<span style="color:#aa0000;">Coach</span>
+            </p>
+            <p style="margin:0 0 6px;font-size:11px;color:#9ca3af;line-height:1.7;">
+              Este es un email automático — por favor no respondas este mensaje.<br>
+              Para consultas escribí a <a href="mailto:hola@inmocoach.com.ar" style="color:#aa0000;text-decoration:none;">hola@inmocoach.com.ar</a>
+            </p>
+            <p style="margin:0;font-size:11px;color:#d1d5db;">
+              Recibís este mail porque te registraste en InmoCoach ·
+              <a href="https://inmocoach.com.ar" style="color:#9ca3af;text-decoration:none;">inmocoach.com.ar</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+}

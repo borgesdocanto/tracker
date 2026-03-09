@@ -36,8 +36,17 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
 
+        // Verificar si es usuario nuevo antes del upsert
+        const { data: existing } = await supabaseAdmin
+          .from("subscriptions")
+          .select("email, plan")
+          .eq("email", profile.email)
+          .single();
+
+        const isNewUser = !existing;
+
         // Guardar/actualizar token en Supabase para el cron
-        const plan = isVipEmail(profile.email) ? "individual" : "free";
+        const plan = isVipEmail(profile.email) ? "individual" : (existing?.plan || "free");
         await supabaseAdmin
           .from("subscriptions")
           .upsert({
@@ -53,9 +62,7 @@ export const authOptions: NextAuthOptions = {
             status: "active",
           }, { onConflict: "email", ignoreDuplicates: false })
           .then(({ error }) => {
-            // Si ya existe y tiene plan pago, no sobreescribir el plan
             if (!error) return;
-            // Solo actualizar el token si el usuario ya existe con plan pago
             supabaseAdmin
               .from("subscriptions")
               .update({
@@ -64,6 +71,18 @@ export const authOptions: NextAuthOptions = {
               })
               .eq("email", profile.email!);
           });
+
+        // Enviar mail de bienvenida solo al registrarse por primera vez
+        if (isNewUser) {
+          fetch(`${process.env.NEXTAUTH_URL}/api/send-welcome`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: profile.email,
+              name: (profile as any).name,
+            }),
+          }).catch(e => console.error("Welcome email failed:", e));
+        }
       }
       return token;
     },
