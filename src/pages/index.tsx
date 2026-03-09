@@ -789,6 +789,11 @@ export default function HomePage() {
               />
             )}
 
+            {/* Rango */}
+            {data.rankStats && (
+              <RankBadge stats={data.rankStats} />
+            )}
+
             {/* Productividad + Trend */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white border border-gray-100 rounded-2xl p-5 col-span-1 sm:col-span-2" style={{ position: "relative", zIndex: 0 }}>
