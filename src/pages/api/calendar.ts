@@ -6,7 +6,6 @@ import { startOfDay, endOfDay, subDays, formatISO } from "date-fns";
 import { syncAndPersist, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../lib/calendarSync";
 import { supabaseAdmin } from "../../lib/supabase";
 import { computeAndSaveStreak } from "../../lib/streak";
-import { getAgentRankStats } from "../../lib/ranks";
 
 const GREEN_COLOR_IDS = new Set(["2", "10"]);
 
@@ -189,11 +188,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       recentEvents: mappedEvents.slice(-50).reverse(),
       onboardingDone: sub?.onboarding_done ?? false,
       streak: await computeAndSaveStreak(session.user?.email!, dailySummaries),
-      rankStats: await getAgentRankStats(session.user?.email!).catch(() => ({
-        rank: { slug: "junior", label: "Agente Junior", icon: "🏠", minWeeks: 0, minIacAvg: 0, description: "Recién arrancaste. Conocé el sistema y empezá a cargar tus reuniones." },
-        nextRank: { slug: "corredor", label: "Corredor", icon: "🚶", minWeeks: 4, minIacAvg: 30, description: "", minStreak: undefined },
-        activeWeeks: 0, iacAvg: 0, bestStreak: 0,
-      })),
     });
   } catch (err: any) {
     console.error("Calendar API error:", err?.message);

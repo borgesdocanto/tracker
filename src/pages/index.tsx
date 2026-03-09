@@ -1,7 +1,6 @@
 import { useSession, signOut } from "next-auth/react";
 import OnboardingModal from "../components/OnboardingModal";
 import StreakBadge from "../components/StreakBadge";
-import RankBadge from "../components/RankBadge";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
@@ -32,7 +31,6 @@ interface CalendarData {
   recentEvents: CalendarEvent[];
   onboardingDone?: boolean;
   streak?: { current: number; best: number; todayActive: boolean; lastActiveDate: string | null };
-  rankStats?: { rank: any; nextRank: any; activeWeeks: number; iacAvg: number; bestStreak: number };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -534,17 +532,7 @@ export default function HomePage() {
   const [data, setData] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [days, setDays] = useState<number>(7);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("inmocoach_days");
-    if (saved) setDays(parseInt(saved, 10));
-  }, []);
-
-  const handleSetDays = (d: number) => {
-    setDays(d);
-    localStorage.setItem("inmocoach_days", String(d));
-  };
+  const [days, setDays] = useState(60);
   const [subPlan, setSubPlan] = useState("free");
   const [isOwner, setIsOwner] = useState(false);
   const [hasTeam, setHasTeam] = useState(false);
@@ -656,7 +644,7 @@ export default function HomePage() {
 
           <div style={{ display: "flex", alignItems: "center", background: "#f3f4f6", borderRadius: "12px", padding: "4px", gap: "2px" }} className="hidden sm:flex">
             {([7, 14, 30, 60, 90] as const).map(d => (
-              <button key={d} onClick={() => handleSetDays(d)}
+              <button key={d} onClick={() => setDays(d)}
                 style={days === d
                   ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", borderRadius: "8px", padding: "4px 8px", fontSize: "11px", fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }
                   : { color: "#9ca3af", borderRadius: "8px", padding: "4px 8px", fontSize: "11px", fontWeight: 700, border: "none", cursor: "pointer", background: "transparent", whiteSpace: "nowrap" }}>
@@ -704,7 +692,7 @@ export default function HomePage() {
       {/* Days selector — mobile only, scrollable strip below header */}
       <div className="sm:hidden bg-white border-b border-gray-100 px-4 py-2 flex gap-1 overflow-x-auto">
         {([7, 14, 30, 60, 90] as const).map(d => (
-          <button key={d} onClick={() => handleSetDays(d)}
+          <button key={d} onClick={() => setDays(d)}
             style={days === d
               ? { background: "#111827", color: "#fff", borderRadius: "8px", padding: "4px 12px", fontSize: "12px", fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }
               : { color: "#9ca3af", borderRadius: "8px", padding: "4px 12px", fontSize: "12px", fontWeight: 700, border: "1px solid #e5e7eb", cursor: "pointer", background: "transparent", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -797,11 +785,6 @@ export default function HomePage() {
                 best={data.streak.best}
                 todayActive={data.streak.todayActive}
               />
-            )}
-
-            {/* Rango */}
-            {data.rankStats && (
-              <RankBadge stats={data.rankStats} />
             )}
 
             {/* Productividad + Trend */}

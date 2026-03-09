@@ -3,7 +3,6 @@ import { Resend } from "resend";
 import { getAllActiveSubscriptions } from "../../../lib/subscription";
 import { fetchCalendarEvents, computeWeekStats } from "../../../lib/calendarSync";
 import { computeAndSaveStreak } from "../../../lib/streak";
-import { saveWeeklyStatsAndRank, getRankLabel, getNextRank, getRankBySlug } from "../../../lib/ranks";
 import { generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getValidAccessToken } from "../../../lib/googleToken";
@@ -105,19 +104,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }, {})
       ).map(([date, greenCount]) => ({ date, greenCount }));
       const streakData = await computeAndSaveStreak(sub.email, dailySummaries);
-
-      // Paso 3b: Guardar stats semanales y recalcular rango
-      const weekStart = (() => {
-        const d = new Date(); const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        return new Date(d.setDate(diff)).toISOString().slice(0, 10);
-      })();
-      const rank = await saveWeeklyStatsAndRank(
-        sub.email, weekStart,
-        Math.round((stats.greenTotal / 15) * 100),
-        stats.greenTotal,
-        streakData.best
-      );
 
       // Paso 4: Generar consejo del Inmo Coach
       console.log(`🧠 Generando consejo para ${sub.email}...`);
