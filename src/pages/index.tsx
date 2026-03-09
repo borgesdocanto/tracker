@@ -2,6 +2,7 @@ import { useSession, signOut } from "next-auth/react";
 import OnboardingModal from "../components/OnboardingModal";
 import StreakBadge from "../components/StreakBadge";
 import RankBadge from "../components/RankBadge";
+import RankingPosition from "../components/RankingPosition";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
