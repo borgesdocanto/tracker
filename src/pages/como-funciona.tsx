@@ -49,7 +49,7 @@ export default function ComoFunciona() {
         <div className="max-w-5xl mx-auto px-5 py-3 flex items-center justify-between">
           <Link href="/">
             <span className="font-black text-xl tracking-tight cursor-pointer" style={{ fontFamily: "Georgia, serif" }}>
-              Insta<span style={{ color: RED }}>Coach</span>
+              Inmo<span style={{ color: RED }}>Coach</span>
             </span>
           </Link>
           <div className="flex items-center gap-3">
@@ -310,7 +310,7 @@ export default function ComoFunciona() {
       <footer className="border-t border-gray-100 py-8">
         <div className="max-w-5xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="font-black text-lg" style={{ fontFamily: "Georgia, serif" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </span>
           <div className="flex gap-5 text-xs text-gray-400">
             <Link href="/privacidad"><span className="hover:text-gray-700 cursor-pointer transition-colors">Privacidad</span></Link>

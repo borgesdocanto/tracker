@@ -81,7 +81,7 @@ export default function AceptarInvitacion() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black" style={{ fontFamily: "Georgia, serif" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </h1>
         </div>
 

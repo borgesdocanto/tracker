@@ -82,7 +82,7 @@ export default function AgentDetail() {
           <button onClick={() => router.push("/equipo")} className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 mr-auto">
             <ArrowLeft size={13} /> Mi equipo
           </button>
-          <div className="font-black text-lg" style={{ fontFamily: "Georgia, serif" }}>Insta<span style={{ color: RED }}>Coach</span></div>
+          <div className="font-black text-lg" style={{ fontFamily: "Georgia, serif" }}>Inmo<span style={{ color: RED }}>Coach</span></div>
         </div>
       </header>
 

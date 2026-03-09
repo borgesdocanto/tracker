@@ -32,7 +32,7 @@ export default function Landing() {
       <nav style={{ background: "#fff", borderBottom: "1px solid #f3f4f6", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 28 }}>
           <div style={{ fontFamily: "Georgia, serif", fontWeight: 900, fontSize: 20, color: "#111827", marginRight: "auto" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </div>
           <a href="#como-funciona" style={{ color: "#6b7280", fontSize: 13, fontWeight: 500 }}>Cómo funciona</a>
           <a href="#precios" style={{ color: "#6b7280", fontSize: 13, fontWeight: 500 }}>Precios</a>
@@ -269,7 +269,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer style={{ background: "#fff", borderTop: "1px solid #f3f4f6", padding: "28px 24px" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-          <div style={{ fontFamily: "Georgia, serif", fontWeight: 900, fontSize: 16 }}>Insta<span style={{ color: RED }}>Coach</span></div>
+          <div style={{ fontFamily: "Georgia, serif", fontWeight: 900, fontSize: 16 }}>Inmo<span style={{ color: RED }}>Coach</span></div>
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
             <a href="/privacidad" style={{ color: "#9ca3af", fontSize: 12 }}>Política de privacidad</a>
             <a href="/terminos" style={{ color: "#9ca3af", fontSize: 12 }}>Términos de uso</a>

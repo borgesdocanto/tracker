@@ -32,7 +32,7 @@ export default function Terminos() {
             <ArrowLeft size={13} /> Volver
           </button>
           <div style={{ marginLeft: "auto", fontFamily: "Georgia, serif", fontWeight: 900, fontSize: 18 }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </div>
         </div>
       </nav>

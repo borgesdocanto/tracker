@@ -625,7 +625,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
           <div className="flex items-center gap-2 mr-auto">
             <div className="font-black text-lg tracking-tight" style={{ color: RED, fontFamily: "Georgia, serif" }}>
-              Insta<span className="text-gray-900">Coach</span>
+              Inmo<span className="text-gray-900">Coach</span>
             </div>
             <Link href="/pricing">
               <span className="text-xs font-bold px-2 py-0.5 rounded-md uppercase cursor-pointer"

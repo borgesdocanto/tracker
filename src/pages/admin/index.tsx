@@ -166,7 +166,7 @@ export default function AdminPanel() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
           <div className="font-black text-lg mr-auto" style={{ fontFamily: "Georgia, serif" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
             <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-500 align-middle">ADMIN</span>
           </div>
           <button onClick={() => router.push("/")}

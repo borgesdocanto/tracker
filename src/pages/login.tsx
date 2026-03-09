@@ -31,7 +31,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black tracking-tight mb-1" style={{ fontFamily: "Georgia, serif" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </h1>
           <p className="text-sm text-gray-400">Tu coach inmobiliario siempre activo</p>
         </div>

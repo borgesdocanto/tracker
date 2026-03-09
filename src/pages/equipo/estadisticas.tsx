@@ -274,7 +274,7 @@ export default function Estadisticas() {
             <ArrowLeft size={13} /> Mi equipo
           </button>
           <div className="font-black text-lg" style={{ fontFamily: "Georgia, serif" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </div>
         </div>
       </header>

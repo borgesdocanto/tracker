@@ -206,7 +206,7 @@ export default function BrokerDashboard() {
             <ArrowLeft size={13} /> Volver
           </button>
           <div className="font-black text-lg tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
-            Insta<span style={{ color: RED }}>Coach</span>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </div>
         </div>
       </header>
