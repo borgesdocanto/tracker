@@ -54,11 +54,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await resend.emails.send({
         from: EMAIL_FROM,
         to: email,
-        subject: `${brokerName} te invitó a su equipo en InstaCoach`,
+        subject: `${brokerName} te invitó a su equipo en InmoCoach`,
         html: emailWrapper(`
           <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:900;color:#111827;margin:0 0 12px;">Fuiste invitado al equipo</h2>
           <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">
-            <strong>${brokerName}</strong> te invitó a unirte a su equipo en InstaCoach.<br/>
+            <strong>${brokerName}</strong> te invitó a unirte a su equipo en InmoCoach.<br/>
             Al aceptar, tu acceso queda cubierto por el plan del equipo — no pagás nada extra.
           </p>
           <a href="${inviteUrl}" style="display:inline-block;background:#aa0000;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">

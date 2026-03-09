@@ -7,11 +7,11 @@ const GREEN = "#16a34a";
 const STEPS = [
   {
     icon: <Zap size={28} style={{ color: RED }} />,
-    title: "Bienvenido a InstaCoach",
+    title: "Bienvenido a InmoCoach",
     content: (
       <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
         <p>
-          InstaCoach es tu coach de productividad inmobiliaria. Conecta con tu Google Calendar
+          InmoCoach es tu coach de productividad inmobiliaria. Conecta con tu Google Calendar
           y mide automáticamente tu actividad comercial real.
         </p>
         <p>

@@ -37,8 +37,8 @@ export default function ComoFunciona() {
   return (
     <div style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", background: "#fafafa", color: "#111" }}>
       <Head>
-        <title>Cómo funciona — InstaCoach</title>
-        <meta name="description" content="InstaCoach mide tu actividad comercial real desde Google Calendar. Descubrí el modelo IAC y cómo los mejores inmobiliarios del mercado generan resultados consistentes." />
+        <title>Cómo funciona — InmoCoach</title>
+        <meta name="description" content="InmoCoach mide tu actividad comercial real desde Google Calendar. Descubrí el modelo IAC y cómo los mejores inmobiliarios del mercado generan resultados consistentes." />
       </Head>
 
       {/* Top accent */}
@@ -82,7 +82,7 @@ export default function ComoFunciona() {
         <FadeIn delay={200}>
           <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-8">
             Los inmobiliarios que más ganan no tienen suerte — tienen un patrón de actividad.
-            InstaCoach lo mide, lo muestra y te ayuda a sostenerlo.
+            InmoCoach lo mide, lo muestra y te ayuda a sostenerlo.
           </p>
         </FadeIn>
         <FadeIn delay={300}>

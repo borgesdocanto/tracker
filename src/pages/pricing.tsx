@@ -102,7 +102,7 @@ export default function PricingPage({ livePricing }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>Planes — InstaCoach</title></Head>
+      <Head><title>Planes — InmoCoach</title></Head>
       <div className="h-0.5 w-full" style={{ background: RED }} />
 
       <header className="bg-white border-b border-gray-100">

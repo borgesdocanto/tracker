@@ -12,7 +12,7 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 
 async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string): Promise<string> {
   const firstName = name.split(" ")[0];
-  const prompt = `Sos Insta Coach, un coach de ventas inmobiliarias argentino, directo y motivador. Como si fueras un colega que sabe mucho y habla con confianza de igual a igual.
+  const prompt = `Sos Inmo Coach, un coach de ventas inmobiliarias argentino, directo y motivador. Como si fueras un colega que sabe mucho y habla con confianza de igual a igual.
 
 Analizá esta semana de ${firstName} y escribí un consejo de 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, usá su nombre cuando hables directamente. Motivá a mejorar la semana que viene con una acción concreta.
 
@@ -83,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const result = await resend.emails.send({
-      from: "Insta Coach <coach@instacoach.com.ar>",
+      from: "Inmo Coach <coach@inmocoach.com.ar>",
       to: session.user.email,
       subject: `Tu informe semanal — ${stats.productivityRate}% productividad · ${stats.weekDates}`,
       html,

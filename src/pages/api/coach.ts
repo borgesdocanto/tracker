@@ -123,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ? `el mes de ${periodLabel} (objetivo: ${iacGoalPeriodo} reuniones = ${IAC_GOAL}/semana × 4 semanas, ${PROCESOS_GOAL * 4} procesos nuevos)`
     : `la semana del ${periodLabel} (objetivo: ${IAC_GOAL} reuniones cara a cara, ${PROCESOS_GOAL} procesos nuevos)`;
 
-  const prompt = `Sos InstaCoach, entrenador de productividad comercial inmobiliaria. Analizás agendas reales con un modelo estadístico probado. ${nombreStr}
+  const prompt = `Sos InmoCoach, entrenador de productividad comercial inmobiliaria. Analizás agendas reales con un modelo estadístico probado. ${nombreStr}
 
 PRINCIPIO DEL MODELO:
 No hay carga horaria en el negocio inmobiliario — hay cantidad de reuniones cara a cara.
@@ -231,7 +231,7 @@ Después, en línea separada, el número crítico:
     });
 
   } catch (err: any) {
-    console.error("Insta Coach error:", err);
+    console.error("Inmo Coach error:", err);
     return res.status(500).json({ error: "Error al generar el análisis" });
   }
 }

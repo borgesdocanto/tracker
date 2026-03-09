@@ -73,7 +73,7 @@ export default function AceptarInvitacion() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4"
       style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>Invitación al equipo — InstaCoach</title></Head>
+      <Head><title>Invitación al equipo — InmoCoach</title></Head>
       <div className="h-0.5 fixed top-0 left-0 right-0" style={{ background: RED }} />
 
       <div className="w-full max-w-md">
@@ -112,7 +112,7 @@ export default function AceptarInvitacion() {
             {/* Beneficios */}
             <div className="px-6 py-5 space-y-4">
               <p className="text-sm text-gray-600 leading-relaxed">
-                <strong>{brokerLabel}</strong> te invitó a unirte a {teamLabel} en InstaCoach.
+                <strong>{brokerLabel}</strong> te invitó a unirte a {teamLabel} en InmoCoach.
                 Al aceptar, tu agenda empieza a trabajar para vos:
               </p>
 

@@ -30,7 +30,7 @@ export const PLANS: Record<PlanId, Plan> = {
     badge: "7 días gratis",
     features: [
       "Sync completo con Google Calendar",
-      "Insta Coach ilimitado",
+      "Inmo Coach ilimitado",
       "Dashboard de productividad",
       "Informe semanal por email",
       "Todo desbloqueado por 7 días",
@@ -47,7 +47,7 @@ export const PLANS: Record<PlanId, Plan> = {
     highlight: true,
     features: [
       "Todo del plan Free para siempre",
-      "Insta Coach ilimitado",
+      "Inmo Coach ilimitado",
       "Historial completo sin límite",
       "Informe semanal personalizado",
       "Soporte prioritario",

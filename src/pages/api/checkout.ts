@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           "Authorization": `Bearer ${process.env.MP_ACCESS_TOKEN}`,
         },
         body: JSON.stringify({
-          reason: `InstaCoach — Plan ${plan.name}`,
+          reason: `InmoCoach — Plan ${plan.name}`,
           auto_recurring: {
             frequency: 1,
             frequency_type: "months",

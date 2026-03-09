@@ -9,9 +9,9 @@ import { getPlanById } from "../../../lib/plans";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-// Genera el consejo del Insta Coach para el mail
+// Genera el consejo del Inmo Coach para el mail
 async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string): Promise<string> {
-  const prompt = `Sos Insta Coach, un coach de ventas inmobiliarias argentino, directo, motivador y sin vueltas. Como si fueras un colega que sabe mucho y te habla con confianza.
+  const prompt = `Sos Inmo Coach, un coach de ventas inmobiliarias argentino, directo, motivador y sin vueltas. Como si fueras un colega que sabe mucho y te habla con confianza.
 
 Analizá esta semana de ${name} y escribí un consejo de 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, hablale de vos a vos. Motivá a mejorar la semana que viene con una acción concreta.
 
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Paso 2: Calcular stats de la semana
       const stats = computeWeekStats(events, PRODUCTIVITY_GOAL);
 
-      // Paso 3: Generar consejo del Insta Coach
+      // Paso 3: Generar consejo del Inmo Coach
       console.log(`🧠 Generando consejo para ${sub.email}...`);
       const coachAdvice = await generateCoachAdvice(stats, sub.name || sub.email);
 
@@ -112,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       await resend.emails.send({
-        from: "Insta Coach <coach@instacoach.com.ar>",
+        from: "Inmo Coach <coach@inmocoach.com.ar>",
         to: sub.email,
         subject: `Tu semana en números: ${stats.productivityRate}% productividad — ${stats.weekDates}`,
         html,

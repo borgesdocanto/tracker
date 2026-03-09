@@ -5,7 +5,7 @@ export default function Document() {
     <Html lang="es">
       <Head>
         {/* Identidad */}
-        <meta name="application-name" content="InstaCoach" />
+        <meta name="application-name" content="InmoCoach" />
         <meta name="description" content="Sincronizá tu agenda, medí tus reuniones cara a cara y recibí feedback real de tu negocio cada semana." />
         <meta name="theme-color" content="#ffffff" />
 
@@ -18,19 +18,19 @@ export default function Document() {
 
         {/* Open Graph — redes sociales */}
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="InstaCoach" />
-        <meta property="og:title" content="InstaCoach — El 80% trabaja. El 20% produce." />
+        <meta property="og:site_name" content="InmoCoach" />
+        <meta property="og:title" content="InmoCoach — El 80% trabaja. El 20% produce." />
         <meta property="og:description" content="Sincronizá tu agenda, medí tus reuniones cara a cara y recibí feedback real de tu negocio cada semana." />
-        <meta property="og:image" content="https://instacoach.com.ar/og-image.png" />
+        <meta property="og:image" content="https://inmocoach.com.ar/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:url" content="https://instacoach.com.ar" />
+        <meta property="og:url" content="https://inmocoach.com.ar" />
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="InstaCoach — El 80% trabaja. El 20% produce." />
+        <meta name="twitter:title" content="InmoCoach — El 80% trabaja. El 20% produce." />
         <meta name="twitter:description" content="Sincronizá tu agenda, medí tus reuniones cara a cara y recibí feedback real de tu negocio cada semana." />
-        <meta name="twitter:image" content="https://instacoach.com.ar/og-image.png" />
+        <meta name="twitter:image" content="https://inmocoach.com.ar/og-image.png" />
 
         {/* Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

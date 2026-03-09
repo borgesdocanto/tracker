@@ -8,7 +8,7 @@ export default function ExpiredPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#f0f9ff" }}>
-      <Head><title>Tu prueba terminó — InstaCoach</title></Head>
+      <Head><title>Tu prueba terminó — InmoCoach</title></Head>
       <div className="h-1 fixed top-0 left-0 right-0"
         style={{ background: `linear-gradient(90deg, ${BRAND.color}, ${BRAND.colorDark})` }} />
 
@@ -19,7 +19,7 @@ export default function ExpiredPage() {
             style={{ background: `linear-gradient(135deg, ${BRAND.color}, ${BRAND.colorDark})` }}>
             <Zap size={28} />
           </div>
-          <div className="font-black text-2xl" style={{ color: BRAND.color }}>InstaCoach</div>
+          <div className="font-black text-2xl" style={{ color: BRAND.color }}>InmoCoach</div>
         </div>
 
         {/* Card */}
@@ -33,13 +33,13 @@ export default function ExpiredPage() {
           </h1>
           <p className="text-slate-400 font-medium text-sm mb-6 leading-relaxed">
             Tuviste 7 días completos para sentir lo que es tener un coach activo.
-            Para seguir recibiendo tu informe semanal y usar el Insta Coach, activá tu plan.
+            Para seguir recibiendo tu informe semanal y usar el Inmo Coach, activá tu plan.
           </p>
 
           <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-left">
             <div className="font-black text-sm text-slate-700 mb-2">Plan Individual — USD 7/mes</div>
             <ul className="space-y-1.5">
-              {["Insta Coach ilimitado", "Informe semanal personalizado", "Historial completo", "Cancelás cuando querés"].map(f => (
+              {["Inmo Coach ilimitado", "Informe semanal personalizado", "Historial completo", "Cancelás cuando querés"].map(f => (
                 <li key={f} className="text-xs text-slate-500 font-medium flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: BRAND.color }} />
                   {f}

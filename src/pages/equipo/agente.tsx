@@ -74,7 +74,7 @@ export default function AgentDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>Detalle agente — InstaCoach</title></Head>
+      <Head><title>Detalle agente — InmoCoach</title></Head>
       <div className="h-0.5 w-full" style={{ background: RED }} />
 
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40">

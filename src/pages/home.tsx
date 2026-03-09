@@ -10,8 +10,8 @@ export default function Landing() {
   return (
     <div style={{ background: "#f9fafb", minHeight: "100vh", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", color: "#111827" }}>
       <Head>
-        <title>InstaCoach — El 80% trabaja. El 20% produce.</title>
-        <meta name="description" content="InstaCoach sincroniza tu Google Calendar, mide tus reuniones cara a cara y te da feedback real de tu negocio cada semana." />
+        <title>InmoCoach — El 80% trabaja. El 20% produce.</title>
+        <meta name="description" content="InmoCoach sincroniza tu Google Calendar, mide tus reuniones cara a cara y te da feedback real de tu negocio cada semana." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
         <style>{`
@@ -54,7 +54,7 @@ export default function Landing() {
             Dejá de adivinar<br /><span style={{ color: RED }}>cómo está tu negocio</span>
           </h1>
           <p className="f3" style={{ fontSize: "clamp(15px, 2vw, 18px)", color: "#6b7280", maxWidth: 540, margin: "0 auto 40px", lineHeight: 1.7 }}>
-            InstaCoach sincroniza tu agenda, mide tus reuniones cara a cara y te dice exactamente qué estás haciendo bien, qué perdés y cuál es la próxima acción concreta.
+            InmoCoach sincroniza tu agenda, mide tus reuniones cara a cara y te dice exactamente qué estás haciendo bien, qué perdés y cuál es la próxima acción concreta.
           </p>
           <div className="f4" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={() => router.push("/login")}
@@ -132,9 +132,9 @@ export default function Landing() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
             {[
-              { num: "01", icon: <Calendar size={18} style={{ color: RED }} />, title: "Conectás tu Google Calendar", desc: "Un solo click. Sin cargar nada manualmente. InstaCoach lee tus eventos y detecta automáticamente tus reuniones comerciales cara a cara." },
+              { num: "01", icon: <Calendar size={18} style={{ color: RED }} />, title: "Conectás tu Google Calendar", desc: "Un solo click. Sin cargar nada manualmente. InmoCoach lee tus eventos y detecta automáticamente tus reuniones comerciales cara a cara." },
               { num: "02", icon: <Target size={18} style={{ color: RED }} />, title: "Medimos lo que importa", desc: "Tasaciones, visitas, propuestas, cierres. Filtramos el ruido administrativo y te mostramos solo la actividad que genera negocio real." },
-              { num: "03", icon: <Brain size={18} style={{ color: RED }} />, title: "Tu coach te habla claro", desc: "Insta Coach analiza tu semana con IA y te dice en qué perfil caíste, qué oportunidades perdiste y cuál es la única acción que más impacto tiene." },
+              { num: "03", icon: <Brain size={18} style={{ color: RED }} />, title: "Tu coach te habla claro", desc: "Inmo Coach analiza tu semana con IA y te dice en qué perfil caíste, qué oportunidades perdiste y cuál es la única acción que más impacto tiene." },
             ].map((s, i) => (
               <div key={i} className="card" style={{ padding: 28 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -160,7 +160,7 @@ export default function Landing() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
             {[
               { icon: <BarChart2 size={16} style={{ color: RED }} />, title: "Dashboard semanal y mensual", desc: "Visualizá tu actividad real en calendario. Ves exactamente qué días fuiste productivo y cuáles solo estuviste ocupado." },
-              { icon: <Brain size={16} style={{ color: RED }} />, title: "Insta Coach con IA", desc: "Diagnóstico personalizado con tu actividad real. No frases genéricas — análisis específico de tu semana con acción concreta." },
+              { icon: <Brain size={16} style={{ color: RED }} />, title: "Inmo Coach con IA", desc: "Diagnóstico personalizado con tu actividad real. No frases genéricas — análisis específico de tu semana con acción concreta." },
               { icon: <Mail size={16} style={{ color: RED }} />, title: "Reporte semanal por email", desc: "Todos los lunes recibís tu semana anterior analizada. Arrancás la semana con datos, no con sensaciones." },
               { icon: <Users size={16} style={{ color: RED }} />, title: "Dashboard de equipo (Teams)", desc: "Para brokers: ves la actividad de todos tus agentes en un solo lugar. Sabés quién necesita coaching antes de que sea tarde." },
               { icon: <TrendingUp size={16} style={{ color: RED }} />, title: "Tendencia de 90 días", desc: "Gráfico de evolución para saber si estás mejorando o en caída libre. Los números no mienten." },
@@ -218,8 +218,8 @@ export default function Landing() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, maxWidth: 900, margin: "0 auto" }}>
             {[
-              { name: "Gratis", price: "$ 0", period: "7 días", desc: "Para conocer la experiencia completa", features: ["Google Calendar sync", "Dashboard semanal y mensual", "Insta Coach con IA", "Sin tarjeta de crédito"], cta: "Empezar ahora", highlight: false },
-              { name: "Individual", price: "$ 10.500", period: "/ mes", desc: "Para el inmobiliario que quiere crecer", features: ["Todo lo del plan Gratis", "Acceso permanente", "Reporte semanal por email", "Insta Coach ilimitado", "Historial completo"], cta: "Suscribirse", highlight: true },
+              { name: "Gratis", price: "$ 0", period: "7 días", desc: "Para conocer la experiencia completa", features: ["Google Calendar sync", "Dashboard semanal y mensual", "Inmo Coach con IA", "Sin tarjeta de crédito"], cta: "Empezar ahora", highlight: false },
+              { name: "Individual", price: "$ 10.500", period: "/ mes", desc: "Para el inmobiliario que quiere crecer", features: ["Todo lo del plan Gratis", "Acceso permanente", "Reporte semanal por email", "Inmo Coach ilimitado", "Historial completo"], cta: "Suscribirse", highlight: true },
               { name: "Teams", price: "$ 75.000", period: "/ mes", desc: "Para brokers con equipo de hasta 10", features: ["Todo lo de Individual", "Hasta 10 agentes incluidos", "Dashboard del broker", "Invitaciones por email", "Roles: Team Leader", "Adicionales: $ 10.500/agente"], cta: "Suscribir equipo", highlight: false },
             ].map((plan, i) => (
               <div key={i} style={{ background: plan.highlight ? "#111827" : "#fff", border: `1px solid ${plan.highlight ? "#111827" : "#e5e7eb"}`, borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", position: "relative", boxShadow: plan.highlight ? "0 8px 32px rgba(0,0,0,0.12)" : "none" }}>
@@ -275,7 +275,7 @@ export default function Landing() {
             <a href="/terminos" style={{ color: "#9ca3af", fontSize: 12 }}>Términos de uso</a>
             <a href="/login" style={{ color: "#9ca3af", fontSize: 12 }}>Iniciar sesión</a>
           </div>
-          <p style={{ color: "#d1d5db", fontSize: 12 }}>© 2025 InstaCoach · instacoach.com.ar</p>
+          <p style={{ color: "#d1d5db", fontSize: 12 }}>© 2025 InmoCoach · inmocoach.com.ar</p>
         </div>
       </footer>
     </div>

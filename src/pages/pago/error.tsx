@@ -6,7 +6,7 @@ export default function PagoError() {
   const router = useRouter();
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <Head><title>Error en el pago — InstaCoach</title></Head>
+      <Head><title>Error en el pago — InmoCoach</title></Head>
       <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100 text-center max-w-sm w-full">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
           <XCircle size={32} style={{ color: "#aa0000" }} />

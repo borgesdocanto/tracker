@@ -254,7 +254,7 @@ function MonthlyView({ summaries, monthOffset, onPrev, onNext }: {
   );
 }
 
-// ─── Insta Coach Panel ────────────────────────────────────────────────────────
+// ─── Inmo Coach Panel ────────────────────────────────────────────────────────
 function InstaCoacPanel({ data, calView, monthOffset, weekOffset, days = 30 }: { data: CalendarData; calView: "week" | "month"; monthOffset: number; weekOffset: number; days?: number }) {
   const [advice, setAdvice] = useState("");
   const [profile, setProfile] = useState("");
@@ -425,7 +425,7 @@ function InstaCoacPanel({ data, calView, monthOffset, weekOffset, days = 30 }: {
             <Brain size={15} className="text-gray-500" />
           </div>
           <div>
-            <div className="font-black text-sm text-gray-900">Insta Coach</div>
+            <div className="font-black text-sm text-gray-900">Inmo Coach</div>
             <div className="text-xs text-gray-400">
               {profile ? (
                 <span className="font-semibold" style={{ color: profileColor[profile] || "#6b7280" }}>
@@ -612,7 +612,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
       <Head>
-        <title>InstaCoach</title>
+        <title>InmoCoach</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
       </Head>
@@ -871,7 +871,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Insta Coach */}
+            {/* Inmo Coach */}
             <InstaCoacPanel data={data} calView={days < 30 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
           </>
         )}

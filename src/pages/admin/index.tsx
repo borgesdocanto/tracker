@@ -159,7 +159,7 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>Admin — InstaCoach</title></Head>
+      <Head><title>Admin — InmoCoach</title></Head>
       <div className="h-0.5 w-full" style={{ background: RED }} />
 
       {/* Header */}

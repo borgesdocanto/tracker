@@ -35,7 +35,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
           <tr><td>
             <p style="margin:0;font-size:13px;font-weight:700;color:#aa0000;">
               Te quedan ${daysLeft} día${daysLeft === 1 ? "" : "s"} de prueba gratuita.
-              <a href="https://instacoach.com.ar/pricing" style="color:#aa0000;text-decoration:underline;margin-left:6px;">Activá tu plan →</a>
+              <a href="https://inmocoach.com.ar/pricing" style="color:#aa0000;text-decoration:underline;margin-left:6px;">Activá tu plan →</a>
             </p>
           </td></tr>
         </table>
@@ -63,7 +63,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tu informe semanal — InstaCoach</title>
+  <title>Tu informe semanal — InmoCoach</title>
 </head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
@@ -148,7 +148,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
           </td>
         </tr>
 
-        <!-- Insta Coach -->
+        <!-- Inmo Coach -->
         <tr>
           <td style="background:#ffffff;padding:0 32px 28px;">
             <table width="100%" cellpadding="0" cellspacing="0"
@@ -156,7 +156,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
               <tr>
                 <td>
                   <p style="margin:0 0 14px;font-size:10px;font-weight:900;color:#aa0000;text-transform:uppercase;letter-spacing:2px;">
-                    Insta Coach
+                    Inmo Coach
                   </p>
                   ${adviceParts.map((part, i) => `
                     <p style="margin:0 0 ${i < adviceParts.length - 1 ? "12px" : "0"};font-size:14px;color:#374151;line-height:1.75;font-weight:${i === 0 ? "600" : "400"};">
@@ -172,7 +172,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
         <!-- CTA -->
         <tr>
           <td style="background:#ffffff;padding:0 32px 32px;text-align:center;">
-            <a href="https://instacoach.com.ar"
+            <a href="https://inmocoach.com.ar"
               style="display:inline-block;background:#aa0000;color:#ffffff;font-weight:900;font-size:14px;padding:15px 36px;border-radius:12px;text-decoration:none;letter-spacing:0.5px;">
               Ver mi dashboard completo →
             </a>
@@ -187,11 +187,11 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
             </p>
             <p style="margin:0 0 6px;font-size:11px;color:#9ca3af;line-height:1.7;">
               Este es un email automático — por favor no respondas este mensaje.<br>
-              Para consultas escribí a <a href="mailto:hola@instacoach.com.ar" style="color:#aa0000;text-decoration:none;">hola@instacoach.com.ar</a>
+              Para consultas escribí a <a href="mailto:hola@inmocoach.com.ar" style="color:#aa0000;text-decoration:none;">hola@inmocoach.com.ar</a>
             </p>
             <p style="margin:0;font-size:11px;color:#d1d5db;">
-              Recibís este mail porque usás InstaCoach ·
-              <a href="https://instacoach.com.ar" style="color:#9ca3af;text-decoration:none;">instacoach.com.ar</a>
+              Recibís este mail porque usás InmoCoach ·
+              <a href="https://inmocoach.com.ar" style="color:#9ca3af;text-decoration:none;">inmocoach.com.ar</a>
             </p>
           </td>
         </tr>

@@ -46,12 +46,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await resend.emails.send({
         from: EMAIL_FROM,
         to: inv.email,
-        subject: `Recordatorio: todavía podés unirte a ${displayName} en InstaCoach`,
+        subject: `Recordatorio: todavía podés unirte a ${displayName} en InmoCoach`,
         html: emailWrapper(`
           <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:900;color:#111827;margin:0 0 12px;">Tu invitación sigue esperando</h2>
           ${agencyName ? `<p style="color:#aa0000;font-size:12px;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;">${agencyName}</p>` : ""}
           <p style="color:#374151;font-size:14px;line-height:1.75;margin:0 0 16px;">
-            <strong>${brokerName}</strong> te invitó a InstaCoach y todavía no aceptaste.<br/>
+            <strong>${brokerName}</strong> te invitó a InmoCoach y todavía no aceptaste.<br/>
             Al unirte, recibís tu informe semanal automático y tenés visibilidad de tu propia actividad comercial.
           </p>
           <a href="${inviteUrl}" style="display:inline-block;background:#aa0000;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">

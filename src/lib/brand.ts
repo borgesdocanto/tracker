@@ -1,5 +1,5 @@
 export const BRAND = {
-  name: "InstaCoach",
+  name: "InmoCoach",
   tagline: "Tu coach inmobiliario siempre activo",
   description: "Sincronizá tu agenda, medí tu productividad y recibí coaching personalizado cada semana.",
   color: "#0ea5e9",
