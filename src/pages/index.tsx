@@ -1,5 +1,6 @@
 import { useSession, signOut } from "next-auth/react";
 import OnboardingModal from "../components/OnboardingModal";
+import StreakBadge from "../components/StreakBadge";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
@@ -29,6 +30,7 @@ interface CalendarData {
   dailySummaries: DaySummary[];
   recentEvents: CalendarEvent[];
   onboardingDone?: boolean;
+  streak?: { current: number; best: number; todayActive: boolean; lastActiveDate: string | null };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -775,6 +777,15 @@ export default function HomePage() {
                 tooltip='Operaciones cerradas. El evento debe tener la palabra "Firma" en el título (firma de contrato, firma de escritura, etc.).'
               />
             </div>
+
+            {/* Streak */}
+            {data.streak !== undefined && (
+              <StreakBadge
+                current={data.streak.current}
+                best={data.streak.best}
+                todayActive={data.streak.todayActive}
+              />
+            )}
 
             {/* Productividad + Trend */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
