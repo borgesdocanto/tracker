@@ -104,6 +104,7 @@ export default function BrokerDashboard() {
   const [newEmail, setNewEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState("");
+  const [extraAgentData, setExtraAgentData] = useState<{ checkoutUrl: string; newAmount: number; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);
@@ -148,15 +149,21 @@ export default function BrokerDashboard() {
 
   const invite = async () => {
     if (!newEmail.includes("@")) { setInviteMsg("Email inválido"); return; }
-    setInviting(true); setInviteMsg("");
+    setInviting(true); setInviteMsg(""); setExtraAgentData(null);
     try {
       const res = await fetch("/api/teams/invite", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: newEmail }),
       });
       const data = await res.json();
-      if (data.ok) { setInviteMsg(`Invitación enviada a ${newEmail}`); setNewEmail(""); loadTeam(); }
-      else setInviteMsg(data.error || "Error al invitar");
+      if (res.status === 402 && data.checkoutUrl) {
+        // Necesita pagar agente extra
+        setExtraAgentData({ checkoutUrl: data.checkoutUrl, newAmount: data.newAmount, message: data.message });
+      } else if (data.ok) {
+        setInviteMsg(`Invitación enviada a ${newEmail}`); setNewEmail(""); loadTeam();
+      } else {
+        setInviteMsg(data.error || "Error al invitar");
+      }
     } catch { setInviteMsg("Error de conexión"); }
     setInviting(false);
   };
@@ -395,6 +402,18 @@ export default function BrokerDashboard() {
               </button>
             </div>
             {inviteMsg && <p className={`text-xs mt-2 font-medium ${inviteMsg.includes("nviada") ? "text-green-600" : "text-red-500"}`}>{inviteMsg}</p>}
+            {extraAgentData && (
+              <div className="mt-3 p-4 rounded-xl border border-orange-200 bg-orange-50">
+                <p className="text-xs font-bold text-orange-800 mb-1">Agente extra</p>
+                <p className="text-xs text-orange-700 mb-3">{extraAgentData.message}</p>
+                <button
+                  onClick={() => window.location.href = extraAgentData.checkoutUrl}
+                  className="text-xs font-black px-4 py-2 rounded-xl text-white"
+                  style={{ background: "#ea580c" }}>
+                  Pagar $ {extraAgentData.newAmount.toLocaleString("es-AR")}/mes y agregar agente
+                </button>
+              </div>
+            )}
           </div>
         )}
 

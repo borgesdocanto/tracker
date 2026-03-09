@@ -96,6 +96,30 @@ export default function AdminPanel() {
     setPlansLoading(false);
   };
 
+  const updateDiscountOnly = async (planId: string) => {
+    const amount = planInputs[planId];
+    if (!amount || isNaN(Number(amount))) return;
+    setPlanSaving(planId);
+    setPlanMsg(prev => ({ ...prev, [planId]: "" }));
+    try {
+      const r = await fetch("/api/admin/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, amount: Number(amount), supabaseOnly: true }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        setPlanMsg(prev => ({ ...prev, [planId]: `✓ Descuento actualizado a ${Number(amount)}%` }));
+        loadPlans();
+      } else {
+        setPlanMsg(prev => ({ ...prev, [planId]: d.error || "Error" }));
+      }
+    } catch {
+      setPlanMsg(prev => ({ ...prev, [planId]: "Error de conexión" }));
+    }
+    setPlanSaving(null);
+  };
+
   const updatePlanPrice = async (planId: string) => {
     const amount = planInputs[planId];
     if (!amount || isNaN(Number(amount))) return;
@@ -478,7 +502,7 @@ export default function AdminPanel() {
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
                   { id: "individual", label: "Plan Individual", desc: "Inmobiliario solo" },
-                  { id: "teams", label: "Plan Teams", desc: "Broker con equipo" },
+                  { id: "teams", label: "Plan Teams", desc: "Broker con equipo — hasta 10 agentes" },
                 ].map(({ id, label, desc }) => {
                   const p = plans[id] || {};
                   return (

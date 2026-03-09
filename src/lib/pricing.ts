@@ -42,3 +42,19 @@ export async function updatePricing(planId: string, priceArs: number): Promise<v
 export function formatPriceARS(amount: number): string {
   return `$ ${amount.toLocaleString("es-AR")} / mes`;
 }
+
+// Calcular precio de agente extra = individual × (1 - descuento%)
+export function calcExtraAgentPrice(pricing: Record<string, PricingRow>): number {
+  const individualPrice = pricing["individual"]?.price_ars ?? 10500;
+  const discount = pricing["teams_extra_discount"]?.price_ars ?? 30;
+  return Math.round(individualPrice * (1 - discount / 100));
+}
+
+// Calcular monto total de suscripción Teams = base + extras
+export function calcTeamsTotal(pricing: Record<string, PricingRow>, totalAgents: number): number {
+  const basePrice = pricing["teams"]?.price_ars ?? 75000;
+  const extraAgentPrice = calcExtraAgentPrice(pricing);
+  const includedAgents = 10;
+  const extraAgents = Math.max(0, totalAgents - includedAgents);
+  return basePrice + extraAgents * extraAgentPrice;
+}

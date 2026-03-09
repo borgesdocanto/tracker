@@ -40,10 +40,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // POST — actualizar precio de un plan
   if (req.method === "POST") {
-    const { planId, amount } = req.body;
+    const { planId, amount, supabaseOnly } = req.body;
     if (!planId || !amount || isNaN(Number(amount))) {
       return res.status(400).json({ error: "planId y amount requeridos" });
     }
+
+    // supabaseOnly: solo actualiza Supabase (para descuentos y configs sin plan en MP)
+    if (supabaseOnly) {
+      await updatePricing(planId, Number(amount));
+      return res.status(200).json({ ok: true, planId, newAmount: Number(amount) });
+    }
+
     const mpId = MP_PLAN_IDS[planId];
     if (!mpId) return res.status(400).json({ error: "Plan ID no configurado en Vercel" });
 
@@ -58,15 +65,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const d = await r.json();
     if (!r.ok) return res.status(500).json({ error: d.message || "Error en MP" });
 
-    // Sincronizar precio en Supabase para que la landing lo lea en tiempo real
     const newAmount = d.auto_recurring?.transaction_amount;
     await updatePricing(planId, newAmount);
 
-    return res.status(200).json({
-      ok: true,
-      planId,
-      newAmount,
-    });
+    return res.status(200).json({ ok: true, planId, newAmount });
   }
 
   return res.status(405).end();
