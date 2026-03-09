@@ -109,6 +109,8 @@ export default function BrokerDashboard() {
   const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);
   const [brokerPlan, setBrokerPlan] = useState("free");
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const [removeLoading, setRemoveLoading] = useState<string | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const [agencyName, setAgencyName] = useState("");
   const [agencyInput, setAgencyInput] = useState("");
   const [agencySaving, setAgencySaving] = useState(false);
@@ -189,6 +191,21 @@ export default function BrokerDashboard() {
       else setAgencyMsg(data.error || "Error");
     } catch { setAgencyMsg("Error de conexión"); }
     setAgencySaving(false);
+  };
+
+  const removeAgent = async (memberEmail: string) => {
+    if (removeConfirm !== memberEmail) { setRemoveConfirm(memberEmail); return; }
+    setRemoveLoading(memberEmail); setRemoveConfirm(null);
+    try {
+      const res = await fetch("/api/teams/remove", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberEmail }),
+      });
+      const data = await res.json();
+      if (data.ok) loadTeam();
+      else alert(data.error);
+    } catch { alert("Error al remover agente"); }
+    setRemoveLoading(null);
   };
 
   const isOwner = requesterRole === "owner";
@@ -366,6 +383,21 @@ export default function BrokerDashboard() {
                         </select>
                       )}
                     </div>
+                  )}
+
+                  {/* Remover agente — solo owner */}
+                  {isOwner && agent.teamRole !== "owner" && (
+                    <button
+                      onClick={() => removeAgent(agent.email)}
+                      disabled={removeLoading === agent.email}
+                      title={removeConfirm === agent.email ? "Clic de nuevo para confirmar" : "Remover del equipo"}
+                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-lg transition-all ${
+                        removeConfirm === agent.email
+                          ? "bg-red-100 text-red-600"
+                          : "text-gray-300 hover:text-red-400"
+                      }`}>
+                      {removeLoading === agent.email ? <Loader2 size={12} className="animate-spin" /> : removeConfirm === agent.email ? "¿Confirmar?" : "✕"}
+                    </button>
                   )}
 
                   {/* Ver detalle */}
