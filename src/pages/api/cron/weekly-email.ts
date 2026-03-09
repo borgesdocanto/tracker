@@ -4,6 +4,7 @@ import { getAllActiveSubscriptions } from "../../../lib/subscription";
 import { fetchCalendarEvents, computeWeekStats } from "../../../lib/calendarSync";
 import { generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { getValidAccessToken } from "../../../lib/googleToken";
 import { FREEMIUM_DAYS, PRODUCTIVITY_GOAL } from "../../../lib/brand";
 import { getPlanById } from "../../../lib/plans";
 
@@ -61,22 +62,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   for (const sub of subscriptions) {
     try {
-      // Buscar el access token del usuario en Supabase
-      const { data: tokenData } = await supabaseAdmin
-        .from("subscriptions")
-        .select("google_access_token, google_refresh_token, created_at")
-        .eq("email", sub.email)
-        .single();
-
-      if (!tokenData?.google_access_token) {
-        console.log(`⚠️  Sin token para ${sub.email}`);
+      // Obtener token válido — refresca automáticamente si expiró
+      const accessToken = await getValidAccessToken(sub.email);
+      if (!accessToken) {
+        console.log(`⚠️  Sin token válido para ${sub.email}`);
         results.skipped++;
         continue;
       }
 
+      // Buscar created_at para calcular días freemium
+      const { data: tokenData } = await supabaseAdmin
+        .from("subscriptions")
+        .select("created_at")
+        .eq("email", sub.email)
+        .single();
+
       // Paso 1: Sync completo del calendar
       console.log(`📅 Sincronizando calendar de ${sub.email}...`);
-      const events = await fetchCalendarEvents(tokenData.google_access_token, 90);
+      const events = await fetchCalendarEvents(accessToken, 90);
 
       // Paso 2: Calcular stats de la semana
       const stats = computeWeekStats(events, PRODUCTIVITY_GOAL);
@@ -86,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const coachAdvice = await generateCoachAdvice(stats, sub.name || sub.email);
 
       // Paso 4: Calcular días restantes si es freemium
-      const createdAt = new Date(tokenData.created_at);
+      const createdAt = new Date(tokenData?.created_at ?? sub.email);
       const daysUsed = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
       const daysLeft = Math.max(0, Math.ceil(FREEMIUM_DAYS - daysUsed));
       const isExpiringSoon = sub.plan === "free" && daysLeft <= 2;

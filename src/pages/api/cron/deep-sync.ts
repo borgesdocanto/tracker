@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { syncAndPersist } from "../../../lib/calendarSync";
-import { google } from "googleapis";
+import { getValidAccessToken } from "../../../lib/googleToken";
 
 // Cron: domingos a las 3am UTC — sync profundo 365 días para todos los usuarios activos
 // vercel.json: "0 3 * * 0"
@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Traer todos los usuarios activos con token de Google
     const { data: users } = await supabaseAdmin
       .from("subscriptions")
-      .select("email, team_id, google_access_token, google_refresh_token, google_token_expiry")
+      .select("email, team_id")
       .eq("status", "active")
       .not("google_access_token", "is", null);
 
@@ -27,36 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const user of users) {
       try {
-        // Refrescar token si está vencido
-        let accessToken = user.google_access_token;
-
-        if (user.google_refresh_token) {
-          const oauth2 = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET
-          );
-          oauth2.setCredentials({
-            access_token: user.google_access_token,
-            refresh_token: user.google_refresh_token,
-          });
-
-          const expiry = user.google_token_expiry ? new Date(user.google_token_expiry).getTime() : 0;
-          const isExpired = expiry < Date.now() + 60000; // 1 min buffer
-
-          if (isExpired) {
-            const { credentials } = await oauth2.refreshAccessToken();
-            accessToken = credentials.access_token!;
-            // Guardar token actualizado
-            await supabaseAdmin
-              .from("subscriptions")
-              .update({
-                google_access_token: credentials.access_token,
-                google_token_expiry: credentials.expiry_date
-                  ? new Date(credentials.expiry_date).toISOString()
-                  : null,
-              })
-              .eq("email", user.email);
-          }
+        // Obtener token válido — refresca automáticamente si expiró
+        const accessToken = await getValidAccessToken(user.email);
+        if (!accessToken) {
+          results.skipped++;
+          continue;
         }
 
         // Sync profundo: 365 días
