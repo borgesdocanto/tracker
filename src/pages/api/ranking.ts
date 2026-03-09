@@ -24,17 +24,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let globalTotal = 0;
 
     if (mode === "iac_week") {
-      // Reuniones esta semana desde weekly_stats
+      // Reuniones esta semana desde weekly_stats, fallback a calendar_events
       const weekStart = getMonday();
-      const { data: global } = await supabaseAdmin
+      let global = null;
+      const { data: wsData } = await supabaseAdmin
         .from("weekly_stats")
         .select("email, iac")
         .eq("week_start", weekStart)
         .order("iac", { ascending: false });
 
+      if (wsData && wsData.length > 0) {
+        global = wsData;
+      } else {
+        // Fallback: contar eventos verdes esta semana desde calendar_events
+        const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
+        const { data: evData } = await supabaseAdmin
+          .from("calendar_events")
+          .select("user_email, is_green")
+          .eq("is_green", true)
+          .gte("start_time", weekStart)
+          .lte("start_time", weekEnd.toISOString().slice(0, 10));
+
+        if (evData) {
+          const byEmail: Record<string, number> = {};
+          for (const ev of evData) {
+            byEmail[ev.user_email] = (byEmail[ev.user_email] || 0) + 1;
+          }
+          global = Object.entries(byEmail)
+            .map(([e, count]) => ({ email: e, iac: Math.round((count / 15) * 100) }))
+            .sort((a, b) => b.iac - a.iac);
+        }
+      }
+
       globalTotal = global?.length ?? 0;
-      const myIdx = global?.findIndex(r => r.email === email) ?? -1;
-      globalRank = myIdx >= 0 ? myIdx + 1 : globalTotal + 1;
+      // Si el usuario no tiene datos esta semana, igual lo incluimos en último lugar
+      if (globalTotal === 0) { globalRank = 1; globalTotal = 1; }
+      else {
+        const myIdx = global!.findIndex(r => r.email === email);
+        globalRank = myIdx >= 0 ? myIdx + 1 : globalTotal + 1;
+        if (myIdx < 0) globalTotal += 1; // incluir al usuario aunque no tenga datos
+      }
 
     } else if (mode === "iac_avg") {
       // Promedio de las últimas 12 semanas
@@ -97,14 +126,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (mode === "iac_week") {
         const weekStart = getMonday();
-        const { data: teamStats } = await supabaseAdmin
+        const { data: wsTeam } = await supabaseAdmin
           .from("weekly_stats")
           .select("email, iac")
           .in("email", memberEmails)
           .eq("week_start", weekStart)
           .order("iac", { ascending: false });
 
-        const myIdx = teamStats?.findIndex(r => r.email === email) ?? -1;
+        let teamStats = wsTeam;
+        if (!teamStats || teamStats.length === 0) {
+          // Fallback: calendar_events esta semana
+          const { data: evTeam } = await supabaseAdmin
+            .from("calendar_events")
+            .select("user_email, is_green")
+            .eq("is_green", true)
+            .gte("start_time", weekStart)
+            .in("user_email", memberEmails);
+          if (evTeam) {
+            const byEmail: Record<string, number> = {};
+            for (const ev of evTeam) { byEmail[ev.user_email] = (byEmail[ev.user_email] || 0) + 1; }
+            teamStats = Object.entries(byEmail)
+              .map(([e, count]) => ({ email: e, iac: Math.round((count / 15) * 100) }))
+              .sort((a: any, b: any) => b.iac - a.iac) as any;
+          }
+        }
+
+        const myIdx = teamStats?.findIndex((r: any) => r.email === email) ?? -1;
         teamRank = myIdx >= 0 ? myIdx + 1 : teamTotal;
 
       } else if (mode === "iac_avg") {

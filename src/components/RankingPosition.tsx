@@ -88,6 +88,12 @@ export default function RankingPosition() {
         </div>
       ) : !data ? (
         <div className="px-5 py-8 text-center text-sm text-gray-400">No se pudo cargar el ranking.</div>
+      ) : data.globalTotal <= 1 ? (
+        <div className="px-5 py-8 text-center">
+          <div className="text-3xl mb-2">🚀</div>
+          <div className="text-sm font-bold text-gray-700">Sos el primero en el ranking</div>
+          <div className="text-xs text-gray-400 mt-1">A medida que más agentes se sumen vas a ver tu posición.</div>
+        </div>
       ) : (
         <div className={`grid ${data.hasTeam ? "grid-cols-2" : "grid-cols-1"} gap-px bg-gray-100 mt-3`}>
 
