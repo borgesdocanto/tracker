@@ -48,6 +48,14 @@ export default function AdminPanel() {
   const [actionMsg, setActionMsg] = useState<Record<string, string>>({});
   const [opsLoading, setOpsLoading] = useState(false);
   const [opsMsg, setOpsMsg] = useState("");
+  const [emailTemplate, setEmailTemplate] = useState<"welcome" | "weekly">("welcome");
+  const [emailRecipient, setEmailRecipient] = useState<"all" | "specific">("specific");
+  const [emailSearch, setEmailSearch] = useState("");
+  const [emailSearchResults, setEmailSearchResults] = useState<{email:string;name?:string}[]>([]);
+  const [emailSelected, setEmailSelected] = useState<string[]>([]);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{sent:number;failed:number;total:number;errors:string[]} | null>(null);
+  const [emailPreview, setEmailPreview] = useState<"welcome"|"weekly"|null>(null);
   const [plans, setPlans] = useState<Record<string, any>>({});
   const [plansLoading, setPlansLoading] = useState(false);
   const [planInputs, setPlanInputs] = useState<Record<string, string>>({});
@@ -94,6 +102,30 @@ export default function AdminPanel() {
       setPlanInputs(inputs);
     } catch {}
     setPlansLoading(false);
+  };
+
+  const searchEmailUsers = async (q: string) => {
+    if (!q) { setEmailSearchResults([]); return; }
+    try {
+      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(q)}&limit=8`);
+      const data = await res.json();
+      setEmailSearchResults((data.users || []).map((u: any) => ({ email: u.email, name: u.name })));
+    } catch {}
+  };
+
+  const sendEmails = async () => {
+    const recipients = emailRecipient === "all" ? "all" : emailSelected;
+    if (recipients !== "all" && (recipients as string[]).length === 0) { setOpsMsg("Seleccioná al menos un destinatario"); return; }
+    setEmailSending(true); setEmailResult(null); setOpsMsg("");
+    try {
+      const res = await fetch("/api/admin/send-email", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template: emailTemplate, recipients }),
+      });
+      const data = await res.json();
+      setEmailResult(data);
+    } catch { setOpsMsg("Error de conexión"); }
+    setEmailSending(false);
   };
 
   const updateDiscountOnly = async (planId: string) => {
@@ -435,53 +467,126 @@ export default function AdminPanel() {
         {/* OPERACIONES */}
         {tab === "ops" && (
           <div className="space-y-4">
-            {opsMsg && (
-              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-sm font-semibold text-green-600">
-                {opsMsg}
-              </div>
-            )}
+
+            {/* Operaciones del sistema */}
             <div className="grid sm:grid-cols-2 gap-4">
               {[
-                {
-                  title: "Deep Sync ahora",
-                  desc: "Sincroniza 365 días de calendario para todos los usuarios activos. Normalmente corre los domingos a las 3am.",
-                  action: "trigger_deep_sync",
-                  icon: <RefreshCw size={18} style={{ color: RED }} />,
-                  label: "Ejecutar deep sync",
-                },
-                {
-                  title: "Email semanal global",
-                  desc: "Envía el informe semanal a todos los usuarios activos. Normalmente corre los lunes a las 9am.",
-                  action: "send_weekly_email",
-                  icon: <Mail size={18} style={{ color: RED }} />,
-                  label: "Enviar emails ahora",
-                },
+                { title: "Deep Sync", desc: "Sincroniza 365 días de calendario para todos los usuarios. Corre automáticamente los domingos a las 3am.", action: "trigger_deep_sync", icon: <RefreshCw size={16} style={{ color: RED }} />, label: "Ejecutar ahora" },
               ].map((op, i) => (
                 <div key={i} className="bg-white border border-gray-100 rounded-2xl p-5">
                   <div className="flex items-start gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                      {op.icon}
-                    </div>
-                    <div>
-                      <div className="font-black text-sm text-gray-900">{op.title}</div>
-                      <div className="text-xs text-gray-400 mt-1 leading-relaxed">{op.desc}</div>
-                    </div>
+                    <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">{op.icon}</div>
+                    <div><div className="font-black text-sm text-gray-900">{op.title}</div><div className="text-xs text-gray-400 mt-0.5 leading-relaxed">{op.desc}</div></div>
                   </div>
                   <button onClick={() => triggerOp(op.action)} disabled={opsLoading}
-                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ background: RED }}>
-                    {opsLoading ? <Loader2 size={12} className="animate-spin" /> : null}
-                    {op.label}
+                    {opsLoading ? <Loader2 size={11} className="animate-spin" /> : null}{op.label}
                   </button>
                 </div>
               ))}
             </div>
 
-            {/* Enviar mail a usuario específico */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5">
-              <div className="font-black text-sm text-gray-900 mb-1">Enviar informe a usuario específico</div>
-              <div className="text-xs text-gray-400 mb-4">Útil para debugging o reenvíos manuales.</div>
-              <SendToUser onSend={(email) => triggerOp("send_weekly_email", email)} loading={opsLoading} />
+            {/* Centro de Emails */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <Mail size={16} style={{ color: RED }} />
+                <div className="font-black text-sm text-gray-900">Centro de Emails</div>
+              </div>
+
+              {/* Paso 1: Seleccionar template */}
+              <div className="mb-5">
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">1. Seleccioná el email</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: "welcome", label: "Bienvenida", desc: "Mail de bienvenida al registrarse", icon: "👋" },
+                    { id: "weekly",  label: "Informe semanal", desc: "Informe con IAC, stats y consejo del coach", icon: "📊" },
+                  ] as const).map(t => (
+                    <button key={t.id} onClick={() => setEmailTemplate(t.id)}
+                      className="text-left p-3 rounded-xl border-2 transition-all"
+                      style={{ borderColor: emailTemplate === t.id ? RED : "#e5e7eb", background: emailTemplate === t.id ? "#fff5f5" : "#f9fafb" }}>
+                      <div className="text-base mb-1">{t.icon}</div>
+                      <div className="text-xs font-black text-gray-900">{t.label}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paso 2: Destinatarios */}
+              <div className="mb-5">
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">2. Destinatarios</div>
+                <div className="flex gap-2 mb-3">
+                  {([
+                    { id: "specific", label: "Usuarios específicos" },
+                    { id: "all",      label: "Toda la base" },
+                  ] as const).map(r => (
+                    <button key={r.id} onClick={() => { setEmailRecipient(r.id); setEmailSelected([]); setEmailSearch(""); setEmailSearchResults([]); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      style={{ background: emailRecipient === r.id ? RED : "#f3f4f6", color: emailRecipient === r.id ? "white" : "#6b7280" }}>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+
+                {emailRecipient === "specific" && (
+                  <div>
+                    <div className="relative mb-2">
+                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                      <input value={emailSearch}
+                        onChange={e => { setEmailSearch(e.target.value); searchEmailUsers(e.target.value); }}
+                        placeholder="Buscar por email o nombre..."
+                        className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400" />
+                    </div>
+                    {emailSearchResults.length > 0 && (
+                      <div className="border border-gray-100 rounded-xl overflow-hidden mb-2">
+                        {emailSearchResults.map(u => (
+                          <button key={u.email} onClick={() => {
+                            if (!emailSelected.includes(u.email)) setEmailSelected(prev => [...prev, u.email]);
+                            setEmailSearch(""); setEmailSearchResults([]);
+                          }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0">
+                            <span className="font-medium text-gray-800">{u.name || u.email}</span>
+                            <span className="text-gray-400">{u.name ? u.email : ""}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {emailSelected.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {emailSelected.map(e => (
+                          <span key={e} className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-700">
+                            {e}
+                            <button onClick={() => setEmailSelected(prev => prev.filter(x => x !== e))} className="text-gray-400 hover:text-red-500 ml-0.5">✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {emailRecipient === "all" && (
+                  <div className="text-xs text-gray-400 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                    ⚠️ Se enviará a <strong>todos los usuarios activos</strong> en la base de datos.
+                  </div>
+                )}
+              </div>
+
+              {/* Resultado */}
+              {emailResult && (
+                <div className={`mb-4 px-4 py-3 rounded-xl text-xs font-semibold ${emailResult.failed === 0 ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+                  ✓ {emailResult.sent} enviados · {emailResult.failed} errores · {emailResult.total} total
+                  {emailResult.errors?.length > 0 && (
+                    <div className="mt-1 font-normal text-xs text-gray-500">{emailResult.errors.slice(0,3).join(" · ")}</div>
+                  )}
+                </div>
+              )}
+              {opsMsg && <div className="mb-4 text-xs text-red-500 font-semibold">{opsMsg}</div>}
+
+              {/* Enviar */}
+              <button onClick={sendEmails} disabled={emailSending || (emailRecipient === "specific" && emailSelected.length === 0)}
+                className="w-full py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ background: RED }}>
+                {emailSending ? <><Loader2 size={14} className="animate-spin" /> Enviando...</> : `Enviar "${emailTemplate === "welcome" ? "Bienvenida" : "Informe semanal"}" ${emailRecipient === "all" ? "a todos" : emailSelected.length > 0 ? `a ${emailSelected.length} usuario${emailSelected.length > 1 ? "s" : ""}` : ""}`}
+              </button>
             </div>
           </div>
         )}
