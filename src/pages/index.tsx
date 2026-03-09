@@ -1,6 +1,7 @@
 import { useSession, signOut } from "next-auth/react";
 import OnboardingModal from "../components/OnboardingModal";
 import StreakBadge from "../components/StreakBadge";
+import RankBadge from "../components/RankBadge";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
@@ -31,6 +32,7 @@ interface CalendarData {
   recentEvents: CalendarEvent[];
   onboardingDone?: boolean;
   streak?: { current: number; best: number; todayActive: boolean; lastActiveDate: string | null };
+  rankStats?: { rank: any; nextRank: any; activeWeeks: number; iacAvg: number; bestStreak: number };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

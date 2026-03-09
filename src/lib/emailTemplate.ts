@@ -15,6 +15,14 @@ interface WeeklyReportData {
   isExpiringSoon?: boolean;
   daysLeft?: number;
   streak?: number;
+  rankSlug?: string;
+  rankLabel?: string;
+  rankIcon?: string;
+  nextRankLabel?: string;
+  nextRankMinWeeks?: number;
+  nextRankMinIac?: number;
+  activeWeeks?: number;
+  iacAvg?: number;
 }
 
 export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
@@ -22,6 +30,8 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
     userName, weekDates, greenTotal, tasaciones, visitas, propuestas, cierres = 0,
     productiveDays, totalDays, productivityRate, coachAdvice,
     planName, isExpiringSoon, daysLeft, streak = 0,
+    rankSlug = "junior", rankLabel = "Agente Junior", rankIcon = "🏠",
+    nextRankLabel, nextRankMinWeeks, nextRankMinIac, activeWeeks = 0, iacAvg = 0,
   } = data;
 
   const firstName = userName?.split(" ")[0] ?? "Inmobiliario";
@@ -182,6 +192,34 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
           </td>
         </tr>
         `}
+
+        <!-- Rango -->
+        <tr>
+          <td style="background:#ffffff;padding:0 32px 20px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="border:1px solid #e5e7eb;border-radius:16px;padding:20px 24px;background:#f9fafb;">
+              <tr>
+                <td style="vertical-align:middle;">
+                  <p style="margin:0 0 4px;font-size:10px;font-weight:900;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;">Tu rango actual</p>
+                  <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:900;color:#111827;line-height:1;">
+                    ${rankIcon} ${rankLabel}
+                  </p>
+                  <p style="margin:6px 0 0;font-size:12px;color:#6b7280;">
+                    ${activeWeeks} semana${activeWeeks !== 1 ? "s" : ""} activa${activeWeeks !== 1 ? "s" : ""} · IAC promedio ${iacAvg}%
+                  </p>
+                  ${nextRankLabel ? `
+                  <p style="margin:10px 0 0;font-size:11px;color:#9ca3af;">
+                    Próximo: <strong style="color:#111827;">${nextRankLabel}</strong> — ${nextRankMinWeeks} semanas + IAC prom. ≥ ${nextRankMinIac}%
+                    · <a href="https://inmocoach.com.ar/rangos" style="color:#aa0000;text-decoration:none;">Ver todos los rangos →</a>
+                  </p>` : `
+                  <p style="margin:10px 0 0;font-size:11px;font-weight:700;color:#aa0000;">
+                    👑 Nivel máximo alcanzado — sos un Master Broker
+                  </p>`}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
         <!-- Inmo Coach -->
         <tr>
