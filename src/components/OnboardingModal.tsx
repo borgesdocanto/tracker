@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { X, Calendar, Target, Zap, CheckCircle } from "lucide-react";
+import { X, Calendar, Target, Zap, Users, CheckCircle, BarChart2, TrendingUp, Search } from "lucide-react";
 
 const RED = "#aa0000";
 const GREEN = "#16a34a";
+const PURPLE = "#7c3aed";
 
 const STEPS = [
   {
-    icon: <Zap size={28} style={{ color: RED }} />,
+    icon: <Zap size={32} style={{ color: RED }} />,
     title: "Bienvenido a InmoCoach",
     content: (
       <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
@@ -18,11 +19,27 @@ const STEPS = [
           No necesitás cargar nada manualmente — solo agendá tus reuniones como siempre
           y el sistema hace el resto.
         </p>
+        <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4 mt-2">
+          <div className="text-center">
+            <p className="font-black text-2xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>📅</p>
+            <p className="text-xs text-gray-400 mt-1">Tu calendar</p>
+          </div>
+          <div className="text-gray-300 text-lg">→</div>
+          <div className="text-center">
+            <p className="font-black text-2xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>🤖</p>
+            <p className="text-xs text-gray-400 mt-1">InmoCoach analiza</p>
+          </div>
+          <div className="text-gray-300 text-lg">→</div>
+          <div className="text-center">
+            <p className="font-black text-2xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>📊</p>
+            <p className="text-xs text-gray-400 mt-1">Tu IAC en tiempo real</p>
+          </div>
+        </div>
       </div>
     ),
   },
   {
-    icon: <Calendar size={28} style={{ color: GREEN }} />,
+    icon: <Calendar size={32} style={{ color: GREEN }} />,
     title: "Qué es un evento verde",
     content: (
       <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
@@ -32,21 +49,25 @@ const STEPS = [
         </p>
         <p>El sistema los detecta automáticamente si el título contiene palabras como:</p>
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {["Tasación", "Visita", "Reunión", "Propuesta", "Firma", "Captación", "Primera visita"].map(k => (
-            <span key={k} className="text-xs font-bold px-2 py-1 rounded-lg"
+          {["Tasación", "Visita", "Reunión", "Propuesta", "Firma", "Captación", "Primera visita", "Cliente"].map(k => (
+            <span key={k} className="text-xs font-bold px-2.5 py-1 rounded-lg"
               style={{ background: "#f0fdf4", color: GREEN }}>
               {k}
             </span>
           ))}
         </div>
-        <p className="text-xs text-gray-400">
-          También podés pintar el evento de verde en Google Calendar para que el sistema lo cuente.
-        </p>
+        <div className="bg-gray-50 rounded-xl p-3 flex items-start gap-3 mt-1">
+          <span className="text-base">💡</span>
+          <p className="text-xs text-gray-500">
+            También podés pintar el evento de <strong style={{ color: GREEN }}>verde</strong> en Google Calendar
+            para que el sistema lo cuente aunque no tenga esas palabras.
+          </p>
+        </div>
       </div>
     ),
   },
   {
-    icon: <Target size={28} style={{ color: RED }} />,
+    icon: <Target size={32} style={{ color: RED }} />,
     title: "El objetivo: IAC 100%",
     content: (
       <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
@@ -54,24 +75,63 @@ const STEPS = [
           El <strong>Índice de Actividad Comercial</strong> mide tu nivel de actividad
           comparado con lo esperable para un Top Producer.
         </p>
-        <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-          <div className="flex justify-between text-xs font-bold">
-            <span>IAC 100%</span>
-            <span style={{ color: GREEN }}>15 / semana · 3 por día</span>
+        <div className="rounded-xl overflow-hidden border border-gray-100 mt-2">
+          <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-100">
+            <span className="text-xs font-bold text-gray-700">IAC 100%</span>
+            <span className="text-xs font-black" style={{ color: GREEN }}>15 reuniones / semana</span>
           </div>
-          <div className="flex justify-between text-xs font-bold">
-            <span>Procesos nuevos</span>
-            <span style={{ color: RED }}>3 captaciones / semana</span>
+          <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-100">
+            <span className="text-xs font-bold text-gray-700">Meta diaria</span>
+            <span className="text-xs font-black" style={{ color: RED }}>3 por día · lunes a viernes</span>
           </div>
-          <div className="flex justify-between text-xs font-bold">
-            <span>Efectividad</span>
-            <span className="text-gray-500">6 procesos = 1 operación</span>
+          <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-100">
+            <span className="text-xs font-bold text-gray-700">Procesos nuevos</span>
+            <span className="text-xs font-black text-gray-500">3 captaciones / semana</span>
+          </div>
+          <div className="flex justify-between items-center px-4 py-3 bg-gray-50">
+            <span className="text-xs font-bold text-gray-700">Efectividad de mercado</span>
+            <span className="text-xs font-black text-gray-500">6 procesos = 1 operación</span>
           </div>
         </div>
-        <p>
+        <p className="text-xs text-gray-400">
           Tu dashboard ya tiene datos de tu calendario. Revisá tu IAC actual y
           establecé el hábito de las 15 reuniones semanales.
         </p>
+      </div>
+    ),
+  },
+  {
+    icon: <Users size={32} style={{ color: PURPLE }} />,
+    title: "¿Sos broker? Gestioná tu equipo",
+    content: (
+      <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+        <p>
+          Con el <strong style={{ color: PURPLE }}>Plan Teams</strong> tenés un dashboard completo
+          para gestionar la productividad de todos tus agentes en tiempo real.
+        </p>
+        <div className="space-y-2 mt-1">
+          <div className="flex items-start gap-3 bg-purple-50 rounded-xl px-4 py-3">
+            <BarChart2 size={16} style={{ color: PURPLE }} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-gray-800">Métricas individuales</p>
+              <p className="text-xs text-gray-500">Ves el IAC, reuniones y actividad de cada agente por separado.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 bg-purple-50 rounded-xl px-4 py-3">
+            <TrendingUp size={16} style={{ color: PURPLE }} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-gray-800">Ranking del equipo</p>
+              <p className="text-xs text-gray-500">Sabés quiénes están en racha y quiénes necesitan apoyo esta semana.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 bg-purple-50 rounded-xl px-4 py-3">
+            <Search size={16} style={{ color: PURPLE }} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-gray-800">Decisiones basadas en datos</p>
+              <p className="text-xs text-gray-500">Enfocá tu coaching donde más impacto tiene, no por intuición.</p>
+            </div>
+          </div>
+        </div>
       </div>
     ),
   },
@@ -90,40 +150,56 @@ export default function OnboardingModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
         style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
 
-        {/* Progress bar */}
-        <div className="h-1 w-full flex">
+        {/* Progress bar top */}
+        <div className="h-1.5 w-full flex gap-0.5 p-0">
           {STEPS.map((_, i) => (
-            <div key={i} className="flex-1 mx-0.5 rounded-full transition-all duration-300"
-              style={{ background: i <= step ? RED : "#e5e7eb" }} />
+            <div key={i} className="flex-1 transition-all duration-300"
+              style={{ background: i <= step ? RED : "#e5e7eb",
+                borderRadius: i === 0 ? "4px 0 0 0" : i === STEPS.length - 1 ? "0 4px 0 0" : "0" }} />
           ))}
         </div>
 
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-2">
+        <div className="flex items-start justify-between px-7 pt-6 pb-2">
           <div className="flex items-center gap-3">
             {current.icon}
-            <h2 className="font-black text-lg text-gray-900" style={{ fontFamily: "Georgia, serif" }}>
+            <h2 className="font-black text-xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>
               {current.title}
             </h2>
           </div>
           <button onClick={() => onClose(dontShow)}
-            className="text-gray-300 hover:text-gray-500 transition-colors mt-0.5">
+            className="text-gray-300 hover:text-gray-500 transition-colors mt-1 ml-2 shrink-0">
             <X size={18} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 min-h-[180px]">
+        <div className="px-7 py-4 min-h-[220px]">
           {current.content}
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-5 pt-2 border-t border-gray-50">
-          <label className="flex items-center gap-2 cursor-pointer mb-4 select-none">
+        <div className="px-7 pb-6 pt-3 border-t border-gray-50">
+
+          {/* Dots */}
+          <div className="flex justify-center gap-1.5 mb-4">
+            {STEPS.map((_, i) => (
+              <button key={i} onClick={() => setStep(i)}
+                className="rounded-full transition-all duration-200"
+                style={{
+                  width: i === step ? 20 : 8,
+                  height: 8,
+                  background: i === step ? RED : "#e5e7eb"
+                }} />
+            ))}
+          </div>
+
+          {/* Checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer mb-4 select-none justify-center">
             <div onClick={() => setDontShow(!dontShow)}
               className="w-4 h-4 rounded border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
               style={{ borderColor: dontShow ? RED : "#d1d5db", background: dontShow ? RED : "white" }}>
@@ -132,28 +208,20 @@ export default function OnboardingModal({ onClose }: Props) {
             <span className="text-xs text-gray-400">No volver a mostrar</span>
           </label>
 
+          {/* Buttons */}
           <div className="flex items-center justify-between">
-            <div className="flex gap-1">
-              {STEPS.map((_, i) => (
-                <button key={i} onClick={() => setStep(i)}
-                  className="w-2 h-2 rounded-full transition-all"
-                  style={{ background: i === step ? RED : "#e5e7eb" }} />
-              ))}
-            </div>
-            <div className="flex gap-2">
-              {step > 0 && (
-                <button onClick={() => setStep(s => s - 1)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors">
-                  Anterior
-                </button>
-              )}
-              <button
-                onClick={() => isLast ? onClose(dontShow) : setStep(s => s + 1)}
-                className="px-5 py-2 rounded-xl text-xs font-black text-white transition-all hover:opacity-90"
-                style={{ background: RED }}>
-                {isLast ? "Empezar" : "Siguiente"}
+            {step > 0 ? (
+              <button onClick={() => setStep(s => s - 1)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors">
+                ← Anterior
               </button>
-            </div>
+            ) : <div />}
+            <button
+              onClick={() => isLast ? onClose(dontShow) : setStep(s => s + 1)}
+              className="px-6 py-2.5 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 shadow-sm"
+              style={{ background: RED }}>
+              {isLast ? "¡Empezar ahora!" : "Siguiente →"}
+            </button>
           </div>
         </div>
       </div>
