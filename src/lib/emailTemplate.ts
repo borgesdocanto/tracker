@@ -14,13 +14,14 @@ interface WeeklyReportData {
   planName: string;
   isExpiringSoon?: boolean;
   daysLeft?: number;
+  streak?: number;
 }
 
 export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
   const {
     userName, weekDates, greenTotal, tasaciones, visitas, propuestas, cierres = 0,
     productiveDays, totalDays, productivityRate, coachAdvice,
-    planName, isExpiringSoon, daysLeft,
+    planName, isExpiringSoon, daysLeft, streak = 0,
   } = data;
 
   const firstName = userName?.split(" ")[0] ?? "Inmobiliario";
@@ -80,7 +81,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
         <tr>
           <td style="background:#ffffff;padding:28px 32px 20px;border-bottom:1px solid #f3f4f6;">
             <p style="margin:0;font-family:Georgia,serif;font-size:26px;font-weight:900;color:#111827;line-height:1;">
-              Insta<span style="color:#aa0000;">Coach</span>
+              Inmo<span style="color:#aa0000;">Coach</span>
             </p>
             <p style="margin:6px 0 0;font-size:12px;color:#9ca3af;font-weight:500;letter-spacing:0.5px;">
               Tu informe semanal · ${weekDates}
@@ -148,6 +149,40 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
           </td>
         </tr>
 
+        <!-- Racha -->
+        ${streak > 0 ? `
+        <tr>
+          <td style="padding:0 32px 20px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:${streak >= 5 ? "#fff7ed" : "#fef2f2"};border:1px solid ${streak >= 5 ? "#fed7aa" : "#fecaca"};border-radius:12px;padding:14px 20px;">
+              <tr>
+                <td>
+                  <p style="margin:0;font-size:13px;font-weight:700;color:${streak >= 5 ? "#ea580c" : "#aa0000"};">
+                    ${streak >= 5 ? "🔥" : "⚡"} Racha activa: <strong>${streak} días consecutivos</strong>
+                    ${streak >= 10 ? " — ¡récord en camino!" : streak >= 5 ? " — seguí así" : " — no la rompas"}
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        ` : `
+        <tr>
+          <td style="padding:0 32px 20px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 20px;">
+              <tr>
+                <td>
+                  <p style="margin:0;font-size:13px;color:#9ca3af;">
+                    💤 Sin racha activa — agendá al menos 2 reuniones por día para arrancar
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        `}
+
         <!-- Inmo Coach -->
         <tr>
           <td style="background:#ffffff;padding:0 32px 28px;">
@@ -156,7 +191,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
               <tr>
                 <td>
                   <p style="margin:0 0 14px;font-size:10px;font-weight:900;color:#aa0000;text-transform:uppercase;letter-spacing:2px;">
-                    Inmo Coach
+                    Inmo<span style="color:#aa0000;">Coach</span>
                   </p>
                   ${adviceParts.map((part, i) => `
                     <p style="margin:0 0 ${i < adviceParts.length - 1 ? "12px" : "0"};font-size:14px;color:#374151;line-height:1.75;font-weight:${i === 0 ? "600" : "400"};">
@@ -183,7 +218,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
         <tr>
           <td style="background:#f9fafb;border-top:1px solid #e5e7eb;border-radius:0 0 12px 12px;padding:24px 32px;text-align:center;">
             <p style="margin:0 0 6px;font-family:Georgia,serif;font-size:14px;font-weight:900;color:#111827;">
-              Insta<span style="color:#aa0000;">Coach</span>
+              Inmo<span style="color:#aa0000;">Coach</span>
             </p>
             <p style="margin:0 0 6px;font-size:11px;color:#9ca3af;line-height:1.7;">
               Este es un email automático — por favor no respondas este mensaje.<br>

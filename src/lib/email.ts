@@ -1,5 +1,5 @@
 // Remitente oficial
-export const EMAIL_FROM = "Inmo Coach <coach@inmocoach.com.ar>";
+export const EMAIL_FROM = "InmoCoach <coach@inmocoach.com.ar>";
 
 // Footer estándar para todos los mails
 export const EMAIL_FOOTER = `

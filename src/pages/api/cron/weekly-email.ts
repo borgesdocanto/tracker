@@ -2,28 +2,32 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Resend } from "resend";
 import { getAllActiveSubscriptions } from "../../../lib/subscription";
 import { fetchCalendarEvents, computeWeekStats } from "../../../lib/calendarSync";
+import { computeAndSaveStreak } from "../../../lib/streak";
 import { generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getValidAccessToken } from "../../../lib/googleToken";
-import { FREEMIUM_DAYS, PRODUCTIVITY_GOAL } from "../../../lib/brand";
+import { FREEMIUM_DAYS, PRODUCTIVITY_GOAL, IAC_WEEKLY_GOAL } from "../../../lib/brand";
 import { getPlanById } from "../../../lib/plans";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 // Genera el consejo del Inmo Coach para el mail
-async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string): Promise<string> {
+async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string, streak: number): Promise<string> {
   const prompt = `Sos Inmo Coach, un coach de ventas inmobiliarias argentino, directo, motivador y sin vueltas. Como si fueras un colega que sabe mucho y te habla con confianza.
 
 Analizá esta semana de ${name} y escribí un consejo de 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, hablale de vos a vos. Motivá a mejorar la semana que viene con una acción concreta.
 
 SEMANA:
-- Eventos productivos (verdes): ${stats.greenTotal} (meta diaria: ${PRODUCTIVITY_GOAL})
+- Reuniones cara a cara (eventos verdes): ${stats.greenTotal} de 15 que era la meta semanal
+- Meta diaria: ${PRODUCTIVITY_GOAL} reuniones por día (lunes a viernes)
+- IAC (Índice de Actividad Comercial): ${Math.round((stats.greenTotal / IAC_WEEKLY_GOAL) * 100)}% (${stats.greenTotal}/${IAC_WEEKLY_GOAL})
 - Tasaciones: ${stats.tasaciones}
-- Visitas: ${stats.visitas}  
+- Visitas: ${stats.visitas}
 - Propuestas de valor: ${stats.propuestas}
-- Días productivos: ${stats.productiveDays} de ${stats.totalDays} (${stats.productivityRate}%)
+- Días productivos: ${stats.productiveDays} de ${stats.totalDays}
+${streak > 0 ? `- Racha activa: ${streak} días consecutivos` : "- Sin racha activa esta semana"}
 
-Sé específico con los números. Si estuvo bien, celebralo y desafialo a más. Si estuvo flojo, decíselo sin rodeos y dale LA acción más importante para mejorar.`;
+Sé específico con los números. Hablá del IAC. Si estuvo bien, celebralo y desafialo a más. Si estuvo flojo, decíselo sin rodeos y dale LA acción más importante para la semana que viene. Nunca digas "meta de 10 eventos", siempre decí "15 reuniones semanales" o "3 por día".`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -40,9 +44,9 @@ Sé específico con los números. Si estuvo bien, celebralo y desafialo a más. 
       }),
     });
     const data = await res.json();
-    return data.content?.map((b: any) => b.text || "").join("") || "Esta semana es una oportunidad. Arrancá el lunes con 10 eventos verdes en el día y vas a sentir la diferencia.";
+    return data.content?.map((b: any) => b.text || "").join("") || "Esta semana es una oportunidad. Arrancá el lunes con 3 reuniones cara a cara por día y vas a sentir la diferencia.";
   } catch {
-    return "Esta semana es una oportunidad. Arrancá el lunes con 10 eventos verdes en el día y vas a sentir la diferencia.";
+    return "Esta semana es una oportunidad. Arrancá el lunes con 3 reuniones cara a cara por día y vas a sentir la diferencia.";
   }
 }
 
@@ -89,11 +93,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Paso 2: Calcular stats de la semana
       const stats = computeWeekStats(events, PRODUCTIVITY_GOAL);
 
-      // Paso 3: Generar consejo del Inmo Coach
-      console.log(`🧠 Generando consejo para ${sub.email}...`);
-      const coachAdvice = await generateCoachAdvice(stats, sub.name || sub.email);
+      // Paso 3: Calcular racha — agrupar eventos verdes por día
+      const dailySummaries = Object.entries(
+        events
+          .filter(e => e.isGreen)
+          .reduce((acc: Record<string, number>, e) => {
+            const day = e.start.slice(0, 10);
+            acc[day] = (acc[day] || 0) + 1;
+            return acc;
+          }, {})
+      ).map(([date, greenCount]) => ({ date, greenCount }));
+      const streakData = await computeAndSaveStreak(sub.email, dailySummaries);
 
-      // Paso 4: Calcular días restantes si es freemium
+      // Paso 4: Generar consejo del Inmo Coach
+      console.log(`🧠 Generando consejo para ${sub.email}...`);
+      const coachAdvice = await generateCoachAdvice(stats, sub.name || sub.email, streakData.current);
+
+      // Paso 5: Calcular días restantes si es freemium
       const createdAt = new Date(tokenData?.created_at ?? sub.email);
       const daysUsed = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
       const daysLeft = Math.max(0, Math.ceil(FREEMIUM_DAYS - daysUsed));
@@ -101,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const plan = getPlanById(sub.plan);
 
-      // Paso 5: Enviar mail
+      // Paso 6: Enviar mail
       const html = generateWeeklyEmailHtml({
         userName: sub.name || sub.email,
         email: sub.email,
@@ -117,10 +133,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         planName: plan.name,
         isExpiringSoon,
         daysLeft,
+        streak: streakData.current,
       });
 
       const { data: sendData, error: sendError } = await resend.emails.send({
-        from: "Inmo Coach <coach@inmocoach.com.ar>",
+        from: "InmoCoach <coach@inmocoach.com.ar>",
         to: sub.email,
         subject: `Tu semana en números: ${stats.productivityRate}% productividad — ${stats.weekDates}`,
         html,
