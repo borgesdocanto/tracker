@@ -239,22 +239,61 @@ export default function BrokerDashboard() {
         )}
 
         {/* KPIs del equipo */}
-        {overview && overview.totalAgents > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Reuniones esta semana", value: overview.weekTotalMeetings, sub: `equipo · meta ${overview.totalAgents * IAC_GOAL}`, color: "#111827" },
-              { label: "Productivos", value: overview.greenAgents, sub: "IAC ≥ 70%", color: "#16a34a" },
-              { label: "En construcción", value: overview.yellowAgents, sub: "IAC 40–70%", color: "#d97706" },
-              { label: "En riesgo", value: overview.redAgents, sub: "IAC < 40%", color: RED },
-            ].map((s, i) => (
-              <div key={i} className="bg-white border border-gray-100 rounded-2xl p-4">
-                <div className="text-xs text-gray-400 mb-1">{s.label}</div>
-                <div className="text-3xl font-black" style={{ fontFamily: "Georgia, serif", color: s.color }}>{s.value}</div>
-                <div className="text-xs text-gray-400 mt-1">{s.sub}</div>
+        {overview && overview.totalAgents > 0 && (() => {
+          const teamIac = overview.totalAgents > 0 ? Math.round(overview.weekTotalMeetings / (overview.totalAgents * IAC_GOAL) * 100) : 0;
+          const teamIacColor = teamIac >= 70 ? "#16a34a" : teamIac >= 40 ? "#d97706" : RED;
+          return (
+            <div className="space-y-3">
+              {/* IAC colectivo del equipo */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">IAC del equipo esta semana</div>
+                    <div className="flex items-end gap-3">
+                      <span className="font-black text-5xl" style={{ fontFamily: "Georgia, serif", color: teamIacColor }}>{teamIac}%</span>
+                      <span className="text-sm text-gray-400 mb-1">{overview.weekTotalMeetings} / {overview.totalAgents * IAC_GOAL} reuniones · {overview.totalAgents} agentes</span>
+                    </div>
+                  </div>
+                  <div className="text-right hidden sm:block">
+                    <div className="text-xs text-gray-400 mb-2">Distribución</div>
+                    <div className="flex gap-2">
+                      {[
+                        { v: overview.greenAgents, label: "🟢", title: "Productivos" },
+                        { v: overview.yellowAgents, label: "🟡", title: "En construcción" },
+                        { v: overview.redAgents, label: "🔴", title: "En riesgo" },
+                      ].map((d, i) => (
+                        <div key={i} title={d.title} className="text-center bg-gray-50 rounded-xl px-3 py-2">
+                          <div className="text-base">{d.label}</div>
+                          <div className="text-sm font-black text-gray-900">{d.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(teamIac, 100)}%`, background: teamIacColor }} />
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* KPIs individuales */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Reuniones equipo", value: overview.weekTotalMeetings, sub: `meta ${overview.totalAgents * IAC_GOAL}`, color: "#111827" },
+                  { label: "Productivos", value: overview.greenAgents, sub: "IAC ≥ 70%", color: "#16a34a" },
+                  { label: "En construcción", value: overview.yellowAgents, sub: "IAC 40–70%", color: "#d97706" },
+                  { label: "En riesgo", value: overview.redAgents, sub: "IAC < 40%", color: RED },
+                ].map((s, i) => (
+                  <div key={i} className="bg-white border border-gray-100 rounded-2xl p-4">
+                    <div className="text-xs text-gray-400 mb-1">{s.label}</div>
+                    <div className="text-3xl font-black" style={{ fontFamily: "Georgia, serif", color: s.color }}>{s.value}</div>
+                    <div className="text-xs text-gray-400 mt-1">{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Alertas: necesitan atención + en racha */}
         {agents.length > 0 && (
@@ -383,7 +422,7 @@ export default function BrokerDashboard() {
                         </div>
                         <div>
                           <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
-                          <div className="text-xs text-gray-400 mt-0.5">vs ant.</div>
+                          <div className="text-xs text-gray-400 mt-0.5">vs semana ant.</div>
                         </div>
                       </div>
 
@@ -414,11 +453,14 @@ export default function BrokerDashboard() {
                     {/* IAC bar + sparkline */}
                     <div className="ml-9 pl-3 grid grid-cols-2 sm:grid-cols-3 gap-4 items-center">
                       <div className="col-span-2 sm:col-span-2">
-                        <div className="text-xs text-gray-400 mb-1">IAC esta semana</div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-400">IAC esta semana</span>
+                          <span className="text-xs font-black" style={{ color }}>{agent.iac}% · {agent.weekTotal}/{IAC_GOAL} reuniones</span>
+                        </div>
                         <IACBar iac={agent.iac} color={color} />
                       </div>
                       <div className="hidden sm:block">
-                        <div className="text-xs text-gray-400 mb-1">Últimos 7 días</div>
+                        <div className="text-xs text-gray-400 mb-1">Actividad diaria</div>
                         <Sparkline data={agent.sparkline} color={color} />
                       </div>
                     </div>
