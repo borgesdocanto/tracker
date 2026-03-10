@@ -63,6 +63,7 @@ export default function BrokerDashboard() {
   const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);
   const [agencyName, setAgencyName] = useState("");
   const [showTeamLeaders, setShowTeamLeaders] = useState(true);
+  const [showBroker, setShowBroker] = useState(true);
   const [sortBy, setSortBy] = useState<"iac" | "trend" | "streak">("iac");
 
   useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [status, router]);
@@ -78,7 +79,7 @@ export default function BrokerDashboard() {
       const agRes = await fetch("/api/teams/agency");
       if (agRes.ok) { const ag = await agRes.json(); setAgencyName(ag.agencyName || ""); }
       const stRes = await fetch("/api/teams/settings");
-      if (stRes.ok) { const st = await stRes.json(); setShowTeamLeaders(st.showTeamLeaders ?? true); }
+      if (stRes.ok) { const st = await stRes.json(); setShowTeamLeaders(st.showTeamLeaders ?? true); setShowBroker(st.showBroker ?? true); }
     } catch {}
     setLoading(false);
   };
@@ -98,11 +99,14 @@ export default function BrokerDashboard() {
     return <div className="min-h-screen bg-white flex items-center justify-center"><Loader2 size={24} className="animate-spin" style={{ color: RED }} /></div>;
   }
 
-  const needsAttention = (showTeamLeaders ? agents : agents.filter(a => a.teamRole !== "team_leader")).filter(a => a.status === "red");
-  const onStreak = (showTeamLeaders ? agents : agents.filter(a => a.teamRole !== "team_leader")).filter(a => a.streak >= 3);
-  const visibleAgents = showTeamLeaders
-    ? agents
-    : agents.filter(a => a.teamRole !== "team_leader");
+  const filteredAgents = agents
+    .filter(a => showTeamLeaders || a.teamRole !== "team_leader")
+    .filter(a => showBroker || a.teamRole !== "owner");
+  const needsAttention = filteredAgents.filter(a => a.status === "red");
+  const onStreak = filteredAgents.filter(a => a.streak >= 3);
+  const visibleAgents = agents
+    .filter(a => showTeamLeaders || a.teamRole !== "team_leader")
+    .filter(a => showBroker || a.teamRole !== "owner");
   const sortedAgents = [...visibleAgents].sort((a, b) => {
     if (sortBy === "iac") return b.iac - a.iac;
     if (sortBy === "trend") return b.trendPct - a.trendPct;

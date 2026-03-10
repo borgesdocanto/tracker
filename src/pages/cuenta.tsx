@@ -54,6 +54,7 @@ export default function CuentaPage() {
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [showTeamLeaders, setShowTeamLeaders] = useState(true);
+  const [showBroker, setShowBroker] = useState(true);
   const [anonymizeGlobal, setAnonymizeGlobal] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
@@ -78,7 +79,7 @@ export default function CuentaPage() {
       if (d?.agencyName) { setAgencyName(d.agencyName); setAgencyInput(d.agencyName); }
     });
     fetch("/api/teams/settings").then(r => r.ok ? r.json() : null).then(d => {
-      if (d) { setShowTeamLeaders(d.showTeamLeaders ?? true); setAnonymizeGlobal(d.anonymizeGlobal ?? false); }
+      if (d) { setShowTeamLeaders(d.showTeamLeaders ?? true); setShowBroker(d.showBroker ?? true); setAnonymizeGlobal(d.anonymizeGlobal ?? false); }
     });
   }, [status]);
 
@@ -394,6 +395,18 @@ export default function CuentaPage() {
                     style={{ background: showTeamLeaders ? RED : "#e5e7eb" }}>
                     <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
                       style={{ left: showTeamLeaders ? "calc(100% - 22px)" : "2px" }} />
+                  </div>
+                </label>
+                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800">Mostrar Broker en ranking del equipo</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, el broker no aparece en el ranking interno</div>
+                  </div>
+                  <div onClick={() => { const v = !showBroker; setShowBroker(v); saveSetting("showBroker", v); }}
+                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
+                    style={{ background: showBroker ? RED : "#e5e7eb" }}>
+                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
+                      style={{ left: showBroker ? "calc(100% - 22px)" : "2px" }} />
                   </div>
                 </label>
                 <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">

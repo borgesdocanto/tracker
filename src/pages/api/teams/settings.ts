@@ -13,6 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!team) return res.status(404).json({ error: "Equipo no encontrado" });
     return res.status(200).json({
       showTeamLeaders: team.showTeamLeaders ?? true,
+      showBroker: team.showBroker ?? true,
       anonymizeGlobal: team.anonymizeGlobal ?? false,
     });
   }

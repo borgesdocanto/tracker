@@ -20,12 +20,13 @@ export interface Team {
   maxAgents: number;
   createdAt: string;
   showTeamLeaders?: boolean;  // mostrar TL en ranking del equipo (default true)
+  showBroker?: boolean;       // mostrar broker en ranking del equipo (default true)
   anonymizeGlobal?: boolean;  // anonimizar agentes en ranking global (default false)
 }
 
 export async function updateTeamSettings(
   ownerEmail: string,
-  settings: { showTeamLeaders?: boolean; anonymizeGlobal?: boolean }
+  settings: { showTeamLeaders?: boolean; showBroker?: boolean; anonymizeGlobal?: boolean }
 ): Promise<{ ok: boolean; error?: string }> {
   const { supabaseAdmin } = await import("./supabase");
   const { data: team } = await supabaseAdmin
@@ -33,6 +34,7 @@ export async function updateTeamSettings(
   if (!team) return { ok: false, error: "Equipo no encontrado" };
   const update: any = {};
   if (settings.showTeamLeaders !== undefined) update.show_team_leaders = settings.showTeamLeaders;
+  if (settings.showBroker !== undefined) update.show_broker = settings.showBroker;
   if (settings.anonymizeGlobal !== undefined) update.anonymize_global = settings.anonymizeGlobal;
   await supabaseAdmin.from("teams").update(update).eq("id", team.id);
   return { ok: true };
@@ -254,6 +256,7 @@ function mapTeam(data: any): Team {
     name: data.name,
     agencyName: data.agency_name || undefined,
     showTeamLeaders: data.show_team_leaders ?? true,
+    showBroker: data.show_broker ?? true,
     anonymizeGlobal: data.anonymize_global ?? false,
     ownerEmail: data.owner_email,
     maxAgents: data.max_agents,
