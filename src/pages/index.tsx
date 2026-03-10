@@ -4,6 +4,7 @@ import StreakBadge from "../components/StreakBadge";
 import RankBadge from "../components/RankBadge";
 import RankingPosition from "../components/RankingPosition";
 import PushPrompt from "../components/PushPrompt";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
@@ -549,6 +550,7 @@ export default function HomePage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { status: pushStatus, subscribe: subscribePush } = usePushNotifications();
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -569,6 +571,11 @@ export default function HomePage() {
     setShowOnboarding(false);
     if (dontShow) {
       await fetch("/api/onboarding", { method: "POST" });
+    }
+    // Pedir permiso de push al cerrar el onboarding
+    if (pushStatus === "default") {
+      // Pequeña pausa para que el modal desaparezca primero
+      setTimeout(() => subscribePush(), 800);
     }
   };
 
@@ -787,8 +794,8 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Push notifications prompt */}
-            <PushPrompt />
+            {/* Push notifications prompt — solo si ya cerró el onboarding */}
+            {!showOnboarding && <PushPrompt />}
 
             {/* Streak */}
             {data.streak !== undefined && (
