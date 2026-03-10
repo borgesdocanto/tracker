@@ -21,6 +21,8 @@ interface CuentaData {
   agencyName: string | null;
   teamRole: string | null;
   isOwner: boolean;
+  isVip?: boolean;
+  mpStatus?: string | null;
 }
 
 function formatDate(iso: string | null): string {
@@ -174,7 +176,7 @@ export default function CuentaPage() {
         </div>
 
         {/* Cambiar agentes — solo owners pagos */}
-        {isPaid && data.isOwner && (
+        {isPaid && data.isOwner && !data.isVip && (
           <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
             <button onClick={() => setShowSlider(!showSlider)}
               className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
@@ -229,8 +231,19 @@ export default function CuentaPage() {
           </div>
         )}
 
+        {/* VIP badge */}
+        {data.isVip && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+            <span className="text-2xl">👑</span>
+            <div>
+              <p className="text-sm font-black text-amber-800">Cuenta VIP activa permanente</p>
+              <p className="text-xs text-amber-600 mt-0.5">Acceso completo sin vencimiento · Sin cobro</p>
+            </div>
+          </div>
+        )}
+
         {/* Cancelar */}
-        {isPaid && (
+        {isPaid && !data.isVip && (
           <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
             <button onClick={() => setShowCancel(!showCancel)}
               className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">

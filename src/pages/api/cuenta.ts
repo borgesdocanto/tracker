@@ -24,6 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ── GET — datos de cuenta ──────────────────────────────────────────────────
   if (req.method === "GET") {
+    const { isVipEmail } = await import("../../lib/plans");
+    const { SUPER_ADMIN_EMAIL } = await import("../../lib/brand");
+    const isVip = isVipEmail(email) || email === SUPER_ADMIN_EMAIL;
+
     const { data: sub } = await supabaseAdmin
       .from("subscriptions")
       .select("*, teams(agency_name, max_agents)")
@@ -31,6 +35,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (!sub) return res.status(404).json({ error: "No encontrado" });
+
+    // VIP / super admin — cuenta activa permanente sin MP
+    if (isVip) {
+      let agentCount = 1;
+      if (sub.team_role === "owner" && sub.team_id) {
+        const { count } = await supabaseAdmin
+          .from("subscriptions")
+          .select("email", { count: "exact" })
+          .eq("team_id", sub.team_id);
+        agentCount = count || 1;
+      }
+      const { getTierForAgents, calcTeamsTotal, pricePerAgent } = await import("../../lib/pricing");
+      const tier = getTierForAgents(agentCount);
+      return res.status(200).json({
+        plan: sub.plan,
+        status: "active",
+        agentCount,
+        total: calcTeamsTotal(BASE_PRICE, agentCount),
+        tier: tier.label,
+        discountPct: tier.discountPct,
+        currentPeriodEnd: null,
+        nextPaymentDate: null,
+        mpSubscriptionId: null,
+        mpStatus: "vip",
+        agencyName: sub.teams?.agency_name || null,
+        teamRole: sub.team_role,
+        isOwner: sub.team_role === "owner",
+        isVip: true,
+      });
+    }
 
     // Contar agentes del equipo si es owner
     let agentCount = 1;
