@@ -2,9 +2,9 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Users, User, AlertTriangle, Loader2, ChevronDown, ChevronUp, CheckCircle, UserPlus, Mail, Clock, Shield, X } from "lucide-react";
+import { ArrowLeft, Users, User, AlertTriangle, Loader2, CheckCircle, UserPlus, Mail, Clock, Shield, X, ChevronUp, ChevronDown } from "lucide-react";
 import TeamsPricingWidget from "../components/TeamsPricingWidget";
-import { VOLUME_TIERS, calcTeamsTotal, pricePerAgent, formatPriceARS, agentsToNextTier, getNextTier } from "../lib/pricing";
+import { pricePerAgent, formatPriceARS } from "../lib/pricing";
 
 const RED = "#aa0000";
 const BASE_PRICE = 10500;
@@ -36,8 +36,6 @@ export default function CuentaPage() {
   const { data: session, status } = useSession();
   const [data, setData] = useState<CuentaData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [agentSlider, setAgentSlider] = useState(1);
-  const [showSlider, setShowSlider] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -67,7 +65,7 @@ export default function CuentaPage() {
     if (status !== "authenticated") return;
     fetch("/api/cuenta")
       .then(r => r.json())
-      .then(d => { setData(d); setAgentSlider(d.agentCount || 1); })
+      .then(d => { setData(d); })
       .finally(() => setLoading(false));
     // Load team management data if owner
     fetch("/api/teams/invite").then(r => r.ok ? r.json() : null).then(d => {
@@ -84,17 +82,6 @@ export default function CuentaPage() {
     });
   }, [status]);
 
-  const handleChangeAgents = async () => {
-    setActionLoading(true);
-    const res = await fetch("/api/cuenta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "change_agents", agentCount: agentSlider }),
-    });
-    const d = await res.json();
-    setActionLoading(false);
-    if (d.checkoutUrl) window.location.href = d.checkoutUrl;
-  };
 
   const handleCancel = async () => {
     if (cancelConfirm.toLowerCase() !== "cancelar") return;
@@ -164,11 +151,6 @@ export default function CuentaPage() {
   if (!data) return null;
 
   const isPaid = (data.plan !== "free" && data.status === "active") || data.isVip === true;
-  const newTotal = calcTeamsTotal(BASE_PRICE, agentSlider);
-  const newPerAgent = pricePerAgent(BASE_PRICE, agentSlider);
-  const sliderChanged = agentSlider !== data.agentCount;
-  const toNext = agentsToNextTier(agentSlider);
-  const nextTier = getNextTier(agentSlider);
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
@@ -248,61 +230,7 @@ export default function CuentaPage() {
           )}
         </div>
 
-        {/* Cambiar agentes — solo owners pagos */}
-        {isPaid && data.isOwner && !data.isVip && (
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-            <button onClick={() => setShowSlider(!showSlider)}
-              className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-2">
-                <Users size={15} style={{ color: RED }} />
-                <span className="font-bold text-sm text-gray-800">Cambiar cantidad de agentes</span>
-              </div>
-              {showSlider ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
-            </button>
 
-            {showSlider && (
-              <div className="px-5 pb-5 border-t border-gray-50">
-                <div className="pt-4 space-y-4">
-                  <div className="flex items-center gap-4">
-                    <input type="range" min={1} max={30} value={agentSlider}
-                      onChange={e => setAgentSlider(Number(e.target.value))}
-                      className="flex-1 accent-red-700" />
-                    <div className="w-16 text-center">
-                      <span className="font-black text-2xl" style={{ fontFamily: "Georgia, serif", color: RED }}>{agentSlider}</span>
-                      <div className="text-xs text-gray-400">agentes</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 rounded-xl p-3 text-center">
-                      <div className="text-xs text-gray-400 mb-1">Total nuevo</div>
-                      <div className="font-black text-xl" style={{ fontFamily: "Georgia, serif", color: RED }}>{formatPriceARS(newTotal)}</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 text-center">
-                      <div className="text-xs text-gray-400 mb-1">Por agente</div>
-                      <div className="font-black text-xl" style={{ fontFamily: "Georgia, serif", color: RED }}>{formatPriceARS(newPerAgent)}</div>
-                    </div>
-                  </div>
-
-                  {nextTier && toNext === 1 && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs font-bold text-amber-700">
-                      🔥 Con 1 agente más todos bajan a {formatPriceARS(pricePerAgent(BASE_PRICE, nextTier.minAgents))}/agente
-                    </div>
-                  )}
-
-                  {sliderChanged && (
-                    <button onClick={handleChangeAgents} disabled={actionLoading}
-                      className="w-full py-3 rounded-xl font-black text-white text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-                      style={{ background: RED }}>
-                      {actionLoading ? <Loader2 size={14} className="animate-spin" /> : null}
-                      {agentSlider > data.agentCount ? `Sumar agentes → ${formatPriceARS(newTotal)}/mes` : `Reducir a ${agentSlider} agentes → ${formatPriceARS(newTotal)}/mes`}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* VIP badge */}
         {data.isVip && (
