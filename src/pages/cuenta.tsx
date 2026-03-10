@@ -2,7 +2,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Users, User, CreditCard, AlertTriangle, Loader2, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
+import { ArrowLeft, Users, User, AlertTriangle, Loader2, ChevronDown, ChevronUp, CheckCircle, UserPlus, Mail, Clock, Shield, X } from "lucide-react";
+import TeamsPricingWidget from "../components/TeamsPricingWidget";
 import { VOLUME_TIERS, calcTeamsTotal, pricePerAgent, formatPriceARS, agentsToNextTier, getNextTier } from "../lib/pricing";
 
 const RED = "#aa0000";
@@ -41,6 +42,17 @@ export default function CuentaPage() {
   const [cancelConfirm, setCancelConfirm] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [success, setSuccess] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState("");
+  const [pending, setPending] = useState<any[]>([]);
+  const [agencyInput, setAgencyInput] = useState("");
+  const [agencyName, setAgencyName] = useState("");
+  const [agencySaving, setAgencySaving] = useState(false);
+  const [agencyMsg, setAgencyMsg] = useState("");
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
+  const [removeLoading, setRemoveLoading] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -52,6 +64,16 @@ export default function CuentaPage() {
       .then(r => r.json())
       .then(d => { setData(d); setAgentSlider(d.agentCount || 1); })
       .finally(() => setLoading(false));
+    // Load team management data if owner
+    fetch("/api/teams/invite").then(r => r.ok ? r.json() : null).then(d => {
+      if (d) { setPending(d.pending || []); }
+    });
+    fetch("/api/analytics/team").then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.agents) setTeamMembers(d.agents);
+    });
+    fetch("/api/teams/agency").then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.agencyName) { setAgencyName(d.agencyName); setAgencyInput(d.agencyName); }
+    });
   }, [status]);
 
   const handleChangeAgents = async () => {
@@ -78,6 +100,33 @@ export default function CuentaPage() {
     setSuccess("Suscripción cancelada. Seguís con acceso hasta el fin del período.");
     setShowCancel(false);
     setTimeout(() => router.push("/"), 3000);
+  };
+
+  const invite = async () => {
+    if (!newEmail.includes("@")) { setInviteMsg("Email inválido"); return; }
+    setInviting(true); setInviteMsg("");
+    const res = await fetch("/api/teams/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: newEmail }) });
+    const d = await res.json();
+    if (d.ok) { setInviteMsg(`Invitación enviada a ${newEmail}`); setNewEmail(""); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }
+    else setInviteMsg(d.error || "Error");
+    setInviting(false);
+  };
+
+  const removeAgent = async (email: string) => {
+    if (removeConfirm !== email) { setRemoveConfirm(email); return; }
+    setRemoveLoading(email); setRemoveConfirm(null);
+    const res = await fetch("/api/teams/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberEmail: email }) });
+    const d = await res.json();
+    if (d.ok) { fetch("/api/analytics/team").then(r=>r.json()).then(d=>{ if(d?.agents) setTeamMembers(d.agents); }); fetch("/api/cuenta").then(r=>r.json()).then(d=>setData(d)); }
+    setRemoveLoading(null);
+  };
+
+  const saveAgency = async () => {
+    setAgencySaving(true);
+    const res = await fetch("/api/teams/agency", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agencyName: agencyInput }) });
+    const d = await res.json();
+    if (d.ok) { setAgencyName(agencyInput); setAgencyMsg("Guardado"); setTimeout(() => setAgencyMsg(""), 2000); }
+    setAgencySaving(false);
   };
 
   if (status === "loading" || loading) {
@@ -240,6 +289,108 @@ export default function CuentaPage() {
               <p className="text-xs text-amber-600 mt-0.5">Acceso completo sin vencimiento · Sin cobro</p>
             </div>
           </div>
+        )}
+
+        {/* ── GESTIÓN DE EQUIPO (solo owners) ── */}
+        {isPaid && data.isOwner && (
+          <>
+            {/* Pricing widget */}
+            <TeamsPricingWidget
+              agentCount={data.agentCount}
+              onInvite={() => document.getElementById("invite-input")?.focus()}
+            />
+
+            {/* Invitar agente */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <UserPlus size={14} style={{ color: RED }} />
+                <span className="font-black text-sm text-gray-900">Invitar agente</span>
+                <span className="ml-auto text-xs text-gray-400">{data.agentCount} activos</span>
+              </div>
+              <div className="flex gap-2">
+                <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
+                <button onClick={invite} disabled={inviting || !newEmail}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-50 hover:opacity-90"
+                  style={{ background: RED }}>
+                  {inviting ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                  {inviting ? "Enviando..." : "Invitar"}
+                </button>
+              </div>
+              {inviteMsg && <p className={`text-xs mt-2 font-medium ${inviteMsg.includes("nviada") ? "text-green-600" : "text-red-500"}`}>{inviteMsg}</p>}
+            </div>
+
+            {/* Agentes activos */}
+            {teamMembers.length > 0 && (
+              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                  <Users size={13} className="text-gray-400" />
+                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Agentes activos</span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {teamMembers.filter((a:any) => a.teamRole !== "owner").map((a: any) => (
+                    <div key={a.email} className="flex items-center gap-3 px-5 py-3">
+                      {a.avatar ? <img src={a.avatar} className="w-8 h-8 rounded-full shrink-0" /> :
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">{(a.name||a.email)[0].toUpperCase()}</div>}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-800 truncate">{a.name || a.email}</div>
+                        {a.name && <div className="text-xs text-gray-400 truncate">{a.email}</div>}
+                      </div>
+                      <button onClick={() => removeAgent(a.email)} disabled={removeLoading === a.email}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${removeConfirm === a.email ? "bg-red-100 text-red-600" : "text-gray-300 hover:text-red-400 bg-gray-50"}`}>
+                        {removeLoading === a.email ? <Loader2 size={11} className="animate-spin" /> : removeConfirm === a.email ? "¿Confirmar?" : "Remover"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Invitaciones pendientes */}
+            {pending.length > 0 && (
+              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                  <Clock size={13} className="text-gray-400" />
+                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Invitaciones pendientes</span>
+                  <span className="ml-auto text-xs text-gray-400">{pending.length}</span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {pending.map((inv: any) => (
+                    <div key={inv.token} className="flex items-center gap-3 px-5 py-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">{inv.email[0].toUpperCase()}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-600 truncate">{inv.email}</div>
+                        <div className="text-xs text-gray-400">Pendiente de aceptar</div>
+                      </div>
+                      <button onClick={async () => { await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"cancel", token: inv.token}) }); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }}
+                        className="text-xs text-red-400 hover:text-red-600 bg-red-50 px-3 py-1.5 rounded-lg font-semibold">
+                        Cancelar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nombre de la inmobiliaria */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Shield size={14} className="text-gray-400" />
+                <span className="font-black text-sm text-gray-900">Nombre de la inmobiliaria</span>
+              </div>
+              <div className="flex gap-2">
+                <input value={agencyInput} onChange={e => setAgencyInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveAgency()}
+                  placeholder="Ej: GALAS Propiedades"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
+                <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 hover:opacity-90" style={{ background: RED }}>
+                  {agencySaving ? <Loader2 size={12} className="animate-spin" /> : "Guardar"}
+                </button>
+              </div>
+              {agencyMsg && <p className="text-xs mt-2 font-medium text-green-600">{agencyMsg}</p>}
+            </div>
+          </>
         )}
 
         {/* Cancelar */}
