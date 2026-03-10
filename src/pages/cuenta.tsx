@@ -102,6 +102,8 @@ export default function CuentaPage() {
   const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState<string | null>(null);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [showTeamLeaders, setShowTeamLeaders] = useState(true);
   const [showBroker, setShowBroker] = useState(true);
@@ -409,9 +411,19 @@ export default function CuentaPage() {
                         <div className="text-xs text-gray-400">Pendiente de aceptar · {new Date(inv.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={async () => { await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"resend", token: inv.token}) }); }}
-                          className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
-                          <Mail size={11} /> Reenviar
+                        <button onClick={async () => {
+                            setResendLoading(inv.token); setResendMsg(null);
+                            const r = await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"resend", token: inv.token}) });
+                            const d = await r.json();
+                            setResendLoading(null);
+                            setResendMsg(d.ok ? inv.token : null);
+                            if (!d.ok) alert(d.error || "Error al reenviar");
+                            setTimeout(() => setResendMsg(null), 3000);
+                          }}
+                          disabled={resendLoading === inv.token}
+                          className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                          {resendLoading === inv.token ? <Loader2 size={11} className="animate-spin" /> : resendMsg === inv.token ? <CheckCircle size={11} className="text-green-500" /> : <Mail size={11} />}
+                          {resendMsg === inv.token ? "Enviado" : "Reenviar"}
                         </button>
                         <button onClick={async () => { await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"cancel", token: inv.token}) }); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }}
                           className="text-xs font-semibold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors">
