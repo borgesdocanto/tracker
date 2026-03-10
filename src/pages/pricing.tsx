@@ -1,159 +1,199 @@
-import React from "react";
-import { useSession } from "next-auth/react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import Head from "next/head";
-import { CheckCircle, Users, ArrowLeft } from "lucide-react";
-import { PLANS, Plan } from "../lib/plans";
-import { formatPriceARS } from "../lib/pricing";
+import { VOLUME_TIERS, calcTeamsTotal, pricePerAgent, formatPriceARS, agentsToNextTier, getNextTier } from "../lib/pricing";
+import { ArrowLeft, Users, Check } from "lucide-react";
 
 const RED = "#aa0000";
+const BASE_PRICE = 10500;
 
-function PlanCard({ plan, livePrice, current, onSelect, loading }: {
-  plan: Plan;
-  livePrice?: number;
-  current?: string;
-  onSelect: (id: string) => void;
-  loading: string | null;
-}) {
-  const isCurrent = current === plan.id;
-  const isLoading = loading === plan.id;
-  const price = livePrice ?? plan.priceARS;
+function AgentSimulator() {
+  const [count, setCount] = useState(5);
+  const total = calcTeamsTotal(BASE_PRICE, count);
+  const perAgent = pricePerAgent(BASE_PRICE, count);
+  const toNext = agentsToNextTier(count);
+  const nextTier = getNextTier(count);
+  const saving = BASE_PRICE * count - total;
 
   return (
-    <div className={`bg-white rounded-2xl p-6 flex flex-col border transition-all ${plan.highlight ? "border-gray-900 shadow-lg" : "border-gray-100"}`}>
-      {plan.badge && (
-        <div className="text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg self-start mb-4"
-          style={{ background: "#111827", color: "#fff" }}>
-          {plan.badge}
-        </div>
-      )}
-
-      <div className="mb-1">
-        <div className="font-black text-lg text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{plan.name}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{plan.description}</div>
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100">
+        <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Calculá tu precio</div>
+        <div className="text-sm text-gray-500">¿Cuántos agentes tiene tu equipo?</div>
       </div>
+      <div className="px-6 py-5">
+        {/* Slider */}
+        <div className="flex items-center gap-4 mb-5">
+          <input type="range" min={1} max={30} value={count} onChange={e => setCount(Number(e.target.value))}
+            className="flex-1 accent-red-700" />
+          <div className="w-16 text-center">
+            <span className="font-black text-2xl" style={{ fontFamily: "Georgia, serif", color: RED }}>{count}</span>
+            <div className="text-xs text-gray-400">agentes</div>
+          </div>
+        </div>
 
-      <div className="my-4 flex items-end gap-1">
-        {price === 0 ? (
-          <span className="font-black text-3xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Gratis</span>
-        ) : (
-          <>
-            <span className="font-black text-3xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>
-              $ {price.toLocaleString("es-AR")}
-            </span>
-            <span className="text-sm text-gray-400 mb-1">/ mes</span>
-          </>
+        {/* Resultado */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-gray-50 rounded-xl p-4 text-center">
+            <div className="text-xs text-gray-400 mb-1">Total por mes</div>
+            <div className="font-black text-2xl" style={{ fontFamily: "Georgia, serif", color: RED }}>{formatPriceARS(total)}</div>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4 text-center">
+            <div className="text-xs text-gray-400 mb-1">Por agente</div>
+            <div className="font-black text-2xl" style={{ fontFamily: "Georgia, serif", color: RED }}>{formatPriceARS(perAgent)}</div>
+            {saving > 0 && <div className="text-xs text-green-600 font-bold mt-1">Ahorrás {formatPriceARS(saving)}/mes</div>}
+          </div>
+        </div>
+
+        {/* Incentivo */}
+        {nextTier && toNext !== null && (
+          <div className="rounded-xl px-4 py-3 text-sm"
+            style={{ background: toNext === 1 ? "#fffbeb" : "#fff8f8", border: `1px solid ${toNext === 1 ? "#fde68a" : "#fee2e2"}` }}>
+            {toNext === 1
+              ? <span className="font-black text-amber-700">🔥 Con 1 agente más todos bajan a {formatPriceARS(pricePerAgent(BASE_PRICE, nextTier.minAgents))}/agente — pagás lo mismo</span>
+              : <span className="font-bold" style={{ color: RED }}>💡 Faltan {toNext} agentes para -{nextTier.discountPct}% en todo el equipo</span>
+            }
+          </div>
+        )}
+        {!nextTier && (
+          <div className="rounded-xl px-4 py-3 bg-yellow-50 border border-yellow-200 text-sm font-black text-yellow-700 text-center">
+            👑 Máximo descuento — -40% activo
+          </div>
         )}
       </div>
-
-      <ul className="space-y-2 mb-6 flex-1">
-        {plan.features.map((f, i) => (
-          <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
-            <CheckCircle size={13} className="shrink-0 mt-0.5" style={{ color: "#16a34a" }} />
-            {f}
-          </li>
-        ))}
-      </ul>
-
-      <button
-        onClick={() => onSelect(plan.id)}
-        disabled={isCurrent || isLoading}
-        className="w-full py-3 rounded-xl text-sm font-black transition-all disabled:opacity-50"
-        style={plan.highlight
-          ? { background: "#111827", color: "#fff" }
-          : { background: "#f3f4f6", color: "#374151" }}>
-        {isLoading ? "Procesando..." : isCurrent ? "Plan actual" : price === 0 ? "Empezar gratis" : `Suscribirse — $ ${price.toLocaleString("es-AR")}/mes`}
-      </button>
     </div>
   );
 }
 
 export default function PricingPage() {
-  const [livePricing, setLivePricing] = React.useState<Record<string, number>>({ individual: 10500, teams: 75000 });
-  const { data: session } = useSession();
   const router = useRouter();
-  const [loading, setLoading] = useState<string | null>(null);
-  const current = router.query.current as string ?? "free";
-
-  const handleSelect = async (planId: string) => {
-    if (planId === "free") { router.push("/"); return; }
-    if (!session) { router.push("/login"); return; }
-    setLoading(planId);
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
-      });
-      const data = await res.json();
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-    } catch { alert("Error al procesar. Intentá de nuevo."); }
-    setLoading(null);
-  };
-
-  // Precio de Teams para mostrar en la nota de info
-  const teamsPrice = livePricing["teams"] ?? 75000;
-  const indPrice = livePricing["individual"] ?? 10500;
-  const perAgent = Math.round(teamsPrice / 10);
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>Planes — InmoCoach</title></Head>
-      <div className="h-0.5 w-full" style={{ background: RED }} />
+      <Head><title>Precios — InmoCoach</title></Head>
+      <div className="h-1 w-full" style={{ background: RED }} />
 
-      <header className="bg-white border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-4">
-          <button onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors mr-auto">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
+        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center gap-3">
+          <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors">
             <ArrowLeft size={13} /> Volver
           </button>
-          <div className="font-black text-lg tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
-            Inmo<span style={{ color: RED }}>Coach</span>
+          <div className="font-black text-lg ml-auto" style={{ fontFamily: "Georgia, serif" }}>
+            Precios · <span style={{ color: RED }}>InmoCoach</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-5 py-12">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black text-gray-900 mb-2" style={{ fontFamily: "Georgia, serif" }}>
-            Elegí tu plan
+      <main className="max-w-3xl mx-auto px-5 py-8 space-y-6">
+
+        {/* Hero */}
+        <div className="text-center py-4">
+          <h1 className="text-3xl font-black text-gray-900 mb-2" style={{ fontFamily: "Georgia, serif" }}>
+            Un precio que crece con vos
           </h1>
-          <p className="text-sm text-gray-400 max-w-md mx-auto">
-            7 días de acceso completo para vivir la experiencia. Después suscribite y se renueva automáticamente cada mes. Cancelás cuando querés.
-          </p>
+          <p className="text-gray-500 text-sm">Cuantos más agentes sumás, menos pagás por cada uno.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-          {Object.values(PLANS).map(plan => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              livePrice={livePricing[plan.id]}
-              current={current}
-              onSelect={handleSelect}
-              loading={loading}
-            />
-          ))}
-        </div>
-
-        <div className="mt-6 bg-white border border-gray-100 rounded-2xl p-5 flex items-start gap-4">
-          <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-            <Users size={14} className="text-gray-500" />
+        {/* Plan Individual */}
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+          <div className="px-6 py-5 flex items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Individual</div>
+              <div className="text-xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Para el agente solo</div>
+              <p className="text-sm text-gray-500 mt-1">Dashboard personal, IAC, racha, ranking global.</p>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="font-black text-3xl" style={{ fontFamily: "Georgia, serif", color: RED, lineHeight: 1 }}>
+                {formatPriceARS(BASE_PRICE)}
+              </div>
+              <div className="text-xs text-gray-400 mt-1">/mes</div>
+            </div>
           </div>
-          <div>
-            <div className="font-black text-sm text-gray-900 mb-1">Cómo funciona Teams</div>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Con Teams activado cargás los emails de tus inmobiliarios y el sistema les manda una invitación.
-              Hasta 10 agentes incluidos en $ {teamsPrice.toLocaleString("es-AR")}/mes — son $ {perAgent.toLocaleString("es-AR")}/agente vs $ {indPrice.toLocaleString("es-AR")} del plan Individual.
-              Si necesitás más de 10, agregás adicionales a $ {indPrice.toLocaleString("es-AR")}/mes cada uno.
-            </p>
+          <div className="px-6 pb-5">
+            <button onClick={() => router.push("/login")}
+              className="w-full py-3 rounded-xl text-sm font-black text-white hover:opacity-90 transition-all"
+              style={{ background: RED }}>
+              Empezar gratis 7 días →
+            </button>
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">
-          Suscripción mensual automática procesada por MercadoPago · Cancelás cuando querés desde tu cuenta MP · Los emails @galas.com.ar tienen acceso Individual gratuito permanente
-        </p>
+        {/* Tabla de tiers */}
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <Users size={14} className="text-gray-400" />
+            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Descuentos por equipo</span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {VOLUME_TIERS.map((tier, i) => {
+              const exampleCount = tier.maxAgents ? Math.floor((tier.minAgents + tier.maxAgents) / 2) : tier.minAgents + 5;
+              const agentPrice = pricePerAgent(BASE_PRICE, tier.minAgents);
+              const isFirst = i === 0;
+              return (
+                <div key={tier.minAgents} className={`px-6 py-4 flex items-center gap-4 ${!isFirst ? "" : ""}`}>
+                  <div className="w-16 shrink-0">
+                    <span className="text-sm font-black text-gray-700">
+                      {tier.minAgents === 1 ? "1–4" : tier.minAgents === 5 ? "5–9" : tier.minAgents === 10 ? "10–19" : "20+"}
+                    </span>
+                    <div className="text-xs text-gray-400">agentes</div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900">{tier.label}</span>
+                      {tier.discountPct > 0 && (
+                        <span className="text-xs font-black px-2 py-0.5 rounded-full text-white bg-green-500">
+                          -{tier.discountPct}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black" style={{ color: RED, fontFamily: "Georgia, serif" }}>
+                      {formatPriceARS(agentPrice)}
+                    </div>
+                    <div className="text-xs text-gray-400">/agente/mes</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Simulador */}
+        <AgentSimulator />
+
+        {/* Qué incluye */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-6">
+          <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Qué incluye el equipo</div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[
+              "Dashboard individual para cada agente",
+              "Dashboard del broker con ranking del equipo",
+              "IAC colectivo e individual",
+              "Alertas automáticas de racha en riesgo",
+              "Ranking interno del equipo",
+              "Inmo Coach con IA para cada agente",
+              "Mail semanal personalizado por agente",
+              "Invitaciones por email",
+            ].map((feature, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <Check size={13} className="text-green-500 shrink-0 mt-0.5" />
+                <span className="text-sm text-gray-600">{feature}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="text-center pb-4">
+          <p className="text-sm text-gray-400 mb-3">7 días gratis · Sin tarjeta de crédito · Cancelás cuando querés</p>
+          <button onClick={() => router.push("/login")}
+            className="px-8 py-3 rounded-xl font-black text-white text-sm hover:opacity-90 transition-all"
+            style={{ background: RED }}>
+            Empezar ahora →
+          </button>
+        </div>
+
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import TeamsPricingWidget from "../../components/TeamsPricingWidget";
 import Head from "next/head";
 import {
   ArrowLeft, UserPlus, Loader2, Mail, Users, Clock,
@@ -474,6 +475,14 @@ export default function BrokerDashboard() {
           )}
         </div>
 
+        {/* ── PRICING WIDGET ── */}
+        {isOwner && agents.length > 0 && (
+          <TeamsPricingWidget
+            agentCount={agents.length}
+            onInvite={() => document.getElementById("invite-input")?.focus()}
+          />
+        )}
+
         {/* ── INVITAR ── */}
         {isOwner && (
           <div className="bg-white border border-gray-100 rounded-2xl p-5">
@@ -483,7 +492,7 @@ export default function BrokerDashboard() {
               {overview && <span className="ml-auto text-xs text-gray-400">{overview.totalAgents} agentes activos</span>}
             </div>
             <div className="flex gap-2">
-              <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+              <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
                 className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400 transition-colors" />
               <button onClick={invite} disabled={inviting || !newEmail}
