@@ -203,8 +203,8 @@ export async function fetchCalendarEvents(
       return {
         id: e.id!,
         title: e.summary!,
-        start: e.start?.dateTime || e.start?.date || "",
-        end: e.end?.dateTime || e.end?.date || "",
+        start: e.start?.dateTime ? new Date(e.start.dateTime).toISOString() : (e.start?.date ? e.start.date + "T00:00:00.000Z" : ""),
+        end: e.end?.dateTime ? new Date(e.end.dateTime).toISOString() : (e.end?.date ? e.end.date + "T00:00:00.000Z" : ""),
         type,
         isGreen: true,
         isProceso: PROCESO_NUEVO_TYPES.has(type),
@@ -240,8 +240,7 @@ export async function persistEvents(
       is_proceso: e.isProceso,
       is_cierre: e.isCierre,
       is_user_colored: e.isUserColored,
-      source: "google_calendar",
-      synced_at: new Date().toISOString(),
+
     }));
 
   await supabaseAdmin

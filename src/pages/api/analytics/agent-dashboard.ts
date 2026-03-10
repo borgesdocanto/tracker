@@ -41,16 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const events = await getStoredEvents(agentEmail, from, to);
 
-  // Check last sync time
-  const { data: lastEvent } = await supabaseAdmin
-    .from("calendar_events")
-    .select("synced_at")
-    .eq("user_email", agentEmail)
-    .order("synced_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  const lastSyncedAt = lastEvent?.synced_at || null;
+  const lastSyncedAt = events.length > 0 ? events[events.length - 1].start : null;
   const hasData = events.length > 0;
 
   const productivityGoal = parseInt(process.env.NEXT_PUBLIC_PRODUCTIVITY_GOAL || "2");

@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Total events in DB for this agent (no date filter)
   const { data: allEvents, error: e1 } = await supabaseAdmin
     .from("calendar_events")
-    .select("google_event_id, title, start_at, is_productive, event_type, synced_at")
+    .select("google_event_id, title, start_at, is_productive, event_type")
     .eq("user_email", agentEmail)
     .order("start_at", { ascending: false })
     .limit(10);
