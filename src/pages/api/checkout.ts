@@ -16,7 +16,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const email = session.user.email;
   const { agentCount = 1 } = req.body as { agentCount?: number };
-  const count = Math.max(1, Number(agentCount));
+
+  // Verificar que no se contrate por menos seats que los usuarios activos
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("team_id")
+    .eq("email", email)
+    .single();
+
+  let activeUsers = 1;
+  if (sub?.team_id) {
+    const { count: activeCount } = await supabaseAdmin
+      .from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("team_id", sub.team_id);
+    activeUsers = activeCount ?? 1;
+  }
+
+  const requested = Math.max(1, Number(agentCount));
+  if (requested < activeUsers) {
+    return res.status(400).json({
+      error: `No podés contratar para ${requested} usuario${requested !== 1 ? "s" : ""} — tenés ${activeUsers} usuarios activos. Primero remové usuarios y luego reducí el plan.`,
+      activeUsers,
+    });
+  }
+  const count = requested;
   const total = calcTeamsTotal(BASE_PRICE, count);
   const tier = getTierForAgents(count);
 

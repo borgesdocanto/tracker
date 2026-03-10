@@ -2,12 +2,35 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Users, User, AlertTriangle, Loader2, CheckCircle, UserPlus, Mail, Clock, Shield, X, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Users, User, AlertTriangle, Loader2, CheckCircle, UserPlus, Mail, Clock, Shield, X, ChevronUp, ChevronDown, Info } from "lucide-react";
 import TeamsPricingWidget from "../components/TeamsPricingWidget";
 import { pricePerAgent, formatPriceARS } from "../lib/pricing";
 
 const RED = "#aa0000";
 const BASE_PRICE = 10500;
+
+function Tooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onTouchStart={() => setShow(v => !v)}
+        className="text-gray-300 hover:text-gray-500 transition-colors ml-1 align-middle"
+        type="button"
+      >
+        <Info size={13} />
+      </button>
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2 z-50 shadow-xl leading-relaxed pointer-events-none">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </span>
+      )}
+    </span>
+  );
+}
 
 interface CuentaData {
   plan: string;
@@ -274,7 +297,7 @@ export default function CuentaPage() {
             <div className="bg-white border border-gray-100 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus size={14} style={{ color: RED }} />
-                <span className="font-black text-sm text-gray-900">Invitar agente</span>
+                <span className="font-black text-sm text-gray-900">Invitar agente</span><Tooltip text="Cada agente que invitás suma un seat al plan. El precio por agente baja automáticamente al alcanzar 5, 10 o 20 usuarios activos (incluye al broker)." />
                 <span className="ml-auto text-xs text-gray-400">{data.agentCount} activos</span>
               </div>
               <div className="flex gap-2">
@@ -296,7 +319,14 @@ export default function CuentaPage() {
               <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
                   <Users size={13} className="text-gray-400" />
-                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">{teamMembers.length} usuarios activos</span>
+                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">{teamMembers.length} usuarios activos</span><Tooltip text="El plan se cobra por la cantidad de usuarios activos en tu equipo, incluyendo vos como broker. Remover un usuario reduce el costo en el próximo ciclo de facturación." />
+                  <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "#fef2f2", color: RED }}>{teamMembers.length} seat{teamMembers.length !== 1 ? "s" : ""} activos</span>
+                </div>
+                <div className="px-5 py-2.5 bg-blue-50 border-b border-blue-100 flex items-start gap-2">
+                  <Info size={12} className="text-blue-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    Tu plan se factura por <strong>{teamMembers.length} usuario{teamMembers.length !== 1 ? "s" : ""}</strong> — el mínimo contratado no puede ser menor a los usuarios activos. Para reducir el costo, primero removés el usuario y el plan baja automáticamente al siguiente ciclo.
+                  </p>
                 </div>
                 <div className="divide-y divide-gray-50">
                   {teamMembers.map((a: any) => {
@@ -369,7 +399,7 @@ export default function CuentaPage() {
             {/* Preferencias de ranking */}
             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Preferencias de ranking</span>
+                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Preferencias de ranking</span><Tooltip text="Estas configuraciones solo afectan cómo se muestran los usuarios en el ranking interno del equipo. No afecta el costo ni el acceso." />
                 {settingsSaving && <Loader2 size={11} className="animate-spin text-gray-300 ml-auto" />}
               </div>
               <div className="divide-y divide-gray-50">
