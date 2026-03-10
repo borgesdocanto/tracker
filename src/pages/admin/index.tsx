@@ -617,61 +617,64 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* PRECIOS */}
+
         {tab === "eventos" && (
           <div className="space-y-4">
             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-black text-gray-800">Tipos de evento</div>
-                  <div className="text-xs text-gray-400 mt-0.5">Definí qué tipos de evento cuentan como reunión cara a cara (verde), proceso nuevo o cierre.</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Keywords separadas por coma — si el título del evento las contiene, se clasifica como ese tipo.</div>
                 </div>
-                <button onClick={saveEventTypes} disabled={eventTypesSaving}
-                  className="text-xs font-bold px-4 py-2 rounded-xl text-white transition-all disabled:opacity-50"
-                  style={{ background: RED }}>
-                  {eventTypesSaving ? "Guardando..." : "Guardar cambios"}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setEtForm({ ...EMPTY_ET })}
+                    className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-gray-400 transition-all">
+                    + Agregar tipo
+                  </button>
+                  <button onClick={saveEventTypes} disabled={eventTypesSaving}
+                    className="text-xs font-bold px-4 py-2 rounded-xl text-white transition-all disabled:opacity-50"
+                    style={{ background: RED }}>
+                    {eventTypesSaving ? "Guardando..." : "Guardar cambios"}
+                  </button>
+                </div>
               </div>
               <div className="divide-y divide-gray-50">
-                <div className="grid grid-cols-4 px-5 py-2 text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50">
-                  <div>Tipo</div>
-                  <div className="text-center">Verde (cara a cara)</div>
-                  <div className="text-center">Proceso nuevo</div>
+                <div className="grid px-5 py-2 text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50"
+                  style={{ gridTemplateColumns: "1fr 1fr 70px 70px 70px 56px" }}>
+                  <div>Tipo</div><div>Keywords</div>
+                  <div className="text-center">Verde</div>
+                  <div className="text-center">Proceso</div>
                   <div className="text-center">Cierre</div>
+                  <div></div>
                 </div>
-                {eventTypesLoading ? (
-                  <div className="flex items-center justify-center py-10"><Loader2 size={18} className="animate-spin text-gray-300" /></div>
-                ) : eventTypes.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-sm text-gray-400">No se pudieron cargar los tipos de evento.</div>
-                ) : eventTypes.map((et, idx) => (
-                  <div key={et.event_type} className="grid grid-cols-4 px-5 py-3 items-center hover:bg-gray-50">
+                {eventTypes.map((et, idx) => (
+                  <div key={et.event_type} className="grid px-5 py-3 items-center hover:bg-gray-50"
+                    style={{ gridTemplateColumns: "1fr 1fr 70px 70px 70px 56px" }}>
                     <div>
                       <div className="text-sm font-semibold text-gray-800">{et.label || et.event_type}</div>
-                      <div className="text-xs text-gray-400 font-mono">{et.event_type}</div>
-                    </div>
-                    <div className="flex justify-center">
-                      <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, is_green: !e.is_green } : e))}
-                        className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
-                        style={{ background: et.is_green ? RED : "#e5e7eb" }}>
-                        <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
-                          style={{ left: et.is_green ? "calc(100% - 18px)" : "2px" }} />
+                      <div className="text-xs text-gray-400 font-mono flex items-center gap-1">
+                        {et.event_type}
+                        {et.is_custom && <span className="px-1 py-0.5 bg-blue-50 text-blue-500 rounded text-xs">custom</span>}
                       </div>
                     </div>
-                    <div className="flex justify-center">
-                      <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, is_proceso: !e.is_proceso } : e))}
-                        className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
-                        style={{ background: et.is_proceso ? "#16a34a" : "#e5e7eb" }}>
-                        <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
-                          style={{ left: et.is_proceso ? "calc(100% - 18px)" : "2px" }} />
+                    <div className="text-xs text-gray-400 truncate pr-2">{et.keywords || <span className="italic text-gray-300">—</span>}</div>
+                    {(["is_green","is_proceso","is_cierre"] as const).map(field => (
+                      <div key={field} className="flex justify-center">
+                        <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, [field]: !e[field] } : e))}
+                          className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
+                          style={{ background: et[field] ? (field === "is_green" ? RED : field === "is_proceso" ? "#16a34a" : "#d97706") : "#e5e7eb" }}>
+                          <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+                            style={{ left: et[field] ? "calc(100% - 18px)" : "2px" }} />
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, is_cierre: !e.is_cierre } : e))}
-                        className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
-                        style={{ background: et.is_cierre ? "#d97706" : "#e5e7eb" }}>
-                        <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
-                          style={{ left: et.is_cierre ? "calc(100% - 18px)" : "2px" }} />
-                      </div>
+                    ))}
+                    <div className="flex justify-center gap-1">
+                      <button onClick={() => setEtForm({ ...et })}
+                        className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition-all">✏️</button>
+                      {et.is_custom && (
+                        <button onClick={() => { if (confirm(`¿Eliminar "${et.label}"?`)) setEventTypes(prev => prev.filter((_, i) => i !== idx)); }}
+                          className="text-xs px-2 py-1 rounded-lg border border-red-100 text-red-400 hover:border-red-300 transition-all">✕</button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -680,6 +683,73 @@ export default function AdminPanel() {
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-xs text-amber-800">
               <strong>Nota:</strong> Los cambios afectan las <strong>próximas sincronizaciones</strong>. Para re-procesar eventos históricos con la nueva config, corrés el rebuild desde Ops.
             </div>
+
+            {etForm !== null && (
+              <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4">
+                  <div className="text-sm font-black text-gray-800">
+                    {!eventTypes.find(e => e.event_type === etForm.event_type) ? "Nuevo tipo de evento" : `Editar: ${etForm.label}`}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Nombre visible</label>
+                      <input value={etForm.label} onChange={e => setEtForm((f: any) => ({ ...f, label: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+                        placeholder="Ej: Reunión de seguimiento" />
+                    </div>
+                    {etForm.is_custom && !eventTypes.find(e => e.event_type === etForm.event_type) && (
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">ID interno <span className="text-gray-300 font-normal">(solo letras y _)</span></label>
+                        <input value={etForm.event_type}
+                          onChange={e => setEtForm((f: any) => ({ ...f, event_type: e.target.value.replace(/[^a-z0-9_]/g,"_").toLowerCase() }))}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-gray-400"
+                          placeholder="Ej: seguimiento" />
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Keywords <span className="text-gray-300 font-normal">(separadas por coma)</span></label>
+                      <input value={etForm.keywords} onChange={e => setEtForm((f: any) => ({ ...f, keywords: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+                        placeholder="Ej: seguimiento,follow up" />
+                      <p className="text-xs text-gray-400 mt-1">Si el título del evento contiene alguna de estas palabras, se clasifica como este tipo.</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 pt-1">
+                      {([["is_green","Verde",RED],["is_proceso","Proceso","#16a34a"],["is_cierre","Cierre","#d97706"]] as const).map(([field,label,color]) => (
+                        <div key={field} className="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100">
+                          <span className="text-xs font-semibold text-gray-600">{label}</span>
+                          <div onClick={() => setEtForm((f: any) => ({ ...f, [field]: !f[field] }))}
+                            className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
+                            style={{ background: etForm[field] ? color : "#e5e7eb" }}>
+                            <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+                              style={{ left: etForm[field] ? "calc(100% - 18px)" : "2px" }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => setEtForm(null)}
+                      className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 hover:border-gray-400 transition-all">
+                      Cancelar
+                    </button>
+                    <button onClick={() => {
+                        if (!etForm.label.trim() || !etForm.event_type.trim()) return;
+                        setEventTypes(prev => {
+                          const idx = prev.findIndex(e => e.event_type === etForm.event_type);
+                          if (idx >= 0) { const n = [...prev]; n[idx] = etForm; return n; }
+                          return [...prev, etForm];
+                        });
+                        setEtForm(null);
+                      }}
+                      disabled={!etForm.label.trim() || !etForm.event_type.trim()}
+                      className="flex-1 py-2 rounded-xl text-sm font-black text-white transition-all disabled:opacity-40"
+                      style={{ background: RED }}>
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
