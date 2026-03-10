@@ -42,6 +42,8 @@ export default function AdminPanel() {
   const [tab, setTab] = useState<"overview" | "users" | "teams" | "ops" | "precios" | "eventos">("overview");
   const [eventTypes, setEventTypes] = useState<any[]>([]);
   const [eventTypesSaving, setEventTypesSaving] = useState(false);
+  const [etForm, setEtForm] = useState<any | null>(null); // null = closed, {} = new, {...} = editing
+  const EMPTY_ET = { event_type: "", label: "", keywords: "", is_green: false, is_proceso: false, is_cierre: false, is_custom: true };
   const [eventTypesLoading, setEventTypesLoading] = useState(false);
   const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");

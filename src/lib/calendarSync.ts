@@ -12,26 +12,45 @@ let _cierresCache: Set<EventType> | null = null;
 let _cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
 
+let _keywordsCache: Array<{ type: string; keywords: string[] }> | null = null;
+
 async function getGreenTypes(): Promise<{ green: Set<EventType>; procesos: Set<EventType>; cierres: Set<EventType> }> {
   if (_greenTypesCache && Date.now() - _cacheTime < CACHE_TTL) {
     return { green: _greenTypesCache!, procesos: _procesosCache!, cierres: _cierresCache! };
   }
   try {
-    const { data } = await supabaseAdmin.from("event_type_config").select("event_type, is_green, is_proceso, is_cierre");
+    const { data } = await supabaseAdmin.from("event_type_config").select("event_type, is_green, is_proceso, is_cierre, keywords");
     if (data?.length) {
       _greenTypesCache = new Set(data.filter(r => r.is_green).map(r => r.event_type as EventType));
       _procesosCache   = new Set(data.filter(r => r.is_proceso).map(r => r.event_type as EventType));
       _cierresCache    = new Set(data.filter(r => r.is_cierre).map(r => r.event_type as EventType));
+      _keywordsCache   = data.filter(r => r.keywords).map(r => ({
+        type: r.event_type,
+        keywords: r.keywords.split(",").map((k: string) => k.trim().toLowerCase()).filter(Boolean),
+      }));
       _cacheTime = Date.now();
       return { green: _greenTypesCache, procesos: _procesosCache, cierres: _cierresCache };
     }
   } catch {}
-  // Fallback a defaults hardcodeados
   return {
     green:    new Set(["tasacion","visita","primera_visita","propuesta","firma","conocer","reunion"] as EventType[]),
     procesos: new Set(["tasacion","primera_visita"] as EventType[]),
     cierres:  new Set(["firma"] as EventType[]),
   };
+}
+
+async function detectTypeDynamic(title: string): Promise<string | null> {
+  if (!_keywordsCache || Date.now() - _cacheTime >= CACHE_TTL) await getGreenTypes();
+  if (!_keywordsCache?.length) return null;
+  const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Longer keywords first for specificity
+  const sorted = [..._keywordsCache].sort((a, b) =>
+    Math.max(...b.keywords.map(k => k.length)) - Math.max(...a.keywords.map(k => k.length))
+  );
+  for (const { type, keywords } of sorted) {
+    if (keywords.some(kw => t.includes(kw))) return type;
+  }
+  return null;
 }
 
 export function invalidateEventTypeCache() { _cacheTime = 0; }
@@ -228,8 +247,9 @@ export async function fetchCalendarEvents(
   const items = (response.data.items || []).filter(e => e.status !== "cancelled" && e.summary);
   const { green, procesos, cierres } = await getGreenTypes();
 
-  return items.map(e => {
-    const type = detectType(e.summary!);
+  return Promise.all(items.map(async e => {
+    const dynamicType = await detectTypeDynamic(e.summary!);
+    const type = (dynamicType || detectType(e.summary!)) as EventType;
     const isUserColored = !!(e.colorId && GREEN_COLOR_IDS.has(e.colorId));
     const isGreen = isUserColored || green.has(type);
     return {
@@ -245,7 +265,7 @@ export async function fetchCalendarEvents(
       durationMinutes: durationMinutes(e),
       attendeesCount: attendeesCount(e),
     } as SyncedEvent;
-  });
+  }));
 }
 
 // ── Persistir eventos en Supabase ─────────────────────────────────────────────
