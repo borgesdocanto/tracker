@@ -53,6 +53,9 @@ export default function CuentaPage() {
   const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [showTeamLeaders, setShowTeamLeaders] = useState(true);
+  const [anonymizeGlobal, setAnonymizeGlobal] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -73,6 +76,9 @@ export default function CuentaPage() {
     });
     fetch("/api/teams/agency").then(r => r.ok ? r.json() : null).then(d => {
       if (d?.agencyName) { setAgencyName(d.agencyName); setAgencyInput(d.agencyName); }
+    });
+    fetch("/api/teams/settings").then(r => r.ok ? r.json() : null).then(d => {
+      if (d) { setShowTeamLeaders(d.showTeamLeaders ?? true); setAnonymizeGlobal(d.anonymizeGlobal ?? false); }
     });
   }, [status]);
 
@@ -100,6 +106,12 @@ export default function CuentaPage() {
     setSuccess("Suscripción cancelada. Seguís con acceso hasta el fin del período.");
     setShowCancel(false);
     setTimeout(() => router.push("/"), 3000);
+  };
+
+  const saveSetting = async (key: string, value: boolean) => {
+    setSettingsSaving(true);
+    await fetch("/api/teams/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [key]: value }) });
+    setSettingsSaving(false);
   };
 
   const invite = async () => {
@@ -364,6 +376,40 @@ export default function CuentaPage() {
                 </div>
               </div>
             )}
+
+            {/* Preferencias de ranking */}
+            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Preferencias de ranking</span>
+                {settingsSaving && <Loader2 size={11} className="animate-spin text-gray-300 ml-auto" />}
+              </div>
+              <div className="divide-y divide-gray-50">
+                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800">Mostrar Team Leaders en ranking del equipo</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, solo aparecen los agentes (members)</div>
+                  </div>
+                  <div onClick={() => { const v = !showTeamLeaders; setShowTeamLeaders(v); saveSetting("showTeamLeaders", v); }}
+                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
+                    style={{ background: showTeamLeaders ? RED : "#e5e7eb" }}>
+                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
+                      style={{ left: showTeamLeaders ? "calc(100% - 22px)" : "2px" }} />
+                  </div>
+                </label>
+                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800">Anonimizar equipo en ranking global</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Los agentes aparecen como "Agente #N" en el ranking público</div>
+                  </div>
+                  <div onClick={() => { const v = !anonymizeGlobal; setAnonymizeGlobal(v); saveSetting("anonymizeGlobal", v); }}
+                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
+                    style={{ background: anonymizeGlobal ? RED : "#e5e7eb" }}>
+                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
+                      style={{ left: anonymizeGlobal ? "calc(100% - 22px)" : "2px" }} />
+                  </div>
+                </label>
+              </div>
+            </div>
 
             {/* Invitaciones pendientes */}
             {pending.length > 0 && (
