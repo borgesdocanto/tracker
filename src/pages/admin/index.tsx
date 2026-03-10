@@ -69,7 +69,10 @@ export default function AdminPanel() {
   useEffect(() => { if (tab === "precios") loadPlans(); }, [tab]);
   useEffect(() => {
     if (tab === "eventos") {
-      fetch("/api/admin/event-types").then(r => r.json()).then(setEventTypes);
+      fetch("/api/admin/event-types")
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d)) setEventTypes(d); })
+        .catch(console.error);
     }
   }, [tab]);
 

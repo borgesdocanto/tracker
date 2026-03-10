@@ -27,24 +27,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(403).json({ error: "Solo super admin" });
 
   if (req.method === "GET") {
-    const { data } = await supabaseAdmin
+    const DEFAULTS = Object.entries(EVENT_TYPE_LABELS).map(([type, label]) => ({
+      event_type: type,
+      label,
+      is_green: ["tasacion","visita","primera_visita","propuesta","firma","conocer","reunion"].includes(type),
+      is_proceso: ["tasacion","primera_visita"].includes(type),
+      is_cierre: type === "firma",
+    }));
+
+    const { data, error } = await supabaseAdmin
       .from("event_type_config")
       .select("event_type, is_green, is_proceso, is_cierre, label")
       .order("event_type");
 
-    // Si no hay config, devolver defaults
-    if (!data?.length) {
-      const defaults = Object.entries(EVENT_TYPE_LABELS).map(([type, label]) => ({
-        event_type: type,
-        label,
-        is_green: ["tasacion","visita","primera_visita","propuesta","firma","conocer","reunion"].includes(type),
-        is_proceso: ["tasacion","primera_visita"].includes(type),
-        is_cierre: type === "firma",
-      }));
-      return res.status(200).json(defaults);
-    }
+    if (error || !data?.length) return res.status(200).json(DEFAULTS);
 
-    return res.status(200).json(data);
+    // Merge defaults with saved — asegura que todos los tipos aparezcan
+    const savedMap = Object.fromEntries(data.map(r => [r.event_type, r]));
+    const merged = DEFAULTS.map(d => savedMap[d.event_type] ? { ...d, ...savedMap[d.event_type] } : d);
+    return res.status(200).json(merged);
   }
 
   if (req.method === "POST") {
@@ -55,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from("event_type_config")
       .upsert(configs, { onConflict: "event_type" });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: error.message, hint: "¿Creaste la tabla event_type_config en Supabase?" });
     invalidateEventTypeCache();
     return res.status(200).json({ ok: true });
   }
