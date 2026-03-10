@@ -20,12 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(403).json({ error: "Sin acceso" });
   }
 
-  // Todos los miembros del equipo EXCEPTO el propio requester
+  // Todos los miembros del equipo incluyendo el broker
   const { data: members } = await supabaseAdmin
     .from("subscriptions")
     .select("email, name, avatar, team_role")
-    .eq("team_id", sub.team_id)
-    .neq("email", session.user.email);
+    .eq("team_id", sub.team_id);
 
   if (!members?.length) return res.status(200).json({ agents: [], overview: null });
 
