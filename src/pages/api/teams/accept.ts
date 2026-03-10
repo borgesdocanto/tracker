@@ -13,11 +13,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!token) return res.status(400).json({ error: "Token requerido" });
 
   const result = await acceptInvitation(token, session.user.email);
-  if (result.ok) {
-    // Recalcular precio del broker al nuevo agente count
+  if (result.ok && result.ownerEmail) {
+    // Recalcular precio del broker — llamada interna con CRON_SECRET
     fetch(`${process.env.NEXTAUTH_URL}/api/teams/recalculate-plan`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "cookie": req.headers.cookie || "" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({ ownerEmail: result.ownerEmail }),
     }).catch(e => console.error("recalculate-plan error:", e));
   }
   return res.status(result.ok ? 200 : 400).json(result);

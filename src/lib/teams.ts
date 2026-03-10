@@ -104,7 +104,7 @@ export async function inviteAgent(teamId: string, agentEmail: string, invitedBy:
   return { token: data!.token };
 }
 
-export async function acceptInvitation(token: string, agentEmail: string): Promise<{ ok: boolean; error?: string }> {
+export async function acceptInvitation(token: string, agentEmail: string): Promise<{ ok: boolean; error?: string; ownerEmail?: string }> {
   const { data: inv } = await supabaseAdmin
     .from("team_invitations")
     .select("*, teams(*)")
@@ -138,7 +138,7 @@ export async function acceptInvitation(token: string, agentEmail: string): Promi
     .update({ status: "accepted" })
     .eq("token", token);
 
-  return { ok: true };
+  return { ok: true, ownerEmail: inv.teams.owner_email };
 }
 
 export async function updateMemberRole(

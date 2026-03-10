@@ -20,10 +20,18 @@ async function mp(path: string, method: string, body?: any) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const session = await getServerSession(req, res, authOptions);
-  if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
+  // Acepta llamadas internas con CRON_SECRET + ownerEmail en body
+  const internalAuth = req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`;
+  let email: string;
 
-  const email = session.user.email;
+  if (internalAuth) {
+    if (!req.body?.ownerEmail) return res.status(400).json({ error: "ownerEmail requerido" });
+    email = req.body.ownerEmail;
+  } else {
+    const session = await getServerSession(req, res, authOptions);
+    if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
+    email = session.user.email;
+  }
 
   try {
     const { data: sub } = await supabaseAdmin

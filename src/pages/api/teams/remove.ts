@@ -47,10 +47,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .update({ max_agents: remaining })
     .eq("id", team.id);
 
-  // Recalcular precio del broker
+  // Recalcular precio del broker — llamada interna con CRON_SECRET
   fetch(`${process.env.NEXTAUTH_URL}/api/teams/recalculate-plan`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "cookie": req.headers.cookie || "" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.CRON_SECRET}`,
+    },
+    body: JSON.stringify({ ownerEmail: session.user.email }),
   }).catch(e => console.error("recalculate-plan error:", e));
 
   return res.status(200).json({ ok: true, remaining });
