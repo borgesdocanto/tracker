@@ -189,20 +189,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       dailySummaries,
       recentEvents: mappedEvents.slice(-50).reverse(),
       onboardingDone: sub?.onboarding_done ?? false,
-      streak: await computeAndSaveStreak(session.user?.email!, dailySummaries),
-      rankStats: await (async () => {
+      ...await (async () => {
         try {
+          const streakData = await computeAndSaveStreak(session.user?.email!, dailySummaries);
+          // Semana actual: lunes a hoy
           const now = new Date();
           const monday = new Date(now);
           monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
           monday.setHours(0, 0, 0, 0);
           const weekStart = monday.toISOString().slice(0, 10);
-          const weekGreen = mappedEvents.filter(e => e.isGreen && e.start >= weekStart);
+          // Contar eventos verdes de esta semana por fecha de inicio
+          const weekGreen = mappedEvents.filter(e => e.isGreen && e.start.slice(0, 10) >= weekStart);
           const weekIac = Math.min(100, Math.round((weekGreen.length / 15) * 100));
-          const streakRow = await computeAndSaveStreak(session.user?.email!, dailySummaries).catch(() => null);
-          await saveWeeklyStatsAndRank(session.user?.email!, weekStart, weekIac, weekGreen.length, (streakRow as any)?.best ?? 0);
-          return await getAgentRankStats(session.user?.email!);
-        } catch { return null; }
+          await saveWeeklyStatsAndRank(session.user?.email!, weekStart, weekIac, weekGreen.length, streakData?.best ?? 0);
+          const rankStats = await getAgentRankStats(session.user?.email!);
+          return { streak: streakData, rankStats };
+        } catch (e) {
+          console.error("streak/rank error:", e);
+          return { streak: null, rankStats: null };
+        }
       })(),
     });
   } catch (err: any) {

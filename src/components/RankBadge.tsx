@@ -1,8 +1,27 @@
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { RANKS, Rank } from "../lib/ranksConfig";
 
 const RED = "#aa0000";
 interface RankStats { rank: Rank; nextRank: Rank | null; activeWeeks: number; iacAvg: number; bestStreak: number; }
+
+function Tip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex items-center ml-1">
+      <button
+        onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}
+        onTouchStart={() => setShow(s => !s)}
+        className="w-3.5 h-3.5 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center hover:border-gray-500 hover:text-gray-600 transition-colors"
+        style={{ fontSize: 8, fontWeight: 900, lineHeight: 1 }}>?</button>
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 w-52 bg-gray-900 text-white text-xs rounded-xl px-3 py-2 leading-relaxed shadow-xl pointer-events-none">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export default function RankBadge({ stats }: { stats: RankStats }) {
   const router = useRouter();
@@ -54,11 +73,13 @@ export default function RankBadge({ stats }: { stats: RankStats }) {
             <div className="h-full rounded-full transition-all duration-500" style={{ width: `${overallProgress}%`, background: RED }} />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            <div className="text-xs" style={{ color: activeWeeks >= nextRank.minWeeks ? "#16a34a" : "#9ca3af" }}>
+            <div className="text-xs flex items-center gap-0.5" style={{ color: activeWeeks >= nextRank.minWeeks ? "#16a34a" : "#9ca3af" }}>
               {activeWeeks >= nextRank.minWeeks ? "✓ " : ""}{activeWeeks}/{nextRank.minWeeks} semanas activas
+              <Tip text="Semanas donde tuviste al menos 1 reunión cara a cara registrada en el último trimestre." />
             </div>
-            <div className="text-xs" style={{ color: iacAvg >= nextRank.minIacAvg ? "#16a34a" : "#9ca3af" }}>
+            <div className="text-xs flex items-center gap-0.5" style={{ color: iacAvg >= nextRank.minIacAvg ? "#16a34a" : "#9ca3af" }}>
               {iacAvg >= nextRank.minIacAvg ? "✓ " : ""}IAC prom. {iacAvg}% / {nextRank.minIacAvg}%
+              <Tip text="Promedio de tu IAC semanal en las últimas 12 semanas activas. IAC 100% = 15 reuniones cara a cara en una semana." />
             </div>
             {nextRank.minStreak && (
               <div className="text-xs col-span-2" style={{ color: stats.bestStreak >= nextRank.minStreak ? "#16a34a" : "#9ca3af" }}>
