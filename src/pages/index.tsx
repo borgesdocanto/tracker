@@ -7,6 +7,7 @@ import PushPrompt from "../components/PushPrompt";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
+import EmptyDashboard from "../components/EmptyDashboard";
 import Head from "next/head";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
