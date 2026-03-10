@@ -5,7 +5,7 @@ import Head from "next/head";
 import RankBadge from "../../components/RankBadge";
 import StreakBadge from "../../components/StreakBadge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
-import { ArrowLeft, RefreshCw, AlertTriangle, Calendar, Target, Eye, Zap, TrendingUp, Brain, ChevronLeft, ChevronRight, Loader2, DollarSign, CheckCircle } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, Calendar, Target, Eye, Zap, TrendingUp, Brain, ChevronLeft, ChevronRight, Loader2, DollarSign } from "lucide-react";
 
 const RED = "#aa0000";
 const GREEN = "#16a34a";
@@ -295,6 +295,8 @@ export default function AgentDashboard() {
 
   const [data, setData] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
   const [days, setDays] = useState(7);
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -305,14 +307,44 @@ export default function AgentDashboard() {
     if (status === "authenticated" && email) load();
   }, [status, email, days]);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (afterSync = false) => {
+    if (!afterSync) setLoading(true);
     try {
       const res = await fetch(`/api/analytics/agent-dashboard?agentEmail=${encodeURIComponent(email as string)}&days=${days}`);
       if (!res.ok) { router.replace("/equipo"); return; }
-      setData(await res.json());
+      const d = await res.json();
+      setData(d);
+      // Auto-sync if no data in DB
+      if (!d.hasData && !afterSync) {
+        sync(d);
+      }
     } catch {}
-    setLoading(false);
+    if (!afterSync) setLoading(false);
+  };
+
+  const sync = async (currentData?: any) => {
+    setSyncing(true);
+    setSyncMsg("Sincronizando calendario...");
+    try {
+      const res = await fetch("/api/analytics/agent-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentEmail: email }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setSyncMsg(`✓ ${d.synced} eventos sincronizados`);
+        await load(true);
+      } else if (d.reason === "no_token") {
+        setSyncMsg("El agente aún no vinculó su Google Calendar.");
+      } else {
+        setSyncMsg("Error al sincronizar.");
+      }
+    } catch {
+      setSyncMsg("Error de conexión.");
+    }
+    setSyncing(false);
+    setTimeout(() => setSyncMsg(""), 4000);
   };
 
   const trendData = useMemo(() => {
@@ -360,8 +392,15 @@ export default function AgentDashboard() {
             ))}
           </div>
 
-          <button onClick={load} disabled={loading} className="text-gray-400 hover:text-gray-700 transition-colors">
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          {syncMsg && (
+            <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ background: syncMsg.startsWith("✓") ? "#f0fdf4" : "#fef2f2", color: syncMsg.startsWith("✓") ? "#16a34a" : RED }}>
+              {syncMsg}
+            </span>
+          )}
+          <button onClick={() => sync()} disabled={syncing || loading} title="Sincronizar calendario del agente"
+            className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-gray-100">
+            <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">{syncing ? "Sync..." : "Sync"}</span>
           </button>
         </div>
       </header>

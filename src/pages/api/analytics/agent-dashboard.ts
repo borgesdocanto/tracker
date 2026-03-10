@@ -2,9 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { getStoredEvents, syncAndPersist, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
+import { getStoredEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
 import { getAgentRankStats } from "../../../lib/ranks";
-import { getValidAccessToken } from "../../../lib/googleToken";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -17,7 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!agentEmail || typeof agentEmail !== "string")
     return res.status(400).json({ error: "agentEmail requerido" });
 
-  // Solo owner o team_leader del mismo equipo
   const { data: requester } = await supabaseAdmin
     .from("subscriptions")
     .select("team_id, team_role")
@@ -41,19 +39,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const from = startOfDay(subDays(now, days));
   const to = endOfDay(now);
 
-  // Intentar sincronizar con el token del agente si existe
-  const accessToken = await getValidAccessToken(agentEmail);
-  if (accessToken) {
-    try {
-      await syncAndPersist(accessToken, agentEmail, agent.team_id, Math.max(days, 90));
-    } catch (e) {
-      console.error("[agent-dashboard] sync failed for", agentEmail, e);
-    }
-  }
-
   const events = await getStoredEvents(agentEmail, from, to);
 
-  // Build daily summaries
+  // Check last sync time
+  const { data: lastEvent } = await supabaseAdmin
+    .from("calendar_events")
+    .select("synced_at")
+    .eq("user_email", agentEmail)
+    .order("synced_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  const lastSyncedAt = lastEvent?.synced_at || null;
+  const hasData = events.length > 0;
+
   const productivityGoal = parseInt(process.env.NEXT_PUBLIC_PRODUCTIVITY_GOAL || "2");
   const byDay: Record<string, typeof events> = {};
   events.forEach(ev => {
@@ -68,21 +67,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const greenCount = evs.filter(e => e.isGreen).length;
       const procesosCount = evs.filter(e => e.isProceso).length;
       return {
-        date,
-        greenCount,
-        procesosCount,
+        date, greenCount, procesosCount,
         isProductive: greenCount >= productivityGoal,
         events: evs.map(e => ({
-          id: e.id,
-          title: e.title,
-          start: e.start,
-          end: e.end,
-          type: e.type,
-          isGreen: e.isGreen,
-          isProceso: e.isProceso,
-          isCierre: e.isCierre,
-          isUserColored: e.isUserColored,
-          attendees: [],
+          id: e.id, title: e.title, start: e.start, end: e.end,
+          type: e.type, isGreen: e.isGreen, isProceso: e.isProceso,
+          isCierre: e.isCierre, isUserColored: e.isUserColored, attendees: [],
         })),
       };
     });
@@ -113,12 +103,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({
     user: { name: agent.name || agentEmail.split("@")[0], email: agentEmail, image: agent.avatar },
-    syncedAt: new Date().toISOString(),
+    syncedAt: lastSyncedAt || new Date().toISOString(),
+    lastSyncedAt,
+    hasData,
     period: { from: from.toISOString(), to: to.toISOString(), days },
-    totals,
-    productivityGoal,
-    productiveDays,
-    totalDays,
+    totals, productivityGoal, productiveDays, totalDays,
     productivityRate: totalDays > 0 ? Math.round((productiveDays / totalDays) * 100) : 0,
     dailySummaries,
     recentEvents: events.slice(-50).reverse().map(e => ({
