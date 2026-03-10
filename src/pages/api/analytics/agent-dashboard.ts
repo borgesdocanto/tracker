@@ -2,8 +2,9 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { getStoredEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
+import { getStoredEvents, syncAndPersist, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
 import { getAgentRankStats } from "../../../lib/ranks";
+import { getValidAccessToken } from "../../../lib/googleToken";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,18 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const from = startOfDay(subDays(now, days));
   const to = endOfDay(now);
 
+  // Intentar sincronizar con el token del agente si existe
+  const accessToken = await getValidAccessToken(agentEmail);
+  if (accessToken) {
+    try {
+      await syncAndPersist(accessToken, agentEmail, agent.team_id, Math.max(days, 90));
+    } catch (e) {
+      console.error("[agent-dashboard] sync failed for", agentEmail, e);
+    }
+  }
+
   const events = await getStoredEvents(agentEmail, from, to);
-
-  console.log(`[agent-dashboard] agentEmail=${agentEmail} days=${days} from=${from.toISOString()} to=${to.toISOString()} events=${events.length}`);
-
-  // Also try raw query to diagnose
-  const { data: rawCheck, error: rawError } = await supabaseAdmin
-    .from("calendar_events")
-    .select("user_email, start_at, is_productive")
-    .eq("user_email", agentEmail)
-    .order("start_at", { ascending: false })
-    .limit(5);
-  console.log(`[agent-dashboard] raw last 5 events:`, JSON.stringify(rawCheck), rawError?.message);
 
   // Build daily summaries
   const productivityGoal = parseInt(process.env.NEXT_PUBLIC_PRODUCTIVITY_GOAL || "2");
@@ -109,7 +109,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const productiveDays = dailySummaries.filter(d => d.isProductive).length;
   const totalDays = dailySummaries.length;
-
   const rankStats = await getAgentRankStats(agentEmail).catch(() => null);
 
   return res.status(200).json({

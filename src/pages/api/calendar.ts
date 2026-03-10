@@ -130,7 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("email", session.user?.email!)
       .single();
 
-    syncAndPersist(accessToken, session.user?.email!, sub?.team_id, days)
+    await syncAndPersist(accessToken, session.user?.email!, sub?.team_id, days)
       .catch(e => console.error("Persist error:", e));
 
     // Agrupar por día
