@@ -26,7 +26,6 @@ const ALWAYS_GREEN_TYPES = new Set<EventType>([
   "tasacion",
   "visita",
   "primera_visita",
-  "fotos_video",
   "propuesta",
   "firma",
   "conocer",
