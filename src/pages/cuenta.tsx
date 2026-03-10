@@ -294,6 +294,24 @@ export default function CuentaPage() {
         {/* ── GESTIÓN DE EQUIPO (solo owners) ── */}
         {isPaid && data.isOwner && (
           <>
+            {/* Nombre de la inmobiliaria */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Shield size={14} className="text-gray-400" />
+                <span className="font-black text-sm text-gray-900">Nombre de la inmobiliaria</span>
+              </div>
+              <div className="flex gap-2">
+                <input value={agencyInput} onChange={e => setAgencyInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveAgency()}
+                  placeholder="Ej: GALAS Propiedades"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
+                <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 hover:opacity-90" style={{ background: RED }}>
+                  {agencySaving ? <Loader2 size={12} className="animate-spin" /> : "Guardar"}
+                </button>
+              </div>
+              {agencyMsg && <p className="text-xs mt-2 font-medium text-green-600">{agencyMsg}</p>}
+            </div>
+
             {/* Pricing widget */}
             <TeamsPricingWidget
               agentCount={data.agentCount}
@@ -373,23 +391,6 @@ export default function CuentaPage() {
               </div>
             )}
 
-            {/* Nombre de la inmobiliaria */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield size={14} className="text-gray-400" />
-                <span className="font-black text-sm text-gray-900">Nombre de la inmobiliaria</span>
-              </div>
-              <div className="flex gap-2">
-                <input value={agencyInput} onChange={e => setAgencyInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveAgency()}
-                  placeholder="Ej: GALAS Propiedades"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 hover:opacity-90" style={{ background: RED }}>
-                  {agencySaving ? <Loader2 size={12} className="animate-spin" /> : "Guardar"}
-                </button>
-              </div>
-              {agencyMsg && <p className="text-xs mt-2 font-medium text-green-600">{agencyMsg}</p>}
-            </div>
           </>
         )}
 
