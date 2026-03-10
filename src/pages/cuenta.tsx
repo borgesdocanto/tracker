@@ -456,32 +456,6 @@ export default function CuentaPage() {
               </div>
             </div>
 
-            {/* Invitaciones pendientes */}
-            {pending.length > 0 && (
-              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Clock size={13} className="text-gray-400" />
-                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Invitaciones pendientes</span>
-                  <span className="ml-auto text-xs text-gray-400">{pending.length}</span>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {pending.map((inv: any) => (
-                    <div key={inv.token} className="flex items-center gap-3 px-5 py-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">{inv.email[0].toUpperCase()}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-600 truncate">{inv.email}</div>
-                        <div className="text-xs text-gray-400">Pendiente de aceptar</div>
-                      </div>
-                      <button onClick={async () => { await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"cancel", token: inv.token}) }); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }}
-                        className="text-xs text-red-400 hover:text-red-600 bg-red-50 px-3 py-1.5 rounded-lg font-semibold">
-                        Cancelar
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
           </>
         )}
 

@@ -665,13 +665,7 @@ export default function HomePage() {
                 </span>
               </Link>
             )}
-            {subPlan === "teams" && (
-              <Link href="/equipo">
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-1">
-                  <Users size={11} /><span className="hidden sm:inline"> Mi equipo</span>
-                </span>
-              </Link>
-            )}
+
           </div>
 
           <div style={{ display: "flex", alignItems: "center", background: "#f3f4f6", borderRadius: "12px", padding: "4px", gap: "2px" }} className="hidden sm:flex">
