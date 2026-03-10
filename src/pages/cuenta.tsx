@@ -73,8 +73,8 @@ export default function CuentaPage() {
     fetch("/api/teams/invite").then(r => r.ok ? r.json() : null).then(d => {
       if (d) { setPending(d.pending || []); }
     });
-    fetch("/api/analytics/team").then(r => r.ok ? r.json() : null).then(d => {
-      if (d?.agents) setTeamMembers(d.agents);
+    fetch("/api/teams/members").then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.members) setTeamMembers(d.members);
     });
     fetch("/api/teams/agency").then(r => r.ok ? r.json() : null).then(d => {
       if (d?.agencyName) { setAgencyName(d.agencyName); setAgencyInput(d.agencyName); }
@@ -121,7 +121,7 @@ export default function CuentaPage() {
     const res = await fetch("/api/teams/role", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberEmail, newRole }) });
     const d = await res.json();
     if (d.ok) {
-      fetch("/api/analytics/team").then(r => r.json()).then(d => { if (d?.agents) setTeamMembers(d.agents); });
+      fetch("/api/teams/members").then(r => r.json()).then(d => { if (d?.members) setTeamMembers(d.members); });
     } else alert(d.error);
     setRoleLoading(null);
   };
@@ -141,7 +141,7 @@ export default function CuentaPage() {
     setRemoveLoading(email); setRemoveConfirm(null);
     const res = await fetch("/api/teams/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberEmail: email }) });
     const d = await res.json();
-    if (d.ok) { fetch("/api/analytics/team").then(r=>r.json()).then(d=>{ if(d?.agents) setTeamMembers(d.agents); }); fetch("/api/cuenta").then(r=>r.json()).then(d=>setData(d)); }
+    if (d.ok) { fetch("/api/teams/members").then(r=>r.json()).then(d=>{ if(d?.members) setTeamMembers(d.members); }); fetch("/api/cuenta").then(r=>r.json()).then(d=>setData(d)); }
     setRemoveLoading(null);
   };
 
@@ -371,7 +371,9 @@ export default function CuentaPage() {
                   <span className="text-xs font-black text-gray-500 uppercase tracking-widest">{teamMembers.length} usuarios activos</span>
                 </div>
                 <div className="divide-y divide-gray-50">
-                  {teamMembers.map((a: any) => (
+                  {teamMembers.map((a: any) => {
+                    const role = a.team_role || a.teamRole;
+                    return (
                     <div key={a.email} className="flex items-center gap-3 px-5 py-3">
                       {a.avatar ? <img src={a.avatar} className="w-8 h-8 rounded-full shrink-0" /> :
                         <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">{(a.name||a.email)[0].toUpperCase()}</div>}
@@ -379,12 +381,12 @@ export default function CuentaPage() {
                         <div className="text-sm font-semibold text-gray-800 truncate">{a.name || a.email}</div>
                         {a.name && <div className="text-xs text-gray-400 truncate">{a.email}</div>}
                       </div>
-                      {a.teamRole === "owner" ? (
+                      {role === "owner" ? (
                         <span className="text-xs font-bold px-2.5 py-1 rounded-lg shrink-0" style={{ background: "#fef2f2", color: RED }}>Broker</span>
                       ) : (
                         <div className="flex items-center gap-2 shrink-0">
                           {roleLoading === a.email ? <Loader2 size={12} className="animate-spin text-gray-300" /> : (
-                            <select value={a.teamRole}
+                            <select value={role}
                               onChange={e => changeRole(a.email, e.target.value as "team_leader" | "member")}
                               className="text-xs font-semibold text-gray-600 bg-gray-100 border-0 rounded-lg px-2 py-1.5 cursor-pointer focus:outline-none appearance-none">
                               <option value="member">Agente</option>
@@ -398,7 +400,8 @@ export default function CuentaPage() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
