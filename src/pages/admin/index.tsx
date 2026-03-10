@@ -39,7 +39,9 @@ export default function AdminPanel() {
   const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [tab, setTab] = useState<"overview" | "users" | "teams" | "ops" | "precios">("overview");
+  const [tab, setTab] = useState<"overview" | "users" | "teams" | "ops" | "precios" | "eventos">("overview");
+  const [eventTypes, setEventTypes] = useState<any[]>([]);
+  const [eventTypesSaving, setEventTypesSaving] = useState(false);
   const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [loadingStats, setLoadingStats] = useState(true);
@@ -65,6 +67,11 @@ export default function AdminPanel() {
   useEffect(() => { loadStats(); }, []);
   useEffect(() => { if (tab === "users" || tab === "teams") loadUsers(); }, [tab, planFilter, search]);
   useEffect(() => { if (tab === "precios") loadPlans(); }, [tab]);
+  useEffect(() => {
+    if (tab === "eventos") {
+      fetch("/api/admin/event-types").then(r => r.json()).then(setEventTypes);
+    }
+  }, [tab]);
 
   const loadStats = async () => {
     setLoadingStats(true);
@@ -212,6 +219,16 @@ export default function AdminPanel() {
       {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
     </div>
   );
+
+  const saveEventTypes = async () => {
+    setEventTypesSaving(true);
+    await fetch("/api/admin/event-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ configs: eventTypes }),
+    });
+    setEventTypesSaving(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
@@ -592,6 +609,67 @@ export default function AdminPanel() {
         )}
 
         {/* PRECIOS */}
+        {tab === "eventos" && (
+          <div className="space-y-4">
+            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-black text-gray-800">Tipos de evento</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Definí qué tipos de evento cuentan como reunión cara a cara (verde), proceso nuevo o cierre.</div>
+                </div>
+                <button onClick={saveEventTypes} disabled={eventTypesSaving}
+                  className="text-xs font-bold px-4 py-2 rounded-xl text-white transition-all disabled:opacity-50"
+                  style={{ background: RED }}>
+                  {eventTypesSaving ? "Guardando..." : "Guardar cambios"}
+                </button>
+              </div>
+              <div className="divide-y divide-gray-50">
+                <div className="grid grid-cols-4 px-5 py-2 text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50">
+                  <div>Tipo</div>
+                  <div className="text-center">Verde (cara a cara)</div>
+                  <div className="text-center">Proceso nuevo</div>
+                  <div className="text-center">Cierre</div>
+                </div>
+                {eventTypes.map((et, idx) => (
+                  <div key={et.event_type} className="grid grid-cols-4 px-5 py-3 items-center hover:bg-gray-50">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800">{et.label || et.event_type}</div>
+                      <div className="text-xs text-gray-400 font-mono">{et.event_type}</div>
+                    </div>
+                    <div className="flex justify-center">
+                      <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, is_green: !e.is_green } : e))}
+                        className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
+                        style={{ background: et.is_green ? RED : "#e5e7eb" }}>
+                        <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+                          style={{ left: et.is_green ? "calc(100% - 18px)" : "2px" }} />
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, is_proceso: !e.is_proceso } : e))}
+                        className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
+                        style={{ background: et.is_proceso ? "#16a34a" : "#e5e7eb" }}>
+                        <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+                          style={{ left: et.is_proceso ? "calc(100% - 18px)" : "2px" }} />
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <div onClick={() => setEventTypes(prev => prev.map((e, i) => i === idx ? { ...e, is_cierre: !e.is_cierre } : e))}
+                        className="relative w-10 h-5 rounded-full cursor-pointer transition-colors"
+                        style={{ background: et.is_cierre ? "#d97706" : "#e5e7eb" }}>
+                        <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+                          style={{ left: et.is_cierre ? "calc(100% - 18px)" : "2px" }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-xs text-amber-800">
+              <strong>Nota:</strong> Los cambios afectan las <strong>próximas sincronizaciones</strong>. Para re-procesar eventos históricos con la nueva config, corrés el rebuild desde Ops.
+            </div>
+          </div>
+        )}
+
         {tab === "precios" && (
           <div className="space-y-4">
             <div className="bg-white border border-gray-100 rounded-2xl p-5">

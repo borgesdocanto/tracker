@@ -5,6 +5,37 @@ import { supabaseAdmin } from "./supabase";
 // ── Colores verdes de Google Calendar ────────────────────────────────────────
 const GREEN_COLOR_IDS = new Set(["2", "10"]);
 
+// ── Config dinámica desde Supabase (cached 5 min) ─────────────────────────────
+let _greenTypesCache: Set<EventType> | null = null;
+let _procesosCache: Set<EventType> | null = null;
+let _cierresCache: Set<EventType> | null = null;
+let _cacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function getGreenTypes(): Promise<{ green: Set<EventType>; procesos: Set<EventType>; cierres: Set<EventType> }> {
+  if (_greenTypesCache && Date.now() - _cacheTime < CACHE_TTL) {
+    return { green: _greenTypesCache!, procesos: _procesosCache!, cierres: _cierresCache! };
+  }
+  try {
+    const { data } = await supabaseAdmin.from("event_type_config").select("event_type, is_green, is_proceso, is_cierre");
+    if (data?.length) {
+      _greenTypesCache = new Set(data.filter(r => r.is_green).map(r => r.event_type as EventType));
+      _procesosCache   = new Set(data.filter(r => r.is_proceso).map(r => r.event_type as EventType));
+      _cierresCache    = new Set(data.filter(r => r.is_cierre).map(r => r.event_type as EventType));
+      _cacheTime = Date.now();
+      return { green: _greenTypesCache, procesos: _procesosCache, cierres: _cierresCache };
+    }
+  } catch {}
+  // Fallback a defaults hardcodeados
+  return {
+    green:    new Set(["tasacion","visita","primera_visita","propuesta","firma","conocer","reunion"] as EventType[]),
+    procesos: new Set(["tasacion","primera_visita"] as EventType[]),
+    cierres:  new Set(["firma"] as EventType[]),
+  };
+}
+
+export function invalidateEventTypeCache() { _cacheTime = 0; }
+
 // ── Tipos de eventos ──────────────────────────────────────────────────────────
 export type EventType =
   | "tasacion"       // Tasación / Captación
@@ -139,10 +170,11 @@ function detectType(title: string): EventType {
 // Prioridad 1: el usuario lo pintó verde → siempre verde
 // Prioridad 2: el tipo es cara a cara por naturaleza → verde
 // Prospección solo es verde si fue pintada
-function computeIsGreen(event: any, type: EventType): { isGreen: boolean; isUserColored: boolean } {
+async function computeIsGreenAsync(event: any, type: EventType): Promise<{ isGreen: boolean; isUserColored: boolean }> {
   const isUserColored = !!(event.colorId && GREEN_COLOR_IDS.has(event.colorId));
   if (isUserColored) return { isGreen: true, isUserColored: true };
-  if (ALWAYS_GREEN_TYPES.has(type)) return { isGreen: true, isUserColored: false };
+  const { green } = await getGreenTypes();
+  if (green.has(type)) return { isGreen: true, isUserColored: false };
   return { isGreen: false, isUserColored: false };
 }
 
@@ -193,27 +225,27 @@ export async function fetchCalendarEvents(
     maxResults: 2500,
   });
 
-  return (response.data.items || [])
-    .filter(e => e.status !== "cancelled" && e.summary)
-    .map(e => {
-      const type = detectType(e.summary!);
-      const { isGreen, isUserColored } = computeIsGreen(e, type);
-      if (!isGreen) return null; // descartar amarillos
-      return {
-        id: e.id!,
-        title: e.summary!,
-        start: e.start?.dateTime ? new Date(e.start.dateTime).toISOString() : (e.start?.date ? e.start.date + "T00:00:00.000Z" : ""),
-        end: e.end?.dateTime ? new Date(e.end.dateTime).toISOString() : (e.end?.date ? e.end.date + "T00:00:00.000Z" : ""),
-        type,
-        isGreen: true,
-        isProceso: PROCESO_NUEVO_TYPES.has(type),
-        isCierre: CIERRE_TYPES.has(type),
-        isUserColored,
-        durationMinutes: durationMinutes(e),
-        attendeesCount: attendeesCount(e),
-      } as SyncedEvent;
-    })
-    .filter(Boolean) as SyncedEvent[];
+  const items = (response.data.items || []).filter(e => e.status !== "cancelled" && e.summary);
+  const { green, procesos, cierres } = await getGreenTypes();
+
+  return items.map(e => {
+    const type = detectType(e.summary!);
+    const isUserColored = !!(e.colorId && GREEN_COLOR_IDS.has(e.colorId));
+    const isGreen = isUserColored || green.has(type);
+    return {
+      id: e.id!,
+      title: e.summary!,
+      start: e.start?.dateTime ? new Date(e.start.dateTime).toISOString() : (e.start?.date ? e.start.date + "T00:00:00.000Z" : ""),
+      end: e.end?.dateTime ? new Date(e.end.dateTime).toISOString() : (e.end?.date ? e.end.date + "T00:00:00.000Z" : ""),
+      type,
+      isGreen,
+      isProceso: procesos.has(type),
+      isCierre: cierres.has(type),
+      isUserColored,
+      durationMinutes: durationMinutes(e),
+      attendeesCount: attendeesCount(e),
+    } as SyncedEvent;
+  });
 }
 
 // ── Persistir eventos en Supabase ─────────────────────────────────────────────
@@ -280,8 +312,8 @@ export async function getStoredEvents(
     end: r.end_at,
     type: r.event_type as EventType,
     isGreen: r.is_productive,
-    isProceso: r.is_proceso ?? PROCESO_NUEVO_TYPES.has(r.event_type),
-    isCierre: r.is_cierre ?? CIERRE_TYPES.has(r.event_type),
+    isProceso: r.is_proceso ?? false,
+    isCierre: r.is_cierre ?? false,
     isUserColored: r.is_user_colored ?? false,
     durationMinutes: r.duration_minutes ?? 60,
     attendeesCount: r.attendees_count ?? 1,
