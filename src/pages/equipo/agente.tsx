@@ -2,29 +2,19 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Head from "next/head";
-import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Minus, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import AgentCalendar from "../../components/AgentCalendar";
 
 const RED = "#aa0000";
 
 interface PeriodStats {
-  total: number;
-  tasaciones: number;
-  visitas: number;
-  propuestas: number;
-  cierres: number;
-  reuniones: number;
-  seguimientos: number;
-  entrevistas: number;
-  productiveDays: number;
-  avgPerWeek: number;
-  conversionRate: number;
-  consistencyIndex: number;
+  total: number; tasaciones: number; visitas: number; propuestas: number; cierres: number;
+  reuniones: number; seguimientos: number; entrevistas: number;
+  productiveDays: number; avgPerWeek: number; conversionRate: number; consistencyIndex: number;
 }
-
 interface QuarterData { quarter: string; total: number; tasaciones: number; visitas: number; propuestas: number; cierres: number; avgPerWeek: number; }
 interface BestTimes { bestDay: string | null; bestHour: string | null; }
-
 type PeriodType = "month" | "quarter" | "semester" | "year";
 
 export default function AgentDetail() {
@@ -41,16 +31,10 @@ export default function AgentDetail() {
   const [agentName, setAgentName] = useState("");
   const [weekly, setWeekly] = useState<any>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
-  const [calEvents, setCalEvents] = useState<any[]>([]);
-  const [calLoading, setCalLoading] = useState(true);
-  const [calYear, setCalYear] = useState(new Date().getFullYear());
-  const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [status, router]);
   useEffect(() => { if (status === "authenticated" && email) load(); }, [status, email, period, selectedQ]);
   useEffect(() => { if (status === "authenticated" && email) loadWeekly(); }, [status, email]);
-  useEffect(() => { if (status === "authenticated" && email) loadCalendar(); }, [status, email, calYear, calMonth]);
 
   const loadWeekly = async () => {
     setWeeklyLoading(true);
@@ -65,15 +49,6 @@ export default function AgentDetail() {
     setWeeklyLoading(false);
   };
 
-  const loadCalendar = async () => {
-    setCalLoading(true);
-    try {
-      const res = await fetch(`/api/analytics/agent-calendar?agentEmail=${encodeURIComponent(email as string)}&year=${calYear}&month=${calMonth}`);
-      if (res.ok) { const d = await res.json(); setCalEvents(d.events || []); }
-    } catch {}
-    setCalLoading(false);
-  };
-
   const load = async () => {
     setLoading(true);
     try {
@@ -82,7 +57,6 @@ export default function AgentDetail() {
       else if (period === "semester") url += `&period=semester&semester=${selectedQ <= 2 ? 1 : 2}`;
       else if (period === "year") url += `&period=year`;
       else url += `&period=month`;
-
       const res = await fetch(url);
       if (!res.ok) { router.replace("/equipo"); return; }
       const data = await res.json();
@@ -90,7 +64,7 @@ export default function AgentDetail() {
       setQuarters(data.quarterComparison || []);
       setBestTimes(data.bestTimes || {});
       if (!agentName) setAgentName((email as string).split("@")[0]);
-    } catch { }
+    } catch {}
     setLoading(false);
   };
 
@@ -101,21 +75,14 @@ export default function AgentDetail() {
     return "Últimos 30 días";
   };
 
-  const TYPE_LABEL: Record<string, string> = {
-    tasacion: "Tasación", visita: "Visita", propuesta: "Propuesta",
-    firma: "Firma", entrevista: "Entrevista", seguimiento: "Seguimiento",
-    meet: "Meet/Zoom", fotos_video: "Fotos/Video", otro: "Otro",
-  };
-  const TYPE_COLOR: Record<string, string> = {
-    tasacion: "#aa0000", visita: "#7c3aed", propuesta: "#0369a1",
-    firma: "#16a34a", entrevista: "#d97706", seguimiento: "#6b7280",
-    meet: "#0891b2", fotos_video: "#db2777", otro: "#9ca3af",
-  };
-
   const iacColor = (v: number) => v >= 70 ? "#16a34a" : v >= 40 ? "#d97706" : "#aa0000";
   const iacLabel = (v: number) => v >= 70 ? "Productivo" : v >= 40 ? "En construcción" : "En riesgo";
 
-  if (status === "loading") return <div className="min-h-screen bg-white flex items-center justify-center"><Loader2 size={24} className="animate-spin" style={{ color: RED }} /></div>;
+  if (status === "loading") return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <Loader2 size={24} className="animate-spin" style={{ color: RED }} />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
@@ -139,7 +106,7 @@ export default function AgentDetail() {
           <p className="text-sm text-gray-400">{email}</p>
         </div>
 
-        {/* IAC semanal + sparkline */}
+        {/* IAC semanal */}
         {weeklyLoading ? (
           <div className="flex items-center justify-center py-6"><Loader2 size={18} className="animate-spin text-gray-200" /></div>
         ) : weekly && (
@@ -163,32 +130,27 @@ export default function AgentDetail() {
                 )}
                 <div className="text-xs text-gray-400">
                   {weekly.trend === "up" ? <span className="text-green-600 font-bold">↑ +{Math.abs(weekly.trendPct)}% vs semana anterior</span>
-                  : weekly.trend === "down" ? <span className="text-red-500 font-bold">↓ {Math.abs(weekly.trendPct)}% vs semana anterior</span>
-                  : <span>estable vs semana anterior</span>}
+                    : weekly.trend === "down" ? <span className="text-red-500 font-bold">↓ {Math.abs(weekly.trendPct)}% vs semana anterior</span>
+                    : <span>estable vs semana anterior</span>}
                 </div>
               </div>
             </div>
-
-            {/* Barra IAC */}
             <div className="px-6 mb-4">
               <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${Math.min(weekly.iac, 100)}%`, background: iacColor(weekly.iac) }} />
               </div>
             </div>
-
-            {/* Sparkline 7 días */}
             <div className="px-6 pb-5">
               <div className="text-xs text-gray-400 mb-2 font-medium">Últimos 7 días</div>
               <div className="flex items-end gap-1.5 h-12">
                 {(weekly.sparkline || []).map((v: number, i: number) => {
                   const days = ["L","M","X","J","V","S","D"];
                   const max = Math.max(...(weekly.sparkline || [1]), 1);
-                  const color = iacColor(weekly.iac);
                   return (
                     <div key={i} className="flex flex-col items-center gap-1 flex-1">
                       <div className="w-full rounded-sm transition-all"
-                        style={{ height: `${Math.max(3, (v / max) * 36)}px`, background: v > 0 ? color : "#e5e7eb", opacity: v === 0 ? 0.3 : 1 }} />
+                        style={{ height: `${Math.max(3, (v / max) * 36)}px`, background: v > 0 ? iacColor(weekly.iac) : "#e5e7eb", opacity: v === 0 ? 0.3 : 1 }} />
                       <span className="text-gray-300 font-medium" style={{ fontSize: 9 }}>{days[i]}</span>
                     </div>
                   );
@@ -198,149 +160,8 @@ export default function AgentDetail() {
           </div>
         )}
 
-        {/* Calendario mensual */}
-        {(() => {
-          const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-          const DAY_NAMES = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
-          const today = new Date();
-
-          // Build calendar grid
-          const firstDay = new Date(calYear, calMonth, 1);
-          const lastDay = new Date(calYear, calMonth + 1, 0);
-          const startDow = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-          const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
-
-          // Index events by date key YYYY-MM-DD
-          const evByDate: Record<string, any[]> = {};
-          calEvents.forEach(e => {
-            const d = new Date(e.start);
-            if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
-              const key = d.toISOString().slice(0, 10);
-              if (!evByDate[key]) evByDate[key] = [];
-              evByDate[key].push(e);
-            }
-          });
-
-          const prevMonth = () => {
-            if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
-            else setCalMonth(m => m - 1);
-            setSelectedDay(null);
-          };
-          const nextMonth = () => {
-            if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
-            else setCalMonth(m => m + 1);
-            setSelectedDay(null);
-          };
-
-          const selectedEvents = selectedDay ? (evByDate[selectedDay] || []).sort((a:any,b:any) => new Date(a.start).getTime()-new Date(b.start).getTime()) : [];
-
-          return (
-            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-              {/* Header */}
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
-                <Calendar size={13} className="text-gray-400" />
-                <button onClick={prevMonth} className="text-gray-400 hover:text-gray-700 font-black px-1">‹</button>
-                <span className="text-sm font-black text-gray-800 flex-1 text-center">
-                  {MONTH_NAMES[calMonth]} {calYear}
-                </span>
-                <button onClick={nextMonth} className="text-gray-400 hover:text-gray-700 font-black px-1">›</button>
-                {calLoading && <Loader2 size={11} className="animate-spin text-gray-300" />}
-                <span className="text-xs text-gray-400">
-                  {Object.values(evByDate).flat().filter((e:any) => e.isGreen).length} <span style={{color: RED}}>verdes</span>
-                </span>
-              </div>
-
-              {/* Day headers */}
-              <div className="grid grid-cols-7 border-b border-gray-50">
-                {DAY_NAMES.map(d => (
-                  <div key={d} className="text-center py-2 text-xs font-black text-gray-300">{d}</div>
-                ))}
-              </div>
-
-              {/* Cells */}
-              <div className="grid grid-cols-7">
-                {Array.from({ length: totalCells }).map((_, i) => {
-                  const dayNum = i - startDow + 1;
-                  if (dayNum < 1 || dayNum > lastDay.getDate()) {
-                    return <div key={i} className="h-14 border-b border-r border-gray-50 last:border-r-0" />;
-                  }
-                  const dateKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
-                  const evs = evByDate[dateKey] || [];
-                  const greenCount = evs.filter((e:any) => e.isGreen).length;
-                  const totalCount = evs.length;
-                  const isToday = today.getDate()===dayNum && today.getMonth()===calMonth && today.getFullYear()===calYear;
-                  const isSelected = selectedDay === dateKey;
-                  const hasEvents = totalCount > 0;
-
-                  return (
-                    <div key={i}
-                      onClick={() => setSelectedDay(isSelected ? null : dateKey)}
-                      className="h-14 border-b border-r border-gray-50 last:border-r-0 p-1 cursor-pointer transition-colors relative"
-                      style={{ background: isSelected ? "#fef2f2" : hasEvents ? "#fafafa" : "white" }}>
-                      <div className="flex items-start justify-between">
-                        <span className="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full"
-                          style={{
-                            background: isToday ? RED : "transparent",
-                            color: isToday ? "white" : "#374151",
-                            fontWeight: isToday ? 900 : 600,
-                          }}>
-                          {dayNum}
-                        </span>
-                        {greenCount > 0 && (
-                          <span className="text-xs font-black leading-none px-1 py-0.5 rounded-md"
-                            style={{ background: "#dcfce7", color: "#16a34a", fontSize: 9 }}>
-                            {greenCount}✓
-                          </span>
-                        )}
-                      </div>
-                      {totalCount > 0 && (
-                        <div className="flex gap-0.5 mt-0.5 flex-wrap">
-                          {evs.slice(0, 3).map((e:any, ei:number) => (
-                            <div key={ei} className="h-1 rounded-full flex-1 min-w-0"
-                              style={{ background: e.isGreen ? (TYPE_COLOR[e.type] || RED) : "#e5e7eb" }} />
-                          ))}
-                          {evs.length > 3 && <span style={{fontSize:8}} className="text-gray-300 font-bold">+{evs.length-3}</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Selected day detail */}
-              {selectedDay && (
-                <div className="border-t border-gray-100 px-5 py-4">
-                  <div className="text-xs font-black text-gray-500 uppercase tracking-wide mb-3">
-                    {new Date(selectedDay + "T12:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
-                    {" · "}{selectedEvents.length} evento{selectedEvents.length !== 1 ? "s" : ""}
-                  </div>
-                  {selectedEvents.length === 0 ? (
-                    <p className="text-xs text-gray-400">Sin eventos este día.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedEvents.map((e: any) => {
-                        const color = TYPE_COLOR[e.type] || "#9ca3af";
-                        const time = new Date(e.start).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-                        return (
-                          <div key={e.id} className="flex items-center gap-2.5 rounded-xl px-3 py-2.5"
-                            style={{ background: e.isGreen ? `${color}10` : "#f9fafb", borderLeft: `3px solid ${e.isGreen ? color : "#e5e7eb"}` }}>
-                            <span className="text-xs font-bold text-gray-400 shrink-0 w-10">{time}</span>
-                            <span className="text-sm font-semibold text-gray-800 flex-1 truncate">{e.title || TYPE_LABEL[e.type]}</span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-lg shrink-0"
-                              style={{ background: `${color}20`, color }}>
-                              {TYPE_LABEL[e.type]}
-                            </span>
-                            {e.isGreen && <span className="text-xs font-black text-green-500 shrink-0">✓</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {/* Calendario — idéntico al dashboard del agente */}
+        {email && <AgentCalendar agentEmail={email as string} />}
 
         {/* Selector de período */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
@@ -429,9 +250,6 @@ export default function AgentDetail() {
                   <div className="text-xs text-gray-400 mb-1">Hora más productiva</div>
                   <div className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{bestTimes.bestHour || "—"}</div>
                 </div>
-                <p className="text-xs text-gray-400 ml-auto max-w-xs text-right hidden sm:block">
-                  Basado en los últimos 90 días de actividad registrada.
-                </p>
               </div>
             )}
 
@@ -443,10 +261,7 @@ export default function AgentDetail() {
                   <BarChart data={quarters} barSize={36}>
                     <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
                     <YAxis hide />
-                    <Tooltip
-                      contentStyle={{ border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 12 }}
-                      formatter={(v: number, name: string) => [v, name]}
-                    />
+                    <Tooltip contentStyle={{ border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 12 }} />
                     <Bar dataKey="total" radius={[6, 6, 0, 0]}>
                       {quarters.map((q, i) => (
                         <Cell key={i} fill={q.quarter === `Q${Math.ceil((new Date().getMonth() + 1) / 3)}` ? RED : "#e5e7eb"} />
