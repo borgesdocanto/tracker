@@ -5,7 +5,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { requireSuperAdmin } from "../../lib/adminGuard";
 import {
-  Users, CreditCard, BarChart2, Zap, Search, RefreshCw,
+  Users, CreditCard, BarChart2, Zap, Search, RefreshCw, Settings,
   ChevronDown, CheckCircle, XCircle, Clock, Loader2,
   Calendar, Mail, Shield, TrendingUp, AlertTriangle
 } from "lucide-react";
@@ -258,6 +258,7 @@ export default function AdminPanel() {
             { key: "teams", label: "Equipos", icon: <Shield size={13} /> },
             { key: "ops", label: "Operaciones", icon: <Zap size={13} /> },
             { key: "precios", label: "Precios", icon: <CreditCard size={13} /> },
+            { key: "eventos", label: "Tipos de evento", icon: <Settings size={13} /> },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors"
