@@ -19,8 +19,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
-    const { showTeamLeaders, anonymizeGlobal } = req.body;
-    const result = await updateTeamSettings(email, { showTeamLeaders, anonymizeGlobal });
+    const { showTeamLeaders, showBroker, anonymizeGlobal } = req.body;
+    const result = await updateTeamSettings(email, { showTeamLeaders, showBroker, anonymizeGlobal });
     return res.status(result.ok ? 200 : 403).json(result);
   }
 

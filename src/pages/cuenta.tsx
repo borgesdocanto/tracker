@@ -445,18 +445,6 @@ export default function CuentaPage() {
               <div className="divide-y divide-gray-50">
                 <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
                   <div>
-                    <div className="text-sm font-semibold text-gray-800">Mostrar Team Leaders en ranking del equipo</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, solo aparecen los agentes (members)</div>
-                  </div>
-                  <div onClick={() => { const v = !showTeamLeaders; setShowTeamLeaders(v); saveSetting("showTeamLeaders", v); }}
-                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
-                    style={{ background: showTeamLeaders ? RED : "#e5e7eb" }}>
-                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
-                      style={{ left: showTeamLeaders ? "calc(100% - 22px)" : "2px" }} />
-                  </div>
-                </label>
-                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div>
                     <div className="text-sm font-semibold text-gray-800">Mostrar Broker en ranking del equipo</div>
                     <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, el broker no aparece en el ranking interno</div>
                   </div>
@@ -465,6 +453,18 @@ export default function CuentaPage() {
                     style={{ background: showBroker ? RED : "#e5e7eb" }}>
                     <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
                       style={{ left: showBroker ? "calc(100% - 22px)" : "2px" }} />
+                  </div>
+                </label>
+                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800">Mostrar Team Leaders en ranking del equipo</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, solo aparecen los agentes (members)</div>
+                  </div>
+                  <div onClick={() => { const v = !showTeamLeaders; setShowTeamLeaders(v); saveSetting("showTeamLeaders", v); }}
+                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
+                    style={{ background: showTeamLeaders ? RED : "#e5e7eb" }}>
+                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
+                      style={{ left: showTeamLeaders ? "calc(100% - 22px)" : "2px" }} />
                   </div>
                 </label>
                 <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
