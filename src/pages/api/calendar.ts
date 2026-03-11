@@ -157,19 +157,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Persistir usando los eventos ya procesados — evita segunda llamada a Google
     // que causaba discrepancias en la primera impresión del usuario
-    const syncedForPersist = mappedEvents.map(e => ({
-      id: e.id,
-      title: e.title,
-      start: e.start,
-      end: e.end,
-      type: e.type as EventType,
-      isGreen: e.isGreen,
-      isProceso: e.isProceso,
-      isCierre: e.isCierre,
-      isUserColored: e.isUserColored,
-      durationMinutes: 60,
-      attendeesCount: e.attendees?.length ?? 1,
-    }));
+    const syncedForPersist = mappedEvents.map(e => {
+      // Normalizar fechas a UTC ISO para consistencia con calendarSync.ts
+      const normalizeDate = (d: string) => {
+        if (!d) return d;
+        if (d.length === 10) return d + "T00:00:00.000Z"; // all-day event
+        try { return new Date(d).toISOString(); } catch { return d; }
+      };
+      const startNorm = normalizeDate(e.start);
+      const endNorm = normalizeDate(e.end);
+      const dur = startNorm && endNorm
+        ? Math.round((new Date(endNorm).getTime() - new Date(startNorm).getTime()) / 60000)
+        : 60;
+      return {
+        id: e.id,
+        title: e.title,
+        start: startNorm,
+        end: endNorm,
+        type: e.type as EventType,
+        isGreen: e.isGreen,
+        isProceso: e.isProceso,
+        isCierre: e.isCierre,
+        isUserColored: e.isUserColored,
+        durationMinutes: Math.max(0, dur),
+        attendeesCount: e.attendees?.length ?? 1,
+      };
+    });
     await persistEvents(session.user?.email!, sub?.team_id, syncedForPersist)
       .catch(e => console.error("Persist error:", e));
 
