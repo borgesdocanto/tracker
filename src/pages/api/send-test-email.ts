@@ -5,7 +5,7 @@ import { Resend } from "resend";
 import { fetchCalendarEvents, computeWeekStats } from "../../lib/calendarSync";
 import { generateWeeklyEmailHtml } from "../../lib/emailTemplate";
 import { PRODUCTIVITY_GOAL } from "../../lib/brand";
-import { getOrCreateSubscription } from "../../lib/subscription";
+import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { getPlanById } from "../../lib/plans";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
@@ -64,6 +64,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 4. Subscription info
     const sub = await getOrCreateSubscription(session.user.email, session.user.name ?? undefined);
+    if (isFreemiumExpired(sub)) {
+      return res.status(403).json({ error: "Prueba terminada. Activá tu plan." });
+    }
     const plan = getPlanById(sub.plan);
 
     // 5. Generar y enviar mail

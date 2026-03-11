@@ -15,17 +15,39 @@ export default function PagoExito() {
   const total = calcTeamsTotal(BASE_PRICE, agentCount);
   const perAgent = pricePerAgent(BASE_PRICE, agentCount);
   const tier = getTierForAgents(agentCount);
-  const [seconds, setSeconds] = useState(6);
+  const [seconds, setSeconds] = useState(15);
+  const [planActivated, setPlanActivated] = useState(false);
 
+  // Polling: esperar que el webhook de MP active el plan antes de redirigir
   useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 10;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/subscription");
+        const data = await res.json();
+        if (data.subscription?.plan !== "free") {
+          setPlanActivated(true);
+          setTimeout(() => router.push("/"), 1500);
+          return;
+        }
+      } catch {}
+      attempts++;
+      if (attempts < maxAttempts) setTimeout(poll, 1500);
+      else router.push("/"); // fallback
+    };
+    const timeout = setTimeout(poll, 2000); // primer check a los 2s
+    return () => clearTimeout(timeout);
+  }, [router]);
+
+  // Countdown visual
+  useEffect(() => {
+    if (planActivated) return;
     const interval = setInterval(() => {
-      setSeconds(s => {
-        if (s <= 1) { clearInterval(interval); router.push("/"); }
-        return s - 1;
-      });
+      setSeconds(s => { if (s <= 1) clearInterval(interval); return Math.max(0, s - 1); });
     }, 1000);
     return () => clearInterval(interval);
-  }, [router]);
+  }, [planActivated]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4"
@@ -93,7 +115,7 @@ export default function PagoExito() {
         </button>
 
         <p className="text-xs text-gray-300 mt-4">
-          Redirigiendo en {seconds}s...
+          {planActivated ? "¡Listo! Redirigiendo..." : `Activando tu plan${seconds > 0 ? ` · ${seconds}s` : "..."}` }
         </p>
       </div>
     </div>

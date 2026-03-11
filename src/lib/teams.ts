@@ -115,6 +115,22 @@ export async function acceptInvitation(token: string, agentEmail: string): Promi
   if (!inv) return { ok: false, error: "Invitación inválida o ya usada" };
   if (inv.email !== agentEmail) return { ok: false, error: "Esta invitación no es para tu email" };
 
+  // Verificar que el equipo sigue activo
+  const teamData = inv.teams as any;
+  if (teamData?.status === "paused" || teamData?.status === "cancelled") {
+    return { ok: false, error: "El equipo ya no está activo. Contactá al broker." };
+  }
+
+  // Verificar que el equipo no llenó capacidad desde que se envió la invitación
+  const { count: currentCount } = await supabaseAdmin
+    .from("subscriptions")
+    .select("email", { count: "exact", head: true })
+    .eq("team_id", inv.team_id);
+
+  if ((currentCount ?? 0) >= (teamData?.max_agents ?? 1)) {
+    return { ok: false, error: "El equipo ya alcanzó su límite de agentes." };
+  }
+
   const { data: brokerSub } = await supabaseAdmin
     .from("subscriptions")
     .select("plan")

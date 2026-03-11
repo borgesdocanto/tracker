@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { supabaseAdmin } from "../../lib/supabase";
 import { IAC_GOAL, PROCESOS_GOAL, CARTERA_GOAL, EFECTIVIDAD, calcIAC, proyectarOperaciones } from "../../lib/calendarSync";
 
@@ -42,6 +43,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const userEmail = session.user.email;
+
+  // Verificar que el usuario tiene acceso activo
+  const sub = await getOrCreateSubscription(userEmail);
+  if (isFreemiumExpired(sub)) {
+    return res.status(403).json({ error: "Tu prueba gratuita terminó. Activá tu plan para usar el coach." });
+  }
+
   const isMonthly = calView === "month";
   const start = periodStart || (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0, 10); })();
   const end = periodEnd || new Date().toISOString().slice(0, 10);
