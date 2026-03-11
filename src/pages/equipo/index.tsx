@@ -275,13 +275,15 @@ export default function BrokerDashboard() {
             <Users size={13} className="text-gray-400" />
             <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Ranking del equipo</span>
             <div className="ml-auto flex items-center gap-1.5">
-              {(["iac", "trend", "streak"] as const).map(s => (
-                <button key={s} onClick={() => setSortBy(s)}
-                  className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
-                  style={{ background: sortBy === s ? RED : "#f3f4f6", color: sortBy === s ? "white" : "#9ca3af" }}>
-                  {s === "iac" ? "IAC" : s === "trend" ? "Tendencia" : "Racha"}
-                </button>
-              ))}
+              <button onClick={() => setSortBy("iac")} title="Reuniones cara a cara esta semana vs meta 15"
+                className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
+                style={{ background: sortBy === "iac" ? RED : "#f3f4f6", color: sortBy === "iac" ? "white" : "#9ca3af" }}>IAC</button>
+              <button onClick={() => setSortBy("trend")} title="Variación vs semana anterior (↑ mejoró, ↓ bajó)"
+                className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
+                style={{ background: sortBy === "trend" ? RED : "#f3f4f6", color: sortBy === "trend" ? "white" : "#9ca3af" }}>Tendencia</button>
+              <button onClick={() => setSortBy("streak")} title="Días consecutivos con al menos 1 reunión verde"
+                className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
+                style={{ background: sortBy === "streak" ? RED : "#f3f4f6", color: sortBy === "streak" ? "white" : "#9ca3af" }}>Racha</button>
               <button onClick={syncAll} disabled={syncing} className="ml-1 text-gray-400 hover:text-gray-600 disabled:opacity-50">
                 {syncing || analyticsLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
               </button>
