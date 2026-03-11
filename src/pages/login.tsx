@@ -13,6 +13,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/");
+    // Si no hay error específico, redirigir a /home (landing pública)
+    if (status === "unauthenticated" && !router.query.error) router.replace("/home");
   }, [status, router]);
 
   if (status === "loading" || status === "authenticated") {

@@ -92,5 +92,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  pages: { signIn: "/home", error: "/login" },
+  pages: { signIn: "/home", error: "/home" },
 };
