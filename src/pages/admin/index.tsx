@@ -66,6 +66,10 @@ export default function AdminPanel() {
   const [planInputs, setPlanInputs] = useState<Record<string, string>>({});
   const [planSaving, setPlanSaving] = useState<string | null>(null);
   const [planMsg, setPlanMsg] = useState<Record<string, string>>({});
+  const [teamSearch, setTeamSearch] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState<AdminStats["teams"][0] | null>(null);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [teamMembersLoading, setTeamMembersLoading] = useState(false);
 
   useEffect(() => { loadStats(); }, []);
   useEffect(() => { if (tab === "users" || tab === "teams") loadUsers(); }, [tab, planFilter, search]);
@@ -218,6 +222,33 @@ export default function AdminPanel() {
       setOpsMsg(data.ok ? `✓ ${action} ejecutado` : (data.error || "Error"));
     } catch { setOpsMsg("Error de conexión"); }
     setOpsLoading(false);
+  };
+
+  const loadTeamMembers = async (teamId: string) => {
+    setTeamMembersLoading(true);
+    setTeamMembers([]);
+    try {
+      const res = await fetch(`/api/admin/teams?teamId=${teamId}`);
+      const data = await res.json();
+      setTeamMembers(data.members || []);
+    } catch {}
+    setTeamMembersLoading(false);
+  };
+
+  const ROLE_LABEL: Record<string, string> = {
+    owner: "Broker",
+    team_leader: "Team Leader",
+    member: "Agente",
+  };
+  const ROLE_COLOR: Record<string, string> = {
+    owner: RED,
+    team_leader: "#7c3aed",
+    member: "#6b7280",
+  };
+  const ROLE_BG: Record<string, string> = {
+    owner: "#fff5f5",
+    team_leader: "#f5f3ff",
+    member: "#f3f4f6",
   };
 
   const KPI = ({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color?: string }) => (
@@ -455,38 +486,143 @@ export default function AdminPanel() {
 
         {/* EQUIPOS */}
         {tab === "teams" && (
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100">
-              <span className="text-xs font-black text-gray-500 uppercase tracking-widest">{stats?.teams.length || 0} equipos</span>
+          <div className="flex gap-5" style={{ alignItems: "flex-start" }}>
+
+            {/* Lista de equipos */}
+            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden" style={{ width: selectedTeam ? "340px" : "100%", flexShrink: 0, transition: "width 0.2s" }}>
+              {/* Search */}
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <Search size={13} className="text-gray-300 shrink-0" />
+                <input
+                  value={teamSearch}
+                  onChange={e => setTeamSearch(e.target.value)}
+                  placeholder="Buscar equipo o broker..."
+                  className="flex-1 text-sm text-gray-700 outline-none bg-transparent"
+                />
+                <span className="text-xs font-bold text-gray-300 shrink-0">
+                  {(stats?.teams || []).filter(t =>
+                    !teamSearch || [t.agency_name, t.name, t.owner_email, t.ownerName].some(v => v?.toLowerCase().includes(teamSearch.toLowerCase()))
+                  ).length}
+                </span>
+              </div>
+
+              <div className="divide-y divide-gray-50" style={{ maxHeight: "calc(100vh - 220px)", overflowY: "auto" }}>
+                {(stats?.teams || [])
+                  .filter(t => !teamSearch || [t.agency_name, t.name, t.owner_email, t.ownerName].some(v => v?.toLowerCase().includes(teamSearch.toLowerCase())))
+                  .map(t => {
+                    const isSelected = selectedTeam?.id === t.id;
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => {
+                          if (isSelected) { setSelectedTeam(null); setTeamMembers([]); }
+                          else { setSelectedTeam(t); loadTeamMembers(t.id); }
+                        }}
+                        className="px-4 py-3.5 cursor-pointer transition-colors"
+                        style={{ background: isSelected ? "#fff5f5" : undefined }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "#fafafa"; }}
+                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ""; }}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Avatar inicial */}
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
+                            style={{ background: isSelected ? RED : "#e5e7eb", color: isSelected ? "white" : "#9ca3af" }}>
+                            {(t.agency_name || t.name || "?")[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-black text-gray-900 truncate" style={{ color: isSelected ? RED : undefined }}>
+                                {t.agency_name || t.name}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-400 truncate">{t.ownerName} · {t.owner_email}</div>
+                          </div>
+                          <span className="text-xs font-bold text-gray-400 shrink-0">{t.memberCount}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {(!stats?.teams.length) && (
+                  <div className="px-5 py-10 text-center text-sm text-gray-400">Sin equipos todavía</div>
+                )}
+              </div>
             </div>
-            <div className="divide-y divide-gray-50">
-              {(stats?.teams || []).map(t => (
-                <div key={t.id} className="px-5 py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-black text-gray-900">{t.agency_name || t.name}</span>
-                        {t.agency_name && <span className="text-xs text-gray-400">{t.name}</span>}
+
+            {/* Detalle del equipo seleccionado */}
+            {selectedTeam && (
+              <div className="flex-1 min-w-0 space-y-3">
+
+                {/* Header del equipo */}
+                <div className="bg-white border border-gray-100 rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>
+                        {selectedTeam.agency_name || selectedTeam.name}
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        Owner: <strong>{t.ownerName}</strong> · {t.owner_email}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        Creado: {new Date(t.created_at).toLocaleDateString("es-AR")} ·
-                        <span className="ml-1 font-semibold text-gray-600">{t.memberCount} agente{t.memberCount !== 1 ? "s" : ""}</span>
+                      {selectedTeam.agency_name && (
+                        <div className="text-xs text-gray-400 mt-0.5">{selectedTeam.name}</div>
+                      )}
+                      <div className="text-xs text-gray-400 mt-1">
+                        Creado {new Date(selectedTeam.created_at).toLocaleDateString("es-AR")} ·{" "}
+                        <span className="font-semibold text-gray-600">{selectedTeam.memberCount} miembro{selectedTeam.memberCount !== 1 ? "s" : ""}</span>
                       </div>
                     </div>
-                    <button onClick={() => triggerOp("send_weekly_email", t.owner_email)}
-                      className="text-xs font-semibold text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors shrink-0">
-                      <Mail size={11} /> Mail al broker
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => triggerOp("send_weekly_email", selectedTeam.owner_email)}
+                        className="text-xs font-semibold text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                        <Mail size={11} /> Mail al broker
+                      </button>
+                      <button onClick={() => { setSelectedTeam(null); setTeamMembers([]); }}
+                        className="text-xs font-semibold text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
-              {(!stats?.teams.length) && (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">Sin equipos todavía</div>
-              )}
-            </div>
+
+                {/* Miembros */}
+                <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-gray-100">
+                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Miembros del equipo</span>
+                  </div>
+
+                  {teamMembersLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <Loader2 size={20} className="animate-spin text-gray-300" />
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {/* Broker */}
+                      {teamMembers.filter(m => m.team_role === "owner").map(m => (
+                        <MemberRow key={m.email} m={m} roleLabel={ROLE_LABEL} roleColor={ROLE_COLOR} roleBg={ROLE_BG} planColor={PLAN_COLOR} planBg={PLAN_BG} planLabel={PLAN_LABEL} />
+                      ))}
+                      {/* Team Leaders */}
+                      {teamMembers.filter(m => m.team_role === "team_leader").length > 0 && (
+                        <div className="px-5 py-2 bg-gray-50">
+                          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Team Leaders</span>
+                        </div>
+                      )}
+                      {teamMembers.filter(m => m.team_role === "team_leader").map(m => (
+                        <MemberRow key={m.email} m={m} roleLabel={ROLE_LABEL} roleColor={ROLE_COLOR} roleBg={ROLE_BG} planColor={PLAN_COLOR} planBg={PLAN_BG} planLabel={PLAN_LABEL} />
+                      ))}
+                      {/* Agentes */}
+                      {teamMembers.filter(m => m.team_role === "member").length > 0 && (
+                        <div className="px-5 py-2 bg-gray-50">
+                          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Agentes</span>
+                        </div>
+                      )}
+                      {teamMembers.filter(m => m.team_role === "member").map(m => (
+                        <MemberRow key={m.email} m={m} roleLabel={ROLE_LABEL} roleColor={ROLE_COLOR} roleBg={ROLE_BG} planColor={PLAN_COLOR} planBg={PLAN_BG} planLabel={PLAN_LABEL} />
+                      ))}
+                      {teamMembers.length === 0 && (
+                        <div className="px-5 py-8 text-center text-sm text-gray-400">Sin miembros</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -828,6 +964,45 @@ export default function AdminPanel() {
         )}
 
       </main>
+    </div>
+  );
+}
+
+function MemberRow({ m, roleLabel, roleColor, roleBg, planColor, planBg, planLabel }: {
+  m: any;
+  roleLabel: Record<string, string>;
+  roleColor: Record<string, string>;
+  roleBg: Record<string, string>;
+  planColor: Record<string, string>;
+  planBg: Record<string, string>;
+  planLabel: Record<string, string>;
+}) {
+  return (
+    <div className="px-5 py-4 flex items-center gap-3">
+      {m.avatar ? (
+        <img src={m.avatar} alt="" className="w-8 h-8 rounded-full shrink-0" />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">
+          {(m.name || m.email)[0].toUpperCase()}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-gray-800">{m.name || m.email}</span>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+            style={{ background: roleBg[m.team_role] || "#f3f4f6", color: roleColor[m.team_role] || "#6b7280" }}>
+            {roleLabel[m.team_role] || m.team_role}
+          </span>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+            style={{ background: planBg[m.plan] || "#f3f4f6", color: planColor[m.plan] || "#6b7280" }}>
+            {planLabel[m.plan] || m.plan}
+          </span>
+          {m.status === "cancelled" && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-red-50 text-red-400">Cancelado</span>
+          )}
+        </div>
+        <div className="text-xs text-gray-400 mt-0.5">{m.email}</div>
+      </div>
     </div>
   );
 }
