@@ -11,6 +11,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { teamId } = req.query;
   if (!teamId || typeof teamId !== "string") return res.status(400).json({ error: "teamId requerido" });
 
+  // Verificar que el usuario pertenece a ese equipo
+  const { supabaseAdmin } = await import("../../../lib/supabase");
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("team_id")
+    .eq("email", session.user.email)
+    .single();
+
+  if (sub?.team_id !== teamId) return res.status(403).json({ error: "Sin acceso a este equipo" });
+
   const result = await getTeamStatus(teamId);
   return res.status(200).json(result);
 }

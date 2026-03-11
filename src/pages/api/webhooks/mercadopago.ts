@@ -40,10 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (sub.status === "cancelled" || sub.status === "paused") {
           const [email] = (sub.external_reference ?? "").split("|");
           if (email) {
-            // Obtener paid_until desde el próximo cobro o current_period_end de MP
-            const paidUntil = sub.next_payment_date || sub.date_last_updated
-              ? new Date(sub.next_payment_date || sub.date_last_updated)
-              : new Date();
+            // Obtener paid_until: preferir next_payment_date, fallback a +30 días
+            const paidUntilDate = sub.next_payment_date
+              ? new Date(sub.next_payment_date)
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
             const { data: brokerSub } = await supabaseAdmin
               .from("subscriptions")
@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (brokerSub?.team_id && brokerSub.team_role === "owner") {
               await supabaseAdmin
                 .from("teams")
-                .update({ status: "paused", paid_until: paidUntil.toISOString() })
+                .update({ status: "paused", paid_until: paidUntilDate.toISOString() })
                 .eq("id", brokerSub.team_id);
             }
 

@@ -196,14 +196,17 @@ export default function CuentaPage() {
 
   const confirmRemove = async () => {
     if (!removeModal) return;
-    setRemoveLoading(removeModal.email);
-    const res = await fetch("/api/teams/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberEmail: removeModal.email, confirmed: true }) });
+    const emailToRemove = removeModal.email; // capturar antes del async
+    setRemoveLoading(emailToRemove);
+    const res = await fetch("/api/teams/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberEmail: emailToRemove, confirmed: true }) });
     const d = await res.json();
     if (d.ok) {
       setRemoveModal(null);
       fetch("/api/teams/members").then(r=>r.json()).then(d=>{ if(d?.members) setTeamMembers(d.members); });
       fetch("/api/cuenta").then(r=>r.json()).then(d=>setData(d));
       loadRemovedMembers();
+    } else {
+      alert(d.error || "Error al remover el agente");
     }
     setRemoveLoading(null);
   };

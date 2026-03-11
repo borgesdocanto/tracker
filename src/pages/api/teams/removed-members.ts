@@ -17,10 +17,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (sub?.team_role !== "owner" || !sub?.team_id)
     return res.status(200).json({ removed: [] });
 
+  // Mostrar removidos de los últimos 90 días (cubre el período de bloqueo de 60d)
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabaseAdmin
     .from("team_removals")
     .select("removed_email, removed_at, blocked_until, free_until")
     .eq("team_id", sub.team_id)
+    .gte("removed_at", since)
     .order("removed_at", { ascending: false });
 
   return res.status(200).json({ removed: data || [] });

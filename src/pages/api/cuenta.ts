@@ -100,14 +100,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let teamStatus: string | null = null;
     let teamPaidUntil: string | null = null;
     let teamId: string | null = sub.team_id || null;
+    let savedAgentCount: number | null = null;
     if (sub.team_id) {
       const { data: teamRow } = await supabaseAdmin
         .from("teams")
-        .select("status, paid_until")
+        .select("status, paid_until, max_agents")
         .eq("id", sub.team_id)
         .single();
       teamStatus = teamRow?.status || "active";
       teamPaidUntil = teamRow?.paid_until || null;
+      // Cuando el equipo está pausado, usar max_agents guardado (los agentes ya no tienen team_id activo)
+      if (teamRow?.status === "paused" || teamRow?.status === "cancelled") {
+        savedAgentCount = teamRow?.max_agents || null;
+      }
+    }
+
+    // Si equipo pausado, usar savedAgentCount como base de facturación al retomar
+    if (savedAgentCount && (teamStatus === "paused" || teamStatus === "cancelled")) {
+      agentCount = savedAgentCount;
     }
 
     return res.status(200).json({

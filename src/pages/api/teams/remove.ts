@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { getOrCreateTeam } from "../../../lib/teams";
 import { addDays } from "date-fns";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -22,8 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
 
   if (sub?.team_role !== "owner") return res.status(403).json({ error: "Solo el owner puede remover agentes" });
+  if (!sub?.team_id) return res.status(400).json({ error: "No tenés un equipo activo" });
 
-  const team = await getOrCreateTeam(session.user.email, "");
+  const teamId = sub.team_id;
 
   // Si no confirmó, devolver aviso primero
   if (!confirmed) {
@@ -33,19 +33,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  // Verificar que el agente pertenece al equipo
+  const { data: memberSub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("email")
+    .eq("email", memberEmail)
+    .eq("team_id", teamId)
+    .maybeSingle();
+
+  if (!memberSub) return res.status(404).json({ error: "El agente no pertenece a tu equipo" });
+
   // Remover agente
   const { error } = await supabaseAdmin
     .from("subscriptions")
     .update({ team_id: null, team_role: null, plan: "free", status: "active" })
     .eq("email", memberEmail)
-    .eq("team_id", team.id);
+    .eq("team_id", teamId);
 
   if (error) return res.status(500).json({ error: error.message });
 
   // Registrar remoción con bloqueo de 60 días y 7 días free
   const now = new Date();
   await supabaseAdmin.from("team_removals").insert({
-    team_id: team.id,
+    team_id: teamId,
     owner_email: session.user.email,
     removed_email: memberEmail,
     removed_at: now.toISOString(),
@@ -63,12 +73,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { count: remainingCount } = await supabaseAdmin
     .from("subscriptions")
     .select("*", { count: "exact", head: true })
-    .eq("team_id", team.id);
+    .eq("team_id", teamId);
 
   await supabaseAdmin
     .from("teams")
     .update({ max_agents: remainingCount ?? 1 })
-    .eq("id", team.id);
+    .eq("id", teamId);
 
   // Recalcular precio
   fetch(`${process.env.NEXTAUTH_URL}/api/teams/recalculate-plan`, {
