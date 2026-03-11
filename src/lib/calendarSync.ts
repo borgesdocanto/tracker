@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { subDays, startOfDay, formatISO, startOfWeek, endOfWeek } from "date-fns";
+import { subDays, addDays, startOfDay, formatISO, startOfWeek, endOfWeek } from "date-fns";
 import { supabaseAdmin } from "./supabase";
 
 // ── Colores verdes de Google Calendar ────────────────────────────────────────
@@ -233,7 +233,7 @@ export async function fetchCalendarEvents(
 
   const now = new Date();
   const timeMin = formatISO(startOfDay(subDays(now, days)));
-  const timeMax = formatISO(now);
+  const timeMax = formatISO(addDays(now, 90)); // incluir reuniones futuras agendadas
 
   const response = await calendar.events.list({
     calendarId: "primary",

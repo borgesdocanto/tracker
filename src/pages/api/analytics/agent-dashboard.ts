@@ -4,7 +4,7 @@ import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getStoredEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
 import { getAgentRankStats } from "../../../lib/ranks";
-import { subDays, startOfDay, endOfDay } from "date-fns";
+import { subDays, addDays, startOfDay, endOfDay } from "date-fns";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const days = parseInt(daysParam as string) || 7;
   const now = new Date();
   const from = startOfDay(subDays(now, days));
-  const to = endOfDay(now);
+  const to = endOfDay(addDays(now, 90)); // incluir reuniones futuras
 
   const events = await getStoredEvents(agentEmail, from, to);
 

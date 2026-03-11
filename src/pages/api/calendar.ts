@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
 import { google } from "googleapis";
-import { startOfDay, endOfDay, subDays, formatISO } from "date-fns";
+import { startOfDay, endOfDay, subDays, addDays, formatISO } from "date-fns";
 import { syncAndPersist, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../lib/calendarSync";
 import { supabaseAdmin } from "../../lib/supabase";
 import { getAgentRankStats } from "../../lib/ranks";
@@ -120,7 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const now = new Date();
     const timeMin = formatISO(startOfDay(subDays(now, days)));
-    const timeMax = formatISO(endOfDay(now));
+    const timeMax = formatISO(endOfDay(addDays(now, 90))); // incluir reuniones futuras
 
     const response = await calendar.events.list({
       calendarId: "primary",
