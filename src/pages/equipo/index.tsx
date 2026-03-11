@@ -339,11 +339,25 @@ export default function BrokerDashboard() {
                         </div>
                       </div>
                       <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
-                        <div className="text-2xl font-black leading-none" style={{ fontFamily: "Georgia, serif", color }}>
-                          {agent.weekTotal}<span className="text-sm font-normal text-gray-300">/{IAC_GOAL}</span>
-                        </div>
-                        <div className="text-xs text-gray-400">esta semana</div>
-                        <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
+                        {sortBy === "iac" && (<>
+                          <div className="text-2xl font-black leading-none" style={{ fontFamily: "Georgia, serif", color }}>
+                            {agent.weekTotal}<span className="text-sm font-normal text-gray-300">/{IAC_GOAL}</span>
+                          </div>
+                          <div className="text-xs text-gray-400">esta semana</div>
+                          <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
+                        </>)}
+                        {sortBy === "trend" && (<>
+                          <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
+                          <div className="text-xs text-gray-400 mt-0.5">vs sem. anterior</div>
+                          <div className="text-xs font-semibold" style={{ color }}>{agent.weekTotal}/{IAC_GOAL} reun.</div>
+                        </>)}
+                        {sortBy === "streak" && (<>
+                          <div className="text-2xl font-black leading-none text-orange-500" style={{ fontFamily: "Georgia, serif" }}>
+                            {agent.streak}<span className="text-sm font-normal text-gray-300">d</span>
+                          </div>
+                          <div className="text-xs text-gray-400">racha activa</div>
+                          <div className="text-xs font-semibold" style={{ color }}>{agent.iac}% IAC</div>
+                        </>)}
                       </div>
                       <div className="hidden md:block shrink-0 w-24">
                         <div className="text-xs text-gray-400 mb-1">7 días</div>
