@@ -42,6 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const remaining = remainingCount ?? 1; // mínimo 1 (el broker)
 
+  // Obtener max histórico — el precio mínimo no puede bajar de lo que alguna vez tuvo
+  const { data: teamData } = await supabaseAdmin
+    .from("teams")
+    .select("max_agents_ever")
+    .eq("id", team.id)
+    .single();
+
+  const effectiveMax = Math.max(remaining, teamData?.max_agents_ever ?? 1);
+
   await supabaseAdmin
     .from("teams")
     .update({ max_agents: remaining })

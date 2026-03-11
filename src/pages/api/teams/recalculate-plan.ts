@@ -43,13 +43,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (sub?.team_role !== "owner") return res.status(403).json({ error: "Solo el broker" });
     if (!sub?.mp_subscription_id) return res.status(200).json({ ok: true, skipped: "sin suscripción activa" });
 
-    // Contar agentes (broker incluido)
+    // Contar agentes actuales (broker incluido)
     const { count } = await supabaseAdmin
       .from("subscriptions")
       .select("email", { count: "exact" })
       .eq("team_id", sub.team_id);
 
-    const agentCount = count || 1;
+    // Usar max_agents_ever como piso — evita que remover agentes baje el precio al instante
+    const { data: teamRow } = await supabaseAdmin
+      .from("teams")
+      .select("max_agents_ever")
+      .eq("id", sub.team_id)
+      .single();
+
+    const currentCount = count || 1;
+    const billingCount = Math.max(currentCount, teamRow?.max_agents_ever ?? 1);
+    const agentCount = billingCount;
     const newTotal = calcTeamsTotal(BASE_PRICE, agentCount);
     const tier = getTierForAgents(agentCount);
 
