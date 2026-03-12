@@ -152,16 +152,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const timeMin = formatISO(startOfDay(subDays(now, fetchDays)));
     const timeMax = formatISO(endOfDay(addDays(now, 30))); // 30 días hacia adelante
 
-    const response = await calendar.events.list({
-      calendarId: "primary",
-      timeMin,
-      timeMax,
-      singleEvents: true,
-      orderBy: "startTime",
-      maxResults: 2500,
-    });
+    // Paginar — Google devuelve hasta 2500 por página, puede haber más
+    const allItems: any[] = [];
+    let pageToken: string | undefined = undefined;
+    do {
+      const response: any = await calendar.events.list({
+        calendarId: "primary",
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 2500,
+        ...(pageToken ? { pageToken } : {}),
+      });
+      allItems.push(...(response.data.items || []));
+      pageToken = response.data.nextPageToken ?? undefined;
+    } while (pageToken);
 
-    const items = response.data.items || [];
+    const items = allItems;
     // Usar config dinámica de tipos de evento (misma que calendarSync)
     const typeConfig = await getEventTypeConfig();
     const mappedEvents: CalendarEvent[] = await Promise.all(
