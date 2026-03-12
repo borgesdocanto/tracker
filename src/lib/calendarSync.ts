@@ -307,8 +307,9 @@ export async function fetchCalendarEvents(
     const dynamicType = await detectTypeDynamic(e.summary!);
     const type = (dynamicType || detectType(e.summary!)) as EventType;
     const isUserColored = !!(e.colorId && GREEN_COLOR_IDS.has(e.colorId));
-    const isOrganizer = e.organizer?.self !== false; // true si no hay organizer (evento propio sin invitados)
-    const isGreen = isOrganizer && (isUserColored || green.has(type));
+    // Si el evento está en el calendario del agente, cuenta — no filtramos por organizador
+    // porque herramientas como Tokko crean eventos desde otras cuentas pero los espejean al calendar del agente
+    const isGreen = isUserColored || green.has(type);
     return {
       id: e.id!,
       title: e.summary!,
@@ -316,10 +317,10 @@ export async function fetchCalendarEvents(
       end: e.end?.dateTime ? new Date(e.end.dateTime).toISOString() : (e.end?.date ? e.end.date + "T00:00:00.000Z" : ""),
       type,
       isGreen,
-      isProceso: isOrganizer && procesos.has(type),
-      isCierre: isOrganizer && cierres.has(type),
+      isProceso: procesos.has(type),
+      isCierre: cierres.has(type),
       isUserColored,
-      isOrganizer,
+      isOrganizer: true, // mantenemos el campo pero ya no restringe
       durationMinutes: durationMinutes(e),
       attendeesCount: attendeesCount(e),
     } as SyncedEvent;

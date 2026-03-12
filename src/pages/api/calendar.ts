@@ -92,8 +92,7 @@ async function processEventDynamic(
   }
 
   const isUserColored = !!(e.colorId && GREEN_COLOR_IDS.has(e.colorId));
-  const isOrganizer = e.organizer?.self !== false;
-  const isGreen = isOrganizer && (isUserColored || greenTypes.has(type));
+  const isGreen = isUserColored || greenTypes.has(type);
 
   return {
     id: e.id!,
@@ -102,10 +101,10 @@ async function processEventDynamic(
     end: e.end?.dateTime || e.end?.date || "",
     colorId: e.colorId ?? undefined,
     isGreen,
-    isProceso: isOrganizer && procesoTypes.has(type),
-    isCierre: isOrganizer && cierreTypes.has(type),
+    isProceso: procesoTypes.has(type),
+    isCierre: cierreTypes.has(type),
     isUserColored,
-    isOrganizer,
+    isOrganizer: true, // mantenemos el campo pero ya no restringe
     type,
     attendees: (e.attendees || []).filter((a: any) => !a.self).map((a: any) => a.email || a.displayName || ""),
   };
