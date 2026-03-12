@@ -151,7 +151,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const typeConfig = await getEventTypeConfig();
     const mappedEvents: CalendarEvent[] = await Promise.all(
       items
-        .filter(e => e.status !== "cancelled" && e.summary)
+        .filter(e =>
+          e.status !== "cancelled" &&
+          e.summary &&
+          // Solo eventos creados por el usuario (excluye invitaciones de otros)
+          (e.organizer?.self === true || !e.organizer)
+        )
         .map(e => processEventDynamic(e, typeConfig.green, typeConfig.procesos, typeConfig.cierres, typeConfig.keywordsMap))
     );
 

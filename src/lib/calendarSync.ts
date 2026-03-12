@@ -255,7 +255,12 @@ export async function fetchCalendarEvents(
     maxResults: 2500,
   });
 
-  const items = (response.data.items || []).filter(e => e.status !== "cancelled" && e.summary);
+  const items = (response.data.items || []).filter(e =>
+    e.status !== "cancelled" &&
+    e.summary &&
+    // Solo eventos creados por el usuario (excluye invitaciones de otros)
+    (e.organizer?.self === true || !e.organizer)
+  );
   const { green, procesos, cierres } = await getGreenTypes();
 
   return Promise.all(items.map(async e => {
