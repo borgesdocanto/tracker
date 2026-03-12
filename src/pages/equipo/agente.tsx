@@ -7,6 +7,12 @@ import StreakBadge from "../../components/StreakBadge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
 import { ArrowLeft, RefreshCw, AlertTriangle, Calendar, Target, Eye, Zap, TrendingUp, Brain, ChevronLeft, ChevronRight, Loader2, DollarSign } from "lucide-react";
 
+// Fecha local en formato YYYY-MM-DD (evita desfase UTC en Argentina después de las 21:00)
+function localDateStr(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+
 const RED = "#aa0000";
 const GREEN = "#16a34a";
 const PRODUCTIVITY_GOAL = parseInt(process.env.NEXT_PUBLIC_PRODUCTIVITY_GOAL || "2");
@@ -75,9 +81,9 @@ function WeeklyView({ summaries, weekOffset, onPrev, onNext }: { summaries: DayS
       </div>
       <div className="grid grid-cols-7 divide-x divide-gray-100 min-h-[320px]">
         {days.map((day, i) => {
-          const dateStr = day.toISOString().slice(0, 10);
+          const dateStr = localDateStr(day);
           const summary = byDate[dateStr];
-          const isToday = dateStr === today.toISOString().slice(0, 10);
+          const isToday = dateStr === localDateStr(today);
           return (
             <div key={dateStr} className="flex flex-col">
               <div className="px-2 py-2 text-center border-b border-gray-100">
@@ -129,7 +135,7 @@ function MonthlyView({ summaries, monthOffset, onPrev, onNext }: { summaries: Da
           if (dayNum < 1 || dayNum > lastDay.getDate()) return <div key={i} className="h-20 bg-gray-50/50" />;
           const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
           const summary = byDate[dateStr];
-          const isToday = dateStr === today.toISOString().slice(0, 10);
+          const isToday = dateStr === localDateStr(today);
           const greenEvs = summary?.events.filter(e => e.isGreen) ?? [];
           const grayEvs = summary?.events.filter(e => !e.isGreen) ?? [];
           const invitedEvs = grayEvs.filter(e => e.isOrganizer === false);
@@ -168,13 +174,13 @@ function CoachPanel({ data, calView, monthOffset, weekOffset, agentEmail }: { da
       monday.setHours(0, 0, 0, 0);
       const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
       const weekLabel = weekOffset === 0 ? "esta semana" : `semana del ${monday.toLocaleDateString("es-AR", { day: "numeric", month: "short" })}`;
-      return { periodStart: monday.toISOString().slice(0, 10), periodEnd: sunday.toISOString().slice(0, 10), periodLabel: weekLabel, goal: 15, goalLabel: "meta semanal" };
+      return { periodStart: localDateStr(monday), periodEnd: localDateStr(sunday), periodLabel: weekLabel, goal: 15, goalLabel: "meta semanal" };
     } else {
       const target = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
       const firstDay = new Date(target.getFullYear(), target.getMonth(), 1);
       const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0);
       const monthName = target.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-      return { periodStart: firstDay.toISOString().slice(0, 10), periodEnd: lastDay.toISOString().slice(0, 10), periodLabel: monthName, goal: 60, goalLabel: "meta mensual (15×4)" };
+      return { periodStart: localDateStr(firstDay), periodEnd: localDateStr(lastDay), periodLabel: monthName, goal: 60, goalLabel: "meta mensual (15×4)" };
     }
   }, [calView, monthOffset, weekOffset]);
 
@@ -357,8 +363,8 @@ export default function AgentDashboard() {
     const today = new Date();
     const fromDate = new Date(today);
     fromDate.setDate(today.getDate() - Math.min(days, 30));
-    const fromStr = fromDate.toISOString().slice(0, 10);
-    const todayStr = today.toISOString().slice(0, 10);
+    const fromStr = localDateStr(fromDate);
+    const todayStr = localDateStr(today);
     return data.dailySummaries
       .filter(d => d.date >= fromStr && d.date <= todayStr)
       .map(d => {

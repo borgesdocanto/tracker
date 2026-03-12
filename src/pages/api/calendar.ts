@@ -232,8 +232,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     // Stats calculados solo sobre el período seleccionado (statsDays), no sobre los 90 días cargados
+    // statsTo = fin de hoy para incluir todos los eventos de hoy pero excluir futuros de los totales
     const statsFromDate = formatISO(startOfDay(subDays(now, statsDays)));
-    const greenEvents = mappedEvents.filter(e => e.isGreen && e.start >= statsFromDate);
+    const statsToDate = formatISO(endOfDay(now));
+    const greenEvents = mappedEvents.filter(e => e.isGreen && e.start >= statsFromDate && e.start <= statsToDate);
 
     // Calcular semanas en el período para el IAC
     const semanas = Math.max(1, Math.ceil(statsDays / 7));

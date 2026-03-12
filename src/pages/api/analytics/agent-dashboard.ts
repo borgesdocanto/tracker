@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Stats calculados solo sobre el período seleccionado (statsDays), no sobre fetchDays
   const statsFrom = startOfDay(subDays(now, statsDays)).toISOString();
-  const statsTo = now.toISOString();
+  const statsTo = endOfDay(now).toISOString(); // fin de hoy, no momento exacto
   const greenEvents = events.filter(e => e.isGreen && e.start >= statsFrom && e.start <= statsTo);
   const semanas = Math.max(1, Math.ceil(statsDays / 7));
   const avgPorSemana = greenEvents.length / semanas;
