@@ -5,6 +5,7 @@ import { supabaseAdmin } from "../../../lib/supabase";
 import { isSuperAdmin } from "../../../lib/adminGuard";
 import { getValidAccessToken } from "../../../lib/googleToken";
 import { google } from "googleapis";
+import { formatISO, startOfDay, subDays, addDays } from "date-fns";
 
 export const config = { maxDuration: 60 };
 
@@ -22,66 +23,81 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   auth.setCredentials({ access_token: accessToken });
   const calendar = google.calendar({ version: "v3", auth });
 
-  const timeMin = "2026-03-09T00:00:00-03:00";
-  const timeMax = "2026-03-15T23:59:59-03:00";
+  const now = new Date();
+  const timeMin = formatISO(startOfDay(subDays(now, 7)));
+  const timeMax = formatISO(addDays(now, 7));
 
-  // Intentar listar calendarios — puede fallar si el token es viejo
-  let calendarIds: string[] = ["primary"];
+  // 1. Listar calendarios
+  let calendars: any[] = [];
   let calListError = null;
-  let calendarNames: any[] = [];
   try {
     const calList = await calendar.calendarList.list();
-    calendarNames = (calList.data.items || []).map(c => ({ id: c.id, name: c.summary, primary: c.primary }));
-    calendarIds = calList.data.items?.map(c => c.id!) || ["primary"];
-  } catch (e: any) {
-    calListError = e.message;
-    // Token viejo — solo tenemos primary
-  }
+    calendars = (calList.data.items || []).map(c => ({
+      id: c.id, name: c.summary, primary: !!c.primary, role: c.accessRole,
+    }));
+  } catch (e: any) { calListError = e.message; }
 
-  // Fetch eventos de cada calendario
-  const results: any[] = [];
-  for (const calId of calendarIds) {
+  // 2. Fetch eventos de cada calendario esta semana
+  const calResults: any[] = [];
+  const calIds = calendars.length > 0
+    ? calendars.filter(c => c.role === "owner" || c.role === "writer").map((c: any) => c.id)
+    : ["primary"];
+
+  for (const calId of calIds) {
     const events: any[] = [];
-    let pageToken: string | undefined;
-    let fetchError = null;
+    let err = null;
     try {
+      let pageToken: string | undefined;
       do {
-        const response: any = await calendar.events.list({
+        const r: any = await calendar.events.list({
           calendarId: calId, timeMin, timeMax,
           singleEvents: true, orderBy: "startTime", maxResults: 250,
           ...(pageToken ? { pageToken } : {}),
         });
-        events.push(...(response.data.items || []).filter((e: any) => e.status !== "cancelled" && e.summary));
-        pageToken = response.data.nextPageToken ?? undefined;
+        events.push(...(r.data.items || []).filter((e: any) => e.status !== "cancelled" && e.summary));
+        pageToken = r.data.nextPageToken ?? undefined;
       } while (pageToken);
-    } catch (e: any) { fetchError = e.message; }
+    } catch (e: any) { err = e.message; }
 
-    results.push({
+    calResults.push({
       calendarId: calId,
-      calendarName: calendarNames.find(c => c.id === calId)?.name ?? calId,
-      primary: calendarNames.find(c => c.id === calId)?.primary ?? (calId === "primary"),
-      error: fetchError,
-      event_count: events.length,
+      name: calendars.find(c => c.id === calId)?.name ?? calId,
+      primary: calendars.find(c => c.id === calId)?.primary ?? false,
+      error: err,
+      count: events.length,
       events: events.map(e => ({
         title: e.summary,
         start: e.start?.dateTime || e.start?.date,
-        organizer_self: e.organizer?.self ?? null,
+        organizer_self: e.organizer?.self ?? "MISSING",
+        organizer_email: e.organizer?.email,
+        status: e.status,
+        colorId: e.colorId ?? null,
       })),
     });
   }
 
-  // DB info
-  const { count } = await supabaseAdmin
+  // 3. DB esta semana
+  const { data: dbEvents } = await supabaseAdmin
+    .from("calendar_events").select("title, start_at, is_productive, is_organizer, event_type")
+    .eq("user_email", email)
+    .gte("start_at", timeMin).lte("start_at", timeMax)
+    .order("start_at");
+
+  const { count: dbTotal } = await supabaseAdmin
     .from("calendar_events").select("*", { count: "exact", head: true }).eq("user_email", email);
-  const { data: weekDb } = await supabaseAdmin
-    .from("calendar_events").select("title, start_at, is_productive")
-    .eq("user_email", email).gte("start_at", "2026-03-09T00:00:00Z").lte("start_at", "2026-03-15T23:59:59Z").order("start_at");
 
   return res.status(200).json({
-    token_scope_issue: calListError,
-    needs_relogin: !!calListError,
-    calendars_found: calendarNames,
-    google_results: results,
-    db: { total: count, this_week: weekDb?.length, events: weekDb?.map(e => ({ title: e.title, start: e.start_at, green: e.is_productive })) },
+    calListError,
+    calendars,
+    google: calResults,
+    db: {
+      total: dbTotal,
+      this_week: dbEvents?.length,
+      events: dbEvents?.map(e => ({
+        title: e.title,
+        start_ar: new Date(e.start_at).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+        green: e.is_productive, organizer: e.is_organizer, type: e.event_type,
+      })),
+    },
   });
 }
