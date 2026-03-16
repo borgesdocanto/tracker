@@ -282,7 +282,15 @@ export default function BrokerDashboard() {
               <div className="flex items-center gap-1 mr-2 bg-gray-100 rounded-lg px-1 py-0.5">
                 <button onClick={() => setWeekOffset(w => w - 1)} className="text-gray-400 hover:text-gray-700 px-1 py-0.5 text-xs font-bold">←</button>
                 <span className="text-xs font-semibold text-gray-600 px-1 min-w-[90px] text-center">
-                  {weekOffset === 0 ? "Esta semana" : weekOffset === -1 ? "Semana pasada" : `Hace ${Math.abs(weekOffset)} sem.`}
+                  {(() => {
+                    const mon = new Date();
+                    mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) + weekOffset * 7);
+                    mon.setHours(0,0,0,0);
+                    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                    const fmt = (d: Date) => d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+                    if (weekOffset === 0) return "Esta semana";
+                    return `${fmt(mon)} – ${fmt(sun)}`;
+                  })()}
                 </span>
                 <button onClick={() => setWeekOffset(w => Math.min(0, w + 1))} disabled={weekOffset === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 px-1 py-0.5 text-xs font-bold">→</button>
               </div>
