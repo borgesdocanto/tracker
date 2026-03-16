@@ -90,9 +90,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!users?.length) return res.status(200).json({ ok: true, sent: 0 });
 
+  const { targetEmail } = req.body || {};
+  const filteredUsers = targetEmail ? users.filter(u => u.email === targetEmail) : users;
+
   // Filtrar los que no llegaron al mínimo lun–mié
   const eligible: { email: string; name: string; greenCount: number }[] = [];
-  for (const user of users) {
+  for (const user of filteredUsers) {
     const { count } = await supabaseAdmin
       .from("calendar_events")
       .select("*", { count: "exact", head: true })
