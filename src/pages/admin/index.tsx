@@ -1276,8 +1276,9 @@ export default function AdminPanel() {
                         body: JSON.stringify({ prompt: midweekPrompt }),
                       });
                       const d = await res.json();
-                      setMidweekPreview(d.advice ?? "Sin resultado");
-                    } catch { setMidweekPreview("Error al generar preview"); }
+                      if (!res.ok) { setMidweekPreview(`Error ${res.status}: ${d.error || JSON.stringify(d)}`); }
+                      else { setMidweekPreview(d.advice ?? "Sin resultado"); }
+                    } catch (e: any) { setMidweekPreview(`Error: ${e.message}`); }
                     setMidweekPreviewing(false);
                   }}
                   disabled={midweekPreviewing}
