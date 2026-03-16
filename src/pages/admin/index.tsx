@@ -40,7 +40,7 @@ export default function AdminPanel() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [tab, setTab] = useState<"overview" | "users" | "teams" | "ops" | "precios" | "eventos" | "goals" | "coach">("overview");
-  const [goalsConfig, setGoalsConfig] = useState({ weekly_goal: "15", productive_day_min: "2" });
+  const [goalsConfig, setGoalsConfig] = useState({ weekly_goal: "15", productive_day_min: "2", streak_min_greens: "1" });
   const [goalsSaving, setGoalsSaving] = useState(false);
   const [goalsMsg, setGoalsMsg] = useState("");
   const [coachPrompt, setCoachPrompt] = useState("");
@@ -1112,6 +1112,16 @@ export default function AdminPanel() {
                   className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Mínimo de reuniones para mantener racha</label>
+                <p className="text-xs text-gray-400 mb-2">Cantidad de eventos verdes que necesita un agente en un día hábil para no perder su racha. Default: 1</p>
+                <input
+                  type="number" min="1" max="10"
+                  value={goalsConfig.streak_min_greens}
+                  onChange={e => setGoalsConfig(p => ({ ...p, streak_min_greens: e.target.value }))}
+                  className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+                />
+              </div>
               <div className="flex items-center gap-3 pt-2">
                 <button
                   onClick={async () => {
@@ -1119,6 +1129,7 @@ export default function AdminPanel() {
                     try {
                       await fetch("/api/admin/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "weekly_goal", value: goalsConfig.weekly_goal }) });
                       await fetch("/api/admin/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "productive_day_min", value: goalsConfig.productive_day_min }) });
+                      await fetch("/api/admin/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "streak_min_greens", value: goalsConfig.streak_min_greens }) });
                       setGoalsMsg("✓ Guardado");
                     } catch { setGoalsMsg("Error al guardar"); }
                     setGoalsSaving(false);

@@ -1,22 +1,18 @@
 import { supabaseAdmin } from "./supabase";
+import { getAppConfig } from "./appConfig";
+import { sendPushToUser } from "./webpush";
 
-// Racha: mínimo 1 evento verde por día hábil (lunes a viernes)
-const MIN_GREENS_STREAK = 1;
-
-// Día hábil = lunes a viernes
 function isWeekday(date: Date): boolean {
   const d = date.getDay();
   return d !== 0 && d !== 6;
 }
 
-// Día hábil anterior
 function prevWeekday(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   do { d.setDate(d.getDate() - 1); } while (!isWeekday(d));
   return d.toISOString().slice(0, 10);
 }
 
-// Fecha local Argentina (UTC-3)
 function localDateStr(d: Date = new Date()): string {
   const ar = new Date(d.getTime() - 3 * 60 * 60 * 1000);
   return ar.toISOString().slice(0, 10);
@@ -28,15 +24,18 @@ export interface StreakData {
   lastActiveDate: string | null;
   todayActive: boolean;
   minGreens: number;
+  shields: number;
+  shieldUsed: boolean;
 }
 
-// Calcula y persiste el streak leyendo el historial completo desde DB
 export async function computeAndSaveStreak(
   email: string,
-  _dailySummaries: Array<{ date: string; greenCount: number }> // mantenemos firma para compatibilidad
+  _dailySummaries: Array<{ date: string; greenCount: number }>
 ): Promise<StreakData> {
 
-  // Leer todos los eventos verdes del último año desde DB
+  const config = await getAppConfig();
+  const MIN_GREENS = parseInt(config["streak_min_greens"] ?? "1");
+
   const from = new Date();
   from.setDate(from.getDate() - 365);
 
@@ -48,27 +47,35 @@ export async function computeAndSaveStreak(
     .gte("start_at", from.toISOString())
     .order("start_at");
 
-  // Contar eventos verdes por fecha local AR
   const countByDay: Record<string, number> = {};
   for (const ev of events || []) {
     const dateStr = localDateStr(new Date(ev.start_at));
     countByDay[dateStr] = (countByDay[dateStr] || 0) + 1;
   }
 
-  // Días activos = días hábiles con al menos 1 evento verde
   const activeDays = new Set(
     Object.entries(countByDay)
-      .filter(([date, count]) => isWeekday(new Date(date + "T12:00:00")) && count >= MIN_GREENS_STREAK)
+      .filter(([date, count]) => isWeekday(new Date(date + "T12:00:00")) && count >= MIN_GREENS)
       .map(([date]) => date)
   );
 
   const todayStr = localDateStr();
   const todayActive = activeDays.has(todayStr);
 
-  // Racha actual: desde hoy hacia atrás en días hábiles
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("streak_current, streak_best, streak_shields")
+    .eq("email", email)
+    .single();
+
+  const prevStreakCurrent = sub?.streak_current ?? 0;
+  let shields = sub?.streak_shields ?? 0;
+  let shieldUsed = false;
+
+  // Calcular racha actual desde hoy hacia atrás
   let cursor = todayStr;
   if (!isWeekday(new Date(cursor + "T12:00:00"))) {
-    cursor = prevWeekday(cursor); // si hoy es sáb/dom, empezar desde el viernes
+    cursor = prevWeekday(cursor);
   }
 
   const allDates = Object.keys(countByDay).sort();
@@ -80,11 +87,27 @@ export async function computeAndSaveStreak(
       current++;
       cursor = prevWeekday(cursor);
     } else if (cursor === todayStr && !todayActive) {
-      // Hoy puede estar en progreso — no rompe la racha
       cursor = prevWeekday(cursor);
     } else {
       break;
     }
+  }
+
+  // Protector automático: si tenía racha, hoy no tiene eventos y ayer tampoco
+  const lastWeekday = prevWeekday(todayStr);
+  const brokStreak = prevStreakCurrent > 0 && current === 0 && !todayActive && !activeDays.has(lastWeekday);
+
+  if (brokStreak && shields > 0) {
+    shields -= 1;
+    shieldUsed = true;
+    current = prevStreakCurrent;
+    try {
+      await sendPushToUser(email, {
+        title: "🛡️ Protector de racha usado",
+        body: `Perdiste un día sin reuniones pero tenías un protector. Tu racha de ${current} días sigue en pie. Te quedan ${shields} protector${shields !== 1 ? "es" : ""}.`,
+        url: "/",
+      });
+    } catch { /* silencioso */ }
   }
 
   // Mejor racha histórica
@@ -111,14 +134,22 @@ export async function computeAndSaveStreak(
     }
   }
 
-  // Preservar mejor racha histórica guardada
-  const { data: sub } = await supabaseAdmin
-    .from("subscriptions")
-    .select("streak_best")
-    .eq("email", email)
-    .single();
-
   const finalBest = Math.max(best, sub?.streak_best ?? 0, current);
+
+  // Protectores ganados cada 10 días
+  const prevMilestone = Math.floor(prevStreakCurrent / 10);
+  const newMilestone = Math.floor(current / 10);
+  if (newMilestone > prevMilestone && current > prevStreakCurrent) {
+    const earned = newMilestone - prevMilestone;
+    shields += earned;
+    try {
+      await sendPushToUser(email, {
+        title: "🛡️ ¡Ganaste un protector de racha!",
+        body: `Llegaste a ${current} días de racha. Tenés ${shields} protector${shields !== 1 ? "es" : ""} guardado${shields !== 1 ? "s" : ""}.`,
+        url: "/",
+      });
+    } catch { /* silencioso */ }
+  }
 
   await supabaseAdmin
     .from("subscriptions")
@@ -126,8 +157,9 @@ export async function computeAndSaveStreak(
       streak_current: current,
       streak_best: finalBest,
       streak_last_active_date: todayActive ? todayStr : (current > 0 ? prevWeekday(todayStr) : null),
+      streak_shields: shields,
     })
     .eq("email", email);
 
-  return { current, best: finalBest, lastActiveDate: todayActive ? todayStr : null, todayActive, minGreens: MIN_GREENS_STREAK };
+  return { current, best: finalBest, lastActiveDate: todayActive ? todayStr : null, todayActive, minGreens: MIN_GREENS, shields, shieldUsed };
 }
