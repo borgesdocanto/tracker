@@ -9,18 +9,18 @@ import {
 } from "lucide-react";
 
 const RED = "#aa0000";
-const IAC_GOAL = 15;
+// IAC_GOAL now comes from overview.weeklyGoal
 
 type TeamRole = "owner" | "team_leader" | "member";
 
 interface AgentSummary {
   email: string; name?: string; avatar?: string; teamRole: TeamRole;
-  weekTotal: number; weekProductiveDays: number; iac: number;
+  weekTotal: number; weekProductiveDays: number; iac: number; weeklyGoal: number;
   monthTotal: number; trend: "up" | "down" | "stable"; trendPct: number;
   status: "green" | "yellow" | "red"; sparkline: number[]; streak: number;
 }
 interface TeamOverview {
-  totalAgents: number; weekTotalMeetings: number;
+  totalAgents: number; weekTotalMeetings: number; weeklyGoal: number;
   greenAgents: number; yellowAgents: number; redAgents: number;
   topAgent: string | null; needsAttention: string | null;
 }
@@ -72,9 +72,9 @@ export default function BrokerDashboard() {
   const [showBroker, setShowBroker] = useState(true);
   const [sortBy, setSortBy] = useState<"iac" | "trend" | "streak">("iac");
   const [syncing, setSyncing] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [status, router]);
-  useEffect(() => { if (status === "authenticated") { loadTeam(); loadAnalytics(); } }, [status]);
 
   const loadTeam = async () => {
     setLoading(true);
@@ -91,14 +91,17 @@ export default function BrokerDashboard() {
     setLoading(false);
   };
 
-  const loadAnalytics = async () => {
+  const loadAnalytics = async (offset = weekOffset) => {
     setAnalyticsLoading(true);
     try {
-      const res = await fetch("/api/analytics/team");
+      const res = await fetch(`/api/analytics/team?weekOffset=${offset}`);
       if (res.ok) { const data = await res.json(); setAgents(data.agents || []); setOverview(data.overview || null); }
     } catch {}
     setAnalyticsLoading(false);
   };
+
+  useEffect(() => { if (status === "authenticated") { loadTeam(); loadAnalytics(0); } }, [status]);
+  useEffect(() => { if (status === "authenticated") loadAnalytics(weekOffset); }, [weekOffset]);
 
   const syncAll = async () => {
     setSyncing(true);
@@ -130,7 +133,7 @@ export default function BrokerDashboard() {
     return 0;
   });
   const teamIac = overview && overview.totalAgents > 0
-    ? Math.round(overview.weekTotalMeetings / (overview.totalAgents * IAC_GOAL) * 100) : 0;
+    ? Math.round(overview.weekTotalMeetings / (overview.totalAgents * (overview.weeklyGoal ?? 15)) * 100) : 0;
   const teamIacColor = iacColor(teamIac);
   const todayMeetings = agents.reduce((sum, a) => sum + (a.sparkline?.[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1] ?? 0), 0);
 
@@ -184,7 +187,7 @@ export default function BrokerDashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-gray-800 truncate">{a.name || a.email}</div>
-                        <div className="text-xs font-black mt-0.5" style={{ color: RED }}>IAC {a.iac}% · {a.weekTotal}/{IAC_GOAL} reuniones</div>
+                        <div className="text-xs font-black mt-0.5" style={{ color: RED }}>IAC {a.iac}% · {a.weekTotal}/{a.weeklyGoal ?? 15} reuniones</div>
                       </div>
                       <ChevronRight size={13} className="text-red-300 shrink-0" />
                     </button>
@@ -232,7 +235,7 @@ export default function BrokerDashboard() {
                   <span className="font-black leading-none" style={{ fontFamily: "Georgia, serif", fontSize: 64, color: teamIacColor }}>{teamIac}%</span>
                   <div className="mb-2">
                     <div className="text-sm font-black" style={{ color: teamIacColor }}>{iacLabel(teamIac)}</div>
-                    <div className="text-xs text-gray-400">{overview.weekTotalMeetings} / {overview.totalAgents * IAC_GOAL} reuniones · {overview.totalAgents} agentes</div>
+                    <div className="text-xs text-gray-400">{overview.weekTotalMeetings} / {overview.totalAgents * (overview.weeklyGoal ?? 15)} reuniones · {overview.totalAgents} agentes</div>
                   </div>
                 </div>
               </div>
@@ -254,7 +257,7 @@ export default function BrokerDashboard() {
             </div>
             <div className="grid grid-cols-4 border-t border-gray-50">
               {[
-                { label: "Total reuniones", value: overview.weekTotalMeetings, sub: `meta ${overview.totalAgents * IAC_GOAL}`, color: "#111827" },
+                { label: "Total reuniones", value: overview.weekTotalMeetings, sub: `meta ${overview.totalAgents * (overview.weeklyGoal ?? 15)}`, color: "#111827" },
                 { label: "Productivos 🟢", value: overview.greenAgents, sub: "IAC ≥ 70%", color: "#16a34a" },
                 { label: "En construcción 🟡", value: overview.yellowAgents, sub: "IAC 40–70%", color: "#d97706" },
                 { label: "En riesgo 🔴", value: overview.redAgents, sub: "IAC < 40%", color: RED },
@@ -275,7 +278,15 @@ export default function BrokerDashboard() {
             <Users size={13} className="text-gray-400" />
             <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Ranking del equipo</span>
             <div className="ml-auto flex items-center gap-1.5">
-              <button onClick={() => setSortBy("iac")} title="Reuniones cara a cara esta semana vs meta 15"
+              {/* Navegación de semanas */}
+              <div className="flex items-center gap-1 mr-2 bg-gray-100 rounded-lg px-1 py-0.5">
+                <button onClick={() => setWeekOffset(w => w - 1)} className="text-gray-400 hover:text-gray-700 px-1 py-0.5 text-xs font-bold">←</button>
+                <span className="text-xs font-semibold text-gray-600 px-1 min-w-[90px] text-center">
+                  {weekOffset === 0 ? "Esta semana" : weekOffset === -1 ? "Semana pasada" : `Hace ${Math.abs(weekOffset)} sem.`}
+                </span>
+                <button onClick={() => setWeekOffset(w => Math.min(0, w + 1))} disabled={weekOffset === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 px-1 py-0.5 text-xs font-bold">→</button>
+              </div>
+              <button onClick={() => setSortBy("iac")} title="Reuniones cara a cara vs meta semanal"
                 className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
                 style={{ background: sortBy === "iac" ? RED : "#f3f4f6", color: sortBy === "iac" ? "white" : "#9ca3af" }}>IAC</button>
               <button onClick={() => setSortBy("trend")} title="Variación vs semana anterior (↑ mejoró, ↓ bajó)"
@@ -284,7 +295,7 @@ export default function BrokerDashboard() {
               <button onClick={() => setSortBy("streak")} title="Días consecutivos con al menos 1 reunión verde"
                 className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
                 style={{ background: sortBy === "streak" ? RED : "#f3f4f6", color: sortBy === "streak" ? "white" : "#9ca3af" }}>Racha</button>
-              <button onClick={syncAll} disabled={syncing} className="ml-1 text-gray-400 hover:text-gray-600 disabled:opacity-50">
+              <button onClick={() => loadAnalytics(weekOffset)} disabled={syncing} className="ml-1 text-gray-400 hover:text-gray-600 disabled:opacity-50">
                 {syncing || analyticsLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
               </button>
             </div>
@@ -343,7 +354,7 @@ export default function BrokerDashboard() {
                       <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
                         {sortBy === "iac" && (<>
                           <div className="text-2xl font-black leading-none" style={{ fontFamily: "Georgia, serif", color }}>
-                            {agent.weekTotal}<span className="text-sm font-normal text-gray-300">/{IAC_GOAL}</span>
+                            {agent.weekTotal}<span className="text-sm font-normal text-gray-300">/{agent.weeklyGoal ?? 15}</span>
                           </div>
                           <div className="text-xs text-gray-400">esta semana</div>
                           <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
@@ -351,7 +362,7 @@ export default function BrokerDashboard() {
                         {sortBy === "trend" && (<>
                           <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
                           <div className="text-xs text-gray-400 mt-0.5">vs sem. anterior</div>
-                          <div className="text-xs font-semibold" style={{ color }}>{agent.weekTotal}/{IAC_GOAL} reun.</div>
+                          <div className="text-xs font-semibold" style={{ color }}>{agent.weekTotal}/{agent.weeklyGoal ?? 15} reun.</div>
                         </>)}
                         {sortBy === "streak" && (<>
                           <div className="text-2xl font-black leading-none text-orange-500" style={{ fontFamily: "Georgia, serif" }}>
@@ -371,7 +382,7 @@ export default function BrokerDashboard() {
                       </button>
                     </div>
                     <div className="sm:hidden mt-3 flex items-center justify-between ml-11 pl-4">
-                      <div className="text-sm font-black" style={{ color }}>{agent.weekTotal}/{IAC_GOAL} reuniones</div>
+                      <div className="text-sm font-black" style={{ color }}>{agent.weekTotal}/{agent.weeklyGoal ?? 15} reuniones</div>
                       <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
                     </div>
                   </div>

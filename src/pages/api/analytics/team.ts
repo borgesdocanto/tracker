@@ -28,14 +28,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!members?.length) return res.status(200).json({ agents: [], overview: null });
 
+  const weekOffset = parseInt((req.query.weekOffset as string) || "0");
+
   const agents = await Promise.all(
     members.map(async m => {
-      const stats = await getAgentSummary(m.email);
+      const stats = await getAgentSummary(m.email, weekOffset);
       return { ...stats, name: m.name, avatar: m.avatar, teamRole: m.team_role };
     })
   );
 
-  const overview = await getTeamOverview(sub.team_id);
+  const overview = await getTeamOverview(sub.team_id, weekOffset);
 
   return res.status(200).json({ agents, overview });
 }

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "./supabase";
 import { EventType, SyncedEvent, computePeriodStats, PeriodStats } from "./calendarSync";
+import { getGoals } from "./appConfig";
 
 export interface AgentSummary {
   email: string;
@@ -9,7 +10,8 @@ export interface AgentSummary {
   // Esta semana
   weekTotal: number;
   weekProductiveDays: number;
-  iac: number;           // 0-100 basado en 15 reuniones
+  iac: number;
+  weeklyGoal: number;
   // Últimos 30 días
   monthTotal: number;
   // Tendencia: comparación últimos 7 días vs 7 anteriores
@@ -27,9 +29,10 @@ export interface AgentSummary {
 export interface TeamOverview {
   totalAgents: number;
   weekTotalMeetings: number;
-  greenAgents: number;   // semana productiva
-  yellowAgents: number;  // ocupado
-  redAgents: number;     // riesgo
+  weeklyGoal: number;
+  greenAgents: number;
+  yellowAgents: number;
+  redAgents: number;
   topAgent: string | null;
   needsAttention: string | null;
 }
@@ -37,49 +40,52 @@ export interface TeamOverview {
 export interface PeriodKey {
   type: "week" | "month" | "quarter" | "semester" | "year";
   year: number;
-  value: number; // semana, mes, trimestre, semestre
+  value: number;
 }
 
 // ── Analytics de un agente para el dashboard del broker ──────────────────────
-export async function getAgentSummary(email: string): Promise<Omit<AgentSummary, "name" | "avatar" | "teamRole">> {
+export async function getAgentSummary(email: string, weekOffset = 0): Promise<Omit<AgentSummary, "name" | "avatar" | "teamRole">> {
   const now = new Date();
+  const { weeklyGoal, productiveDayMin } = await getGoals();
 
-  // Últimos 30 días
-  const from30 = new Date(now); from30.setDate(from30.getDate() - 30);
-  // Esta semana (lunes)
+  // Semana de referencia (lunes)
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7) + weekOffset * 7);
   weekStart.setHours(0, 0, 0, 0);
-  // Semana anterior
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  // Semana anterior a la de referencia
   const prevWeekStart = new Date(weekStart); prevWeekStart.setDate(prevWeekStart.getDate() - 7);
   const prevWeekEnd = new Date(weekStart); prevWeekEnd.setMilliseconds(-1);
 
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
+  // Últimos 30 días desde el fin de la semana de referencia
+  const from30 = new Date(weekEnd); from30.setDate(weekEnd.getDate() - 30);
 
   const { data: events30 } = await supabaseAdmin
     .from("calendar_events")
     .select("start_at, is_productive")
     .eq("user_email", email)
     .gte("start_at", from30.toISOString())
-    .lte("start_at", endOfToday.toISOString());
+    .lte("start_at", weekEnd.toISOString());
 
   const all = events30 || [];
   const monthTotal = all.filter(e => e.is_productive).length;
 
-  // Esta semana
-  const thisWeek = all.filter(e => new Date(e.start_at) >= weekStart && e.is_productive);
+  // Esta semana de referencia
+  const thisWeek = all.filter(e => new Date(e.start_at) >= weekStart && new Date(e.start_at) <= weekEnd && e.is_productive);
   const weekTotal = thisWeek.length;
 
-  // Días productivos esta semana
+  // Días productivos
   const byDay: Record<string, number> = {};
   thisWeek.forEach(e => {
     const d = e.start_at.slice(0, 10);
     byDay[d] = (byDay[d] || 0) + 1;
   });
-  const weekProductiveDays = Object.values(byDay).filter(c => c >= 10).length;
+  const weekProductiveDays = Object.values(byDay).filter(c => c >= productiveDayMin).length;
 
-  // Tendencia: esta semana vs semana anterior
+  // Tendencia vs semana anterior
   const prevWeek = all.filter(e => {
     const d = new Date(e.start_at);
     return d >= prevWeekStart && d <= prevWeekEnd && e.is_productive;
@@ -96,15 +102,15 @@ export async function getAgentSummary(email: string): Promise<Omit<AgentSummary,
     trend = "up"; trendPct = 100;
   }
 
-  // IAC: weekTotal / 15 * 100
-  const iac = Math.min(100, Math.round((weekTotal / 15) * 100));
+  // IAC desde DB
+  const iac = Math.min(100, Math.round((weekTotal / weeklyGoal) * 100));
 
-  // Semáforo basado en IAC
+  // Semáforo
   let status: "green" | "yellow" | "red" = "red";
   if (iac >= 70) status = "green";
   else if (iac >= 40) status = "yellow";
 
-  // Sparkline: reuniones verdes por día, últimos 7 días corridos
+  // Sparkline: 7 días de la semana de referencia
   const sparkByDay: Record<string, number> = {};
   all.forEach(e => {
     if (e.is_productive) {
@@ -112,13 +118,11 @@ export async function getAgentSummary(email: string): Promise<Omit<AgentSummary,
       sparkByDay[d] = (sparkByDay[d] || 0) + 1;
     }
   });
-
   const sparkline: number[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
+    const d = new Date(weekEnd);
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    sparkline.push(sparkByDay[key] || 0);
+    sparkline.push(sparkByDay[d.toISOString().slice(0, 10)] || 0);
   }
 
   // Streak desde subscriptions
@@ -129,20 +133,21 @@ export async function getAgentSummary(email: string): Promise<Omit<AgentSummary,
     .single();
   const streak = subData?.streak_current || 0;
 
-  return { email, weekTotal, weekProductiveDays, iac, monthTotal, trend, trendPct, status, sparkline, streak };
+  return { email, weekTotal, weekProductiveDays, iac, weeklyGoal, monthTotal, trend, trendPct, status, sparkline, streak };
 }
 
 // ── Overview del equipo ───────────────────────────────────────────────────────
-export async function getTeamOverview(teamId: string): Promise<TeamOverview> {
+export async function getTeamOverview(teamId: string, weekOffset = 0): Promise<TeamOverview> {
   const { data: members } = await supabaseAdmin
     .from("subscriptions")
     .select("email, name")
     .eq("team_id", teamId)
     .in("team_role", ["member", "team_leader"]);
 
-  if (!members?.length) return { totalAgents: 0, weekTotalMeetings: 0, greenAgents: 0, yellowAgents: 0, redAgents: 0, topAgent: null, needsAttention: null };
+  if (!members?.length) return { totalAgents: 0, weekTotalMeetings: 0, weeklyGoal: 15, greenAgents: 0, yellowAgents: 0, redAgents: 0, topAgent: null, needsAttention: null };
 
-  const summaries = await Promise.all(members.map(m => getAgentSummary(m.email)));
+  const summaries = await Promise.all(members.map(m => getAgentSummary(m.email, weekOffset)));
+  const wg = summaries[0]?.weeklyGoal ?? 15;
 
   const green = summaries.filter(s => s.status === "green");
   const yellow = summaries.filter(s => s.status === "yellow");
@@ -157,6 +162,7 @@ export async function getTeamOverview(teamId: string): Promise<TeamOverview> {
   return {
     totalAgents: members.length,
     weekTotalMeetings: summaries.reduce((s, a) => s + a.weekTotal, 0),
+    weeklyGoal: wg,
     greenAgents: green.length,
     yellowAgents: yellow.length,
     redAgents: red.length,
