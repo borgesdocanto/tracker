@@ -1089,8 +1089,8 @@ export default function AdminPanel() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Mínimo de reuniones para día productivo</label>
-                <p className="text-xs text-gray-400 mb-2">Cuántas reuniones verdes necesita un agente en un día para que cuente como "día productivo". Default: 2</p>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Mínimo de reuniones para día productivo y racha</label>
+                <p className="text-xs text-gray-400 mb-2">Cuántas reuniones verdes necesita un agente en un día para que cuente como "día productivo" y sume a la racha. Default: 2</p>
                 <input
                   type="number" min="1" max="20"
                   value={goalsConfig.productive_day_min}

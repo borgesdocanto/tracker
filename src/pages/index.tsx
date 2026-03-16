@@ -41,7 +41,7 @@ interface CalendarData {
   dailySummaries: DaySummary[];
   recentEvents: CalendarEvent[];
   onboardingDone?: boolean;
-  streak?: { current: number; best: number; todayActive: boolean; lastActiveDate: string | null };
+  streak?: { current: number; best: number; todayActive: boolean; lastActiveDate: string | null; minGreens?: number };
   rankStats?: any;
 }
 
@@ -831,6 +831,7 @@ export default function HomePage() {
                 current={data.streak.current}
                 best={data.streak.best}
                 todayActive={data.streak.todayActive}
+                minGreens={data.streak.minGreens ?? 2}
               />
             )}
 

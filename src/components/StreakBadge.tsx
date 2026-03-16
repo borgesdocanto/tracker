@@ -2,9 +2,10 @@ interface Props {
   current: number;
   best: number;
   todayActive: boolean;
+  minGreens?: number;
 }
 
-export default function StreakBadge({ current, best, todayActive }: Props) {
+export default function StreakBadge({ current, best, todayActive, minGreens = 2 }: Props) {
   const isAlive = current > 0;
   const isOnFire = current >= 5;
   const isBest = current > 0 && current === best && best >= 3;
@@ -13,6 +14,11 @@ export default function StreakBadge({ current, best, todayActive }: Props) {
   const bg = isOnFire ? "#fff7ed" : isAlive ? "#fef2f2" : "#f9fafb";
   const color = isOnFire ? "#ea580c" : isAlive ? "#aa0000" : "#9ca3af";
   const border = isOnFire ? "#fed7aa" : isAlive ? "#fecaca" : "#e5e7eb";
+
+  const reunionWord = minGreens === 1 ? "reunión" : "reuniones";
+  const msgInactivo = `Agendá al menos ${minGreens} ${reunionWord} hoy para arrancar la racha`;
+  const msgMantener = `Agendá al menos ${minGreens} ${reunionWord} hoy para mantenerla`;
+  const msgActivo = `Hoy ya sumaste ${minGreens}+ ${reunionWord} — seguí así`;
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-5">
@@ -29,11 +35,7 @@ export default function StreakBadge({ current, best, todayActive }: Props) {
             <span className="text-sm text-gray-400 mb-1">días</span>
           </div>
           <div className="text-xs text-gray-400 mt-0.5">
-            {current === 0
-              ? "Agendá al menos 2 reuniones hoy para arrancar"
-              : todayActive
-              ? "Hoy ya sumaste — seguí así"
-              : "Agendá 2 reuniones hoy para mantenerla"}
+            {current === 0 ? msgInactivo : todayActive ? msgActivo : msgMantener}
           </div>
         </div>
         <div className="text-4xl">{emoji}</div>
@@ -51,6 +53,11 @@ export default function StreakBadge({ current, best, todayActive }: Props) {
         <span className="text-xs font-bold" style={{ color: todayActive ? "#16a34a" : "#9ca3af" }}>
           {todayActive ? "Hoy ✓" : "Hoy pendiente"}
         </span>
+      </div>
+
+      {/* Umbral visible */}
+      <div className="text-xs text-gray-300 mb-3">
+        Meta diaria: <span className="font-semibold text-gray-400">{minGreens} {reunionWord} verdes</span> para sumar un día
       </div>
 
       {/* Récord */}

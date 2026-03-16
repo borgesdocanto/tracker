@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { getGoals } from "./appConfig";
 
 // Día hábil = lunes a viernes (0=Dom, 6=Sab)
 function isWeekday(date: Date): boolean {
@@ -18,6 +19,7 @@ export interface StreakData {
   best: number;
   lastActiveDate: string | null;
   todayActive: boolean;
+  minGreens: number; // umbral para mantener racha
 }
 
 // Calcular y persistir el streak a partir de los dailySummaries
@@ -26,8 +28,8 @@ export async function computeAndSaveStreak(
   dailySummaries: Array<{ date: string; greenCount: number }>
 ): Promise<StreakData> {
 
-  // Solo días hábiles con al menos 2 verdes = día activo
-  const MIN_GREENS = 2;
+  const { productiveDayMin } = await getGoals();
+  const MIN_GREENS = productiveDayMin;
   const activeDays = new Set(
     dailySummaries
       .filter(d => {
@@ -44,7 +46,7 @@ export async function computeAndSaveStreak(
     .sort();
 
   if (sortedDays.length === 0) {
-    return { current: 0, best: 0, lastActiveDate: null, todayActive: false };
+    return { current: 0, best: 0, lastActiveDate: null, todayActive: false, minGreens: MIN_GREENS };
   }
 
   // Calcular racha actual desde hoy hacia atrás
@@ -131,5 +133,6 @@ export async function computeAndSaveStreak(
     best: finalBest,
     lastActiveDate: todayActive ? todayStr : null,
     todayActive,
+    minGreens: MIN_GREENS,
   };
 }
