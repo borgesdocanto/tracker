@@ -619,6 +619,22 @@ export default function HomePage() {
 
   useEffect(() => { if (status === "authenticated") sync(); }, [status, days]);
 
+  // Auto-navegar a semana anterior si hoy es lunes/martes y esta semana no tiene eventos aún
+  useEffect(() => {
+    if (!data || weekOffset !== 0) return;
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=dom, 1=lun, 2=mar
+    if (dayOfWeek <= 2) {
+      // Es lunes o martes — ver si esta semana tiene eventos verdes
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      monday.setHours(0, 0, 0, 0);
+      const mondayStr = monday.toISOString().slice(0, 10);
+      const thisWeekHasEvents = data.dailySummaries.some(d => d.date >= mondayStr && d.greenCount > 0);
+      if (!thisWeekHasEvents) setWeekOffset(-1);
+    }
+  }, [data]);
+
   // Mostrar onboarding si el usuario no lo completó todavía
   useEffect(() => {
     if (data && data.onboardingDone === false) {
@@ -637,7 +653,7 @@ export default function HomePage() {
       .filter(d => d.date >= fromStr && d.date <= todayStr)
       .map(d => {
         const dt = new Date(d.date + "T12:00:00");
-        return { dateLabel: `${dt.getDate()}/${dt.getMonth() + 1}`, verdes: d.greenCount, meta: PRODUCTIVITY_GOAL };
+        return { dateLabel: `${dt.getDate()}/${dt.getMonth() + 1}`, verdes: d.greenCount, meta: data.totals.iacGoal ?? 15 };
       });
   }, [data, days]);
 
