@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
 import { supabaseAdmin } from "../../lib/supabase";
+import { getGoals } from "../../lib/appConfig";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -9,6 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const email = session.user.email;
   const mode = (req.query.mode as string) || "iac_week";
+  const { weeklyGoal } = await getGoals();
 
   try {
     const { data: me } = await supabaseAdmin
@@ -63,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Todos los usuarios, con 0 si no tienen datos
       scores = allEmails.map(e => ({
         email: e,
-        score: wsMap[e] ?? (evMap[e] ? Math.round((evMap[e] / 15) * 100) : 0),
+        score: wsMap[e] ?? (evMap[e] ? Math.round((evMap[e] / weeklyGoal) * 100) : 0),
       }));
 
     } else if (mode === "iac_avg") {

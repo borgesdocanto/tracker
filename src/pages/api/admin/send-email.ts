@@ -6,13 +6,14 @@ import { supabaseAdmin } from "../../../lib/supabase";
 import { Resend } from "resend";
 import { generateWelcomeEmailHtml, generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
 import { fetchCalendarEvents, computeWeekStats } from "../../../lib/calendarSync";
+import { getGoals } from "../../../lib/appConfig";
 import { getValidAccessToken } from "../../../lib/googleToken";
 import { getPlanById } from "../../../lib/plans";
-import { FREEMIUM_DAYS, PRODUCTIVITY_GOAL, IAC_WEEKLY_GOAL } from "../../../lib/brand";
+import { FREEMIUM_DAYS } from "../../../lib/brand";
 import { computeAndSaveStreak } from "../../../lib/streak";
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string, streak: number): Promise<string> {
+async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string, streak: number, weeklyGoal: number): Promise<string> {
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -22,13 +23,13 @@ async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, n
         messages: [{ role: "user", content: `Sos Inmo Coach, coach inmobiliario argentino, directo y motivador. Escribí un consejo de 3-4 oraciones para ${name}. Sin listas. Usá segunda persona (vos).
 
 SEMANA:
-- Reuniones cara a cara: ${stats.greenTotal} de 15 (meta semanal)
-- IAC: ${Math.round((stats.greenTotal / IAC_WEEKLY_GOAL) * 100)}%
+- Reuniones cara a cara: ${stats.greenTotal} de ${weeklyGoal} (meta semanal)
+- IAC: ${Math.round((stats.greenTotal / weeklyGoal) * 100)}%
 - Tasaciones: ${stats.tasaciones} | Visitas: ${stats.visitas} | Propuestas: ${stats.propuestas}
 - Días productivos: ${stats.productiveDays} de ${stats.totalDays}
 ${streak > 0 ? `- Racha activa: ${streak} días` : "- Sin racha activa"}
 
-Siempre hablá de 15 reuniones semanales o 3 por día.` }]
+Siempre hablá de ${weeklyGoal} reuniones semanales o ${Math.round(weeklyGoal/5)} por día.` }]
       }),
     });
     const data = await res.json();
@@ -77,7 +78,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!accessToken) { results.failed++; results.errors.push(`${email}: sin token`); continue; }
 
         const events = await fetchCalendarEvents(accessToken, 90);
-        const stats = computeWeekStats(events);
+        const { weeklyGoal, productiveDayMin } = await getGoals();
+        const stats = computeWeekStats(events, productiveDayMin);
         const dailySummaries = Object.entries(
           events.filter(e => e.isGreen).reduce((acc: Record<string, number>, e) => {
             const day = e.start.slice(0, 10);
@@ -86,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }, {})
         ).map(([date, greenCount]) => ({ date, greenCount }));
         const streakData = await computeAndSaveStreak(email, dailySummaries);
-        const coachAdvice = await generateCoachAdvice(stats, name || email, streakData.current);
+        const coachAdvice = await generateCoachAdvice(stats, name || email, streakData.current, weeklyGoal);
 
         const { data: subData } = await supabaseAdmin
           .from("subscriptions").select("plan, created_at").eq("email", email).single();

@@ -5,6 +5,7 @@ import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscripti
 import { google } from "googleapis";
 import { startOfDay, endOfDay, subDays, addDays, formatISO } from "date-fns";
 import { persistEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC, getEventTypeConfig, EventType } from "../../lib/calendarSync";
+import { getGoals } from "../../lib/appConfig";
 import { supabaseAdmin } from "../../lib/supabase";
 import { getAgentRankStats } from "../../lib/ranks";
 import { computeAndSaveStreak } from "../../lib/streak";
@@ -233,7 +234,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       byDay[day].push(ev);
     });
 
-    const productivityGoal = parseInt(process.env.NEXT_PUBLIC_PRODUCTIVITY_GOAL || "2");
+    const { weeklyGoal, productiveDayMin } = await getGoals();
+    const productivityGoal = productiveDayMin;
 
     const dailySummaries: DailySummary[] = Object.entries(byDay)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -265,7 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       totalGreen: greenEvents.length,
       totalEvents: mappedEvents.length,
       iac: calcIAC(avgPorSemana),
-      iacGoal: IAC_GOAL,
+      iacGoal: weeklyGoal,
       procesosGoal: PROCESOS_GOAL,
     };
 
@@ -295,7 +297,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const weekStart = monday.toISOString().slice(0, 10);
           // Contar eventos verdes de esta semana por fecha de inicio
           const weekGreen = mappedEvents.filter(e => e.isGreen && e.start.slice(0, 10) >= weekStart);
-          const weekIac = Math.min(100, Math.round((weekGreen.length / 15) * 100));
+          const weekIac = Math.min(100, Math.round((weekGreen.length / weeklyGoal) * 100));
           await saveWeeklyStatsAndRank(session.user?.email!, weekStart, weekIac, weekGreen.length, streakData?.best ?? 0);
           const rankStats = await getAgentRankStats(session.user?.email!);
           return { streak: streakData, rankStats };

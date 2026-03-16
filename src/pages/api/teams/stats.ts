@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getStoredEvents, computePeriodStats, getQuarter, getSemester, getYear } from "../../../lib/calendarSync";
+import { getGoals } from "../../../lib/appConfig";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
@@ -48,6 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { from, to, days } = getRange(period);
+  const { weeklyGoal } = await getGoals();
 
   // Calcular stats de cada miembro en paralelo
   const memberStats = await Promise.all(
@@ -65,9 +67,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const trend = lastWeek.length > prevWeek.length ? "up"
         : lastWeek.length < prevWeek.length ? "down" : "stable";
 
-      // Semáforo
-      const signal = stats.avgPerWeek >= 10 ? "green"
-        : stats.avgPerWeek >= 6 ? "yellow" : "red";
+      // Semáforo basado en meta semanal configurable
+      const signal = stats.avgPerWeek >= weeklyGoal * 0.67 ? "green"
+        : stats.avgPerWeek >= weeklyGoal * 0.4 ? "yellow" : "red";
 
       return {
         email: m.email,

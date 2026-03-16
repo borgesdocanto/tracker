@@ -4,7 +4,8 @@ import { isSuperAdmin } from "../../../lib/adminGuard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { saveWeeklyStatsAndRank } from "../../../lib/ranks";
-import { startOfWeek, format, subWeeks } from "date-fns";
+import { startOfWeek, format } from "date-fns";
+import { getGoals } from "../../../lib/appConfig";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -18,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!users?.length) return res.status(200).json({ ok: true, processed: 0 });
 
+  const { weeklyGoal } = await getGoals();
   const results: any[] = [];
 
   for (const user of users) {
@@ -39,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Save each week
     for (const [weekStart, greenCount] of Object.entries(byWeek)) {
-      const iac = Math.min(100, Math.round((greenCount / 15) * 100));
+      const iac = Math.min(100, Math.round((greenCount / weeklyGoal) * 100));
       await saveWeeklyStatsAndRank(user.email, weekStart, iac, greenCount, user.streak_best ?? 0);
     }
 

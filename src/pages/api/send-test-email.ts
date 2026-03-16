@@ -4,20 +4,20 @@ import { authOptions } from "../../lib/auth";
 import { Resend } from "resend";
 import { fetchCalendarEvents, computeWeekStats } from "../../lib/calendarSync";
 import { generateWeeklyEmailHtml } from "../../lib/emailTemplate";
-import { PRODUCTIVITY_GOAL } from "../../lib/brand";
+import { getGoals } from "../../lib/appConfig";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { getPlanById } from "../../lib/plans";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string): Promise<string> {
+async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string, productiveDayMin: number): Promise<string> {
   const firstName = name.split(" ")[0];
   const prompt = `Sos Inmo Coach, un coach de ventas inmobiliarias argentino, directo y motivador. Como si fueras un colega que sabe mucho y habla con confianza de igual a igual.
 
 Analizá esta semana de ${firstName} y escribí un consejo de 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, usá su nombre cuando hables directamente. Motivá a mejorar la semana que viene con una acción concreta.
 
 SEMANA:
-- Eventos productivos (verdes): ${stats.greenTotal} (meta diaria: ${PRODUCTIVITY_GOAL})
+- Eventos productivos (verdes): ${stats.greenTotal} (meta diaria: ${productiveDayMin})
 - Tasaciones: ${stats.tasaciones}
 - Visitas: ${stats.visitas}
 - Propuestas de valor: ${stats.propuestas}
@@ -56,11 +56,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const events = await fetchCalendarEvents(accessToken, 30);
 
     // 2. Stats de la semana
-    const stats = computeWeekStats(events, PRODUCTIVITY_GOAL);
+    const { weeklyGoal, productiveDayMin } = await getGoals();
+    const stats = computeWeekStats(events, productiveDayMin);
 
     // 3. Coach advice
     const userName = session.user.name || session.user.email;
-    const coachAdvice = await generateCoachAdvice(stats, userName);
+    const coachAdvice = await generateCoachAdvice(stats, userName, productiveDayMin);
 
     // 4. Subscription info
     const sub = await getOrCreateSubscription(session.user.email, session.user.name ?? undefined);

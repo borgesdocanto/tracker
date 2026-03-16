@@ -4,6 +4,7 @@ import { authOptions } from "../../lib/auth";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { supabaseAdmin } from "../../lib/supabase";
 import { IAC_GOAL, PROCESOS_GOAL, CARTERA_GOAL, EFECTIVIDAD, calcIAC, proyectarOperaciones } from "../../lib/calendarSync";
+import { getGoals } from "../../lib/appConfig";
 
 function buildPeriodKey(calView: string, periodStart: string): string {
   if (calView === "month") return `month:${periodStart.slice(0, 7)}`;
@@ -74,11 +75,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // ── Calcular métricas ─────────────────────────────────────────────────────
+  const { weeklyGoal, productiveDayMin } = await getGoals();
   const periodSummaries = (dailySummaries as any[]).filter(d => d.date >= start && d.date <= end);
   const allEvents = periodSummaries.flatMap((d: any) => d.events || []);
   const greenEvents = allEvents.filter((e: any) => e.isGreen);
 
-  const efectiveGoal = goal || IAC_GOAL;
+  const efectiveGoal = goal || weeklyGoal;
   const semanas = isMonthly ? 4 : 1;
 
   const totals = {
@@ -97,11 +99,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const perfil = diagnose(totals.iac, totals.procesosNuevos / semanas);
   const procesosXSemana = Math.round((totals.procesosNuevos / semanas) * 10) / 10;
   const operacionesProyectadas = proyectarOperaciones(procesosXSemana, 1);
-  const iacGoalPeriodo = isMonthly ? IAC_GOAL * 4 : IAC_GOAL;
+  const iacGoalPeriodo = isMonthly ? weeklyGoal * 4 : weeklyGoal;
   const faltanReuniones = Math.max(0, iacGoalPeriodo - totals.totalGreen);
   const faltanProcesos = Math.max(0, PROCESOS_GOAL * semanas - totals.procesosNuevos);
 
-  const productiveDays = periodSummaries.filter((d: any) => (d.greenCount || 0) >= (productivityGoal || 2)).length;
+  const productiveDays = periodSummaries.filter((d: any) => (d.greenCount || 0) >= (productivityGoal || productiveDayMin)).length;
   const totalDays = periodSummaries.length || 1;
 
   const firstName = (userName || "").split(" ")[0] || "";
@@ -128,8 +130,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   };
 
   const periodoStr = isMonthly
-    ? `el mes de ${periodLabel} (objetivo: ${iacGoalPeriodo} reuniones = ${IAC_GOAL}/semana × 4 semanas, ${PROCESOS_GOAL * 4} procesos nuevos)`
-    : `la semana del ${periodLabel} (objetivo: ${IAC_GOAL} reuniones cara a cara, ${PROCESOS_GOAL} procesos nuevos)`;
+    ? `el mes de ${periodLabel} (objetivo: ${iacGoalPeriodo} reuniones = ${weeklyGoal}/semana × 4 semanas, ${PROCESOS_GOAL * 4} procesos nuevos)`
+    : `la semana del ${periodLabel} (objetivo: ${weeklyGoal} reuniones cara a cara, ${PROCESOS_GOAL} procesos nuevos)`;
 
   const prompt = `Sos InmoCoach, entrenador de productividad comercial inmobiliaria. Analizás agendas reales con un modelo estadístico probado. ${nombreStr}
 
@@ -138,8 +140,8 @@ No hay carga horaria en el negocio inmobiliario — hay cantidad de reuniones ca
 Una persona puede trabajar 10 horas y no generar negocio. Otra puede tener 6 reuniones y mover todo el pipeline.
 
 LAS 3 VARIABLES QUE MIDEN EL NEGOCIO:
-1. IAC (Índice de Actividad Comercial) = reuniones cara a cara / ${IAC_GOAL} por semana
-   Objetivo: 100% = ${IAC_GOAL} reuniones/semana
+1. IAC (Índice de Actividad Comercial) = reuniones cara a cara / ${weeklyGoal} por semana
+   Objetivo: 100% = ${weeklyGoal} reuniones/semana
 2. Procesos nuevos = personas que entran realmente al embudo (tasaciones, primeras visitas, inicio de fotos/video)
    Objetivo: ${PROCESOS_GOAL} por semana
 3. Cartera activa vendible: ${CARTERA_GOAL} propiedades a precio justo (no medible por agenda, pero es el sustento)

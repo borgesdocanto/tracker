@@ -9,6 +9,7 @@ import { saveWeeklyStatsAndRank } from "../../../lib/ranks";
 import { computeAndSaveStreak } from "../../../lib/streak";
 import { startOfWeek, format } from "date-fns";
 import { IAC_GOAL } from "../../../lib/calendarSync";
+import { getGoals } from "../../../lib/appConfig";
 
 // Cron: domingos a las 3am UTC — sync profundo 365 días para todos los usuarios activos
 // vercel.json: "0 3 * * 0"
@@ -58,7 +59,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Weekly stats semana actual
         const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
         const weekGreen = events.filter(e => e.isGreen && e.start.slice(0, 10) >= weekStart);
-        const weekIac = Math.min(100, Math.round((weekGreen.length / IAC_GOAL) * 100));
+        const { weeklyGoal } = await getGoals();
+        const weekIac = Math.min(100, Math.round((weekGreen.length / weeklyGoal) * 100));
         await saveWeeklyStatsAndRank(user.email, weekStart, weekIac, weekGreen.length, (streakData as any)?.best ?? 0);
         results.synced++;
         results.users.push(user.email);
