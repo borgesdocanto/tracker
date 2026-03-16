@@ -1,17 +1,25 @@
 import { supabaseAdmin } from "./supabase";
-import { getGoals } from "./appConfig";
 
-// Día hábil = lunes a viernes (0=Dom, 6=Sab)
+// Racha: mínimo 1 evento verde por día hábil (lunes a viernes)
+const MIN_GREENS_STREAK = 1;
+
+// Día hábil = lunes a viernes
 function isWeekday(date: Date): boolean {
   const d = date.getDay();
   return d !== 0 && d !== 6;
 }
 
-// Retorna el día hábil anterior a una fecha dada
+// Día hábil anterior
 function prevWeekday(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   do { d.setDate(d.getDate() - 1); } while (!isWeekday(d));
   return d.toISOString().slice(0, 10);
+}
+
+// Fecha local Argentina (UTC-3)
+function localDateStr(d: Date = new Date()): string {
+  const ar = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+  return ar.toISOString().slice(0, 10);
 }
 
 export interface StreakData {
@@ -19,106 +27,99 @@ export interface StreakData {
   best: number;
   lastActiveDate: string | null;
   todayActive: boolean;
-  minGreens: number; // umbral para mantener racha
+  minGreens: number;
 }
 
-// Calcular y persistir el streak a partir de los dailySummaries
+// Calcula y persiste el streak leyendo el historial completo desde DB
 export async function computeAndSaveStreak(
   email: string,
-  dailySummaries: Array<{ date: string; greenCount: number }>
+  _dailySummaries: Array<{ date: string; greenCount: number }> // mantenemos firma para compatibilidad
 ): Promise<StreakData> {
 
-  const { productiveDayMin } = await getGoals();
-  const MIN_GREENS = productiveDayMin;
+  // Leer todos los eventos verdes del último año desde DB
+  const from = new Date();
+  from.setDate(from.getDate() - 365);
+
+  const { data: events } = await supabaseAdmin
+    .from("calendar_events")
+    .select("start_at")
+    .eq("user_email", email)
+    .eq("is_productive", true)
+    .gte("start_at", from.toISOString())
+    .order("start_at");
+
+  // Contar eventos verdes por fecha local AR
+  const countByDay: Record<string, number> = {};
+  for (const ev of events || []) {
+    const dateStr = localDateStr(new Date(ev.start_at));
+    countByDay[dateStr] = (countByDay[dateStr] || 0) + 1;
+  }
+
+  // Días activos = días hábiles con al menos 1 evento verde
   const activeDays = new Set(
-    dailySummaries
-      .filter(d => {
-        const dt = new Date(d.date + "T12:00:00");
-        return isWeekday(dt) && d.greenCount >= MIN_GREENS;
-      })
-      .map(d => d.date)
+    Object.entries(countByDay)
+      .filter(([date, count]) => isWeekday(new Date(date + "T12:00:00")) && count >= MIN_GREENS_STREAK)
+      .map(([date]) => date)
   );
 
-  // Ordenar días hábiles disponibles
-  const sortedDays = dailySummaries
-    .map(d => d.date)
-    .filter(d => isWeekday(new Date(d + "T12:00:00")))
-    .sort();
-
-  if (sortedDays.length === 0) {
-    return { current: 0, best: 0, lastActiveDate: null, todayActive: false, minGreens: MIN_GREENS };
-  }
-
-  // Calcular racha actual desde hoy hacia atrás
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = localDateStr();
   const todayActive = activeDays.has(todayStr);
 
-  // Empezar desde hoy o desde el último día hábil si hoy no hay datos
+  // Racha actual: desde hoy hacia atrás en días hábiles
   let cursor = todayStr;
-  // Si hoy es finde, empezar desde el último viernes
   if (!isWeekday(new Date(cursor + "T12:00:00"))) {
-    cursor = prevWeekday(cursor);
+    cursor = prevWeekday(cursor); // si hoy es sáb/dom, empezar desde el viernes
   }
 
-  let current = 0;
-  // Contar hacia atrás mientras haya días activos consecutivos
-  // Si hoy aún no tiene datos (puede estar en progreso), no lo contamos como roto
-  let checkCursor = cursor;
-  const oldestDay = sortedDays[0];
+  const allDates = Object.keys(countByDay).sort();
+  const oldest = allDates[0] ?? todayStr;
 
-  while (checkCursor >= oldestDay) {
-    if (activeDays.has(checkCursor)) {
+  let current = 0;
+  while (cursor >= oldest) {
+    if (activeDays.has(cursor)) {
       current++;
-      checkCursor = prevWeekday(checkCursor);
-    } else if (checkCursor === todayStr && !todayActive) {
-      // Hoy aún no completó pero no rompemos — puede estar en progreso
-      checkCursor = prevWeekday(checkCursor);
+      cursor = prevWeekday(cursor);
+    } else if (cursor === todayStr && !todayActive) {
+      // Hoy puede estar en progreso — no rompe la racha
+      cursor = prevWeekday(cursor);
     } else {
       break;
     }
   }
 
-  // Calcular mejor racha histórica
+  // Mejor racha histórica
+  const weekdays = allDates
+    .filter(d => isWeekday(new Date(d + "T12:00:00")))
+    .sort();
+
   let best = current;
   let tempStreak = 0;
   let prevDay: string | null = null;
 
-  for (const day of sortedDays) {
+  for (const day of weekdays) {
     if (activeDays.has(day)) {
-      if (prevDay === null || day === prevWeekday(day) || true) {
-        // Verificar consecutividad real
-        if (prevDay !== null) {
-          const expectedPrev = prevWeekday(day);
-          if (prevDay === expectedPrev) {
-            tempStreak++;
-          } else {
-            tempStreak = 1;
-          }
-        } else {
-          tempStreak = 1;
-        }
-        if (tempStreak > best) best = tempStreak;
-        prevDay = day;
+      if (prevDay !== null && prevWeekday(day) === prevDay) {
+        tempStreak++;
+      } else {
+        tempStreak = 1;
       }
+      if (tempStreak > best) best = tempStreak;
+      prevDay = day;
     } else {
       tempStreak = 0;
       prevDay = null;
     }
   }
 
-  // Recuperar mejor racha guardada (puede ser mayor que lo calculado con datos actuales)
+  // Preservar mejor racha histórica guardada
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")
     .select("streak_best")
     .eq("email", email)
     .single();
 
-  const savedBest = sub?.streak_best ?? 0;
-  const finalBest = Math.max(best, savedBest, current);
+  const finalBest = Math.max(best, sub?.streak_best ?? 0, current);
 
-  // Guardar en Supabase
   await supabaseAdmin
     .from("subscriptions")
     .update({
@@ -128,11 +129,5 @@ export async function computeAndSaveStreak(
     })
     .eq("email", email);
 
-  return {
-    current,
-    best: finalBest,
-    lastActiveDate: todayActive ? todayStr : null,
-    todayActive,
-    minGreens: MIN_GREENS,
-  };
+  return { current, best: finalBest, lastActiveDate: todayActive ? todayStr : null, todayActive, minGreens: MIN_GREENS_STREAK };
 }
