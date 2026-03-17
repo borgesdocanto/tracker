@@ -70,7 +70,8 @@ function Tooltip({ text }: { text: string }) {
         className="w-3.5 h-3.5 rounded-full border border-gray-500 flex items-center justify-center text-gray-400 hover:border-gray-300 transition-colors"
         style={{ fontSize: 8, fontWeight: 900 }}>?</button>
       {show && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 bg-gray-900 text-white text-xs rounded-xl px-3 py-2 leading-relaxed shadow-xl pointer-events-none">
+        <span className="fixed z-[9999] w-56 bg-gray-900 text-white text-xs rounded-xl px-3 py-2 leading-relaxed shadow-2xl pointer-events-none"
+          style={{ transform: "translateX(-50%) translateY(-110%)", left: "50%", top: 0 }}>
           {text}
         </span>
       )}
@@ -85,7 +86,7 @@ function PositionCard({ label, rank, total, emoji }: { label: string; rank: numb
 
   return (
     <div className="flex-1 px-6 py-5">
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+      <div className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-4 flex items-center gap-1.5">
         {emoji} {label}
       </div>
       <div className="flex items-end gap-3 mb-2">
@@ -94,8 +95,8 @@ function PositionCard({ label, rank, total, emoji }: { label: string; rank: numb
         </span>
         {pod && <span className="text-4xl mb-1">{pod}</span>}
       </div>
-      <div className="text-sm text-gray-400 mb-4">
-        de <span className="font-black text-white">{total}</span> {label.includes("equipo") || label.includes(label) ? "agentes" : "agentes"}
+      <div className="text-sm text-gray-300 mb-4">
+        de <span className="font-black text-white">{total}</span> agentes
       </div>
       {/* Barra */}
       <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden mb-2">
@@ -134,7 +135,7 @@ export default function RankingPosition() {
           {/* Título + modos */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tu posición</span>
+              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">Tu posición</span>
               <Tooltip text="Comparate con los demás agentes de la plataforma y de tu equipo. Cambiá el modo para ver distintas formas de medir la actividad." />
             </div>
             <div className="flex items-center gap-1">
@@ -149,7 +150,7 @@ export default function RankingPosition() {
           </div>
 
           {/* Descripción del modo */}
-          <div className="flex items-center gap-1 text-xs text-gray-400">
+          <div className="flex items-center gap-1 text-xs text-gray-300">
             <span>{currentMode.desc}</span>
             <Tooltip text={currentMode.tooltip} />
           </div>
