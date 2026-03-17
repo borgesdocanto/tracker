@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Trophy } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const RED = "#aa0000";
 
@@ -14,17 +14,27 @@ interface RankingData {
 }
 
 const MODES = [
-  { value: "iac_week",  label: "IAC esta semana",   desc: "Reuniones cara a cara en los últimos 7 días", tooltip: "Ranking según tu IAC de esta semana (lunes a hoy). IAC 100% = 15 reuniones cara a cara. Se actualiza cada vez que sincronizás tu calendario." },
-  { value: "iac_avg",   label: "IAC promedio",       desc: "Promedio de las últimas 12 semanas activas",  tooltip: "Ranking según tu IAC promedio de las últimas 12 semanas con actividad. Refleja tu consistencia a lo largo del tiempo, no solo esta semana." },
-  { value: "rank",      label: "Rango",              desc: "Por nivel: Junior → Master Broker",           tooltip: "Ranking según tu rango actual: Junior → Corredor → Asesor → Senior → Top Producer → Master Broker. El rango sube con semanas activas y IAC promedio." },
+  {
+    value: "iac_week",
+    label: "IAC esta semana",
+    desc: "Reuniones cara a cara de esta semana (lunes a hoy)",
+    tooltip: "Tu posición según la cantidad de reuniones cara a cara que tuviste esta semana vs el resto de los agentes. Se actualiza cada vez que sincronizás.",
+  },
+  {
+    value: "iac_avg",
+    label: "IAC promedio",
+    desc: "Promedio de las últimas 12 semanas activas",
+    tooltip: "Tu posición según tu IAC promedio histórico. Refleja tu consistencia a lo largo del tiempo — no solo esta semana.",
+  },
+  {
+    value: "rank",
+    label: "Rango",
+    desc: "Por nivel: Junior → Master Broker",
+    tooltip: "Tu posición según tu rango actual. Subís de rango siendo consistente semana a semana.",
+  },
 ];
 
-function ordinalES(n: number): string {
-  if (n === 1) return "1°";
-  if (n === 2) return "2°";
-  if (n === 3) return "3°";
-  return `${n}°`;
-}
+function ordinalES(n: number): string { return `${n}°`; }
 
 function podiumEmoji(rank: number): string {
   if (rank === 1) return "🥇";
@@ -41,11 +51,68 @@ function positionColor(rank: number, total: number): string {
   return RED;
 }
 
+function motivationalMsg(rank: number, total: number): string {
+  if (rank === 1) return "Líder 🔥 Mantené el ritmo";
+  if (rank === 2) return "A un paso del liderazgo 💪";
+  if (rank <= 3) return "Top 3 — seguí así";
+  const pct = rank / total;
+  if (pct <= 0.25) return `Top ${Math.round(pct * 100)}% — en la élite`;
+  if (pct <= 0.5) return "Mitad superior — podés llegar más arriba";
+  return "El equipo te espera arriba — subí tu actividad";
+}
+
+function Tooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex items-center ml-1">
+      <button onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}
+        onTouchStart={() => setShow(s => !s)}
+        className="w-3.5 h-3.5 rounded-full border border-gray-500 flex items-center justify-center text-gray-400 hover:border-gray-300 transition-colors"
+        style={{ fontSize: 8, fontWeight: 900 }}>?</button>
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 bg-gray-900 text-white text-xs rounded-xl px-3 py-2 leading-relaxed shadow-xl pointer-events-none">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function PositionCard({ label, rank, total, emoji }: { label: string; rank: number; total: number; emoji?: string }) {
+  const color = positionColor(rank, total);
+  const barWidth = Math.max(4, 100 - ((rank - 1) / Math.max(total, 1)) * 100);
+  const pod = podiumEmoji(rank);
+
+  return (
+    <div className="flex-1 px-6 py-5">
+      <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+        {emoji} {label}
+      </div>
+      <div className="flex items-end gap-3 mb-2">
+        <span className="font-black leading-none" style={{ fontFamily: "Georgia, serif", fontSize: 64, color, lineHeight: 1 }}>
+          {ordinalES(rank)}
+        </span>
+        {pod && <span className="text-4xl mb-1">{pod}</span>}
+      </div>
+      <div className="text-sm text-gray-400 mb-4">
+        de <span className="font-black text-white">{total}</span> {label.includes("equipo") || label.includes(label) ? "agentes" : "agentes"}
+      </div>
+      {/* Barra */}
+      <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden mb-2">
+        <div className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${barWidth}%`, background: color }} />
+      </div>
+      <div className="text-xs font-medium" style={{ color: color === RED ? "#fca5a5" : color === "#d97706" ? "#fcd34d" : "#86efac" }}>
+        {motivationalMsg(rank, total)}
+      </div>
+    </div>
+  );
+}
+
 export default function RankingPosition() {
   const [mode, setMode] = useState("iac_week");
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tooltip, setTooltip] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -58,130 +125,67 @@ export default function RankingPosition() {
   const currentMode = MODES.find(m => m.value === mode)!;
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden"
+    <div className="rounded-2xl overflow-hidden border border-gray-100"
       style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
 
-      {/* Header con selector */}
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Trophy size={13} className="text-gray-400" />
-          <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Tu posición</span>
-        </div>
-        <div className="ml-auto flex items-center gap-1">
-          {MODES.map(m => (
-            <button key={m.value} onClick={() => setMode(m.value)}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
-              style={{ background: mode === m.value ? RED : "#f3f4f6", color: mode === m.value ? "white" : "#9ca3af" }}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Descripción del modo + tooltip */}
-      <div className="px-5 pt-3 pb-0 flex items-start gap-1.5">
-        <p className="text-xs text-gray-400">{currentMode.desc}</p>
-        <div className="relative shrink-0 mt-0.5">
-          <button
-            onMouseEnter={() => setTooltip(currentMode.tooltip)}
-            onMouseLeave={() => setTooltip("")}
-            onTouchStart={() => setTooltip(t => t ? "" : currentMode.tooltip)}
-            className="w-3.5 h-3.5 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center hover:border-gray-500 hover:text-gray-600 transition-colors"
-            style={{ fontSize: 8, fontWeight: 900, lineHeight: 1 }}>?</button>
-          {tooltip && (
-            <div className="absolute left-0 top-full mt-1.5 z-50 w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed shadow-xl pointer-events-none">
-              {tooltip}
+      {/* Header oscuro */}
+      <div style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)" }}>
+        <div className="px-5 pt-5 pb-4">
+          {/* Título + modos */}
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tu posición</span>
+              <Tooltip text="Comparate con los demás agentes de la plataforma y de tu equipo. Cambiá el modo para ver distintas formas de medir la actividad." />
             </div>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 size={18} className="animate-spin text-gray-300" />
-        </div>
-      ) : !data ? (
-        <div className="px-5 py-8 text-center text-sm text-gray-400">No se pudo cargar el ranking.</div>
-      ) : data.globalTotal <= 1 ? (
-        <div className="px-5 py-8 text-center">
-          <div className="text-3xl mb-2">🚀</div>
-          <div className="text-sm font-bold text-gray-700">Sos el primero en el ranking</div>
-          <div className="text-xs text-gray-400 mt-1">A medida que más agentes se sumen vas a ver tu posición.</div>
-        </div>
-      ) : (
-        <div className={`grid ${data.hasTeam ? "grid-cols-2" : "grid-cols-1"} gap-px bg-gray-100 mt-3`}>
-
-          {/* Posición global */}
-          <div className="bg-white px-6 py-5">
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-              🌐 InmoCoach global
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="font-black leading-none" style={{
-                fontFamily: "Georgia, serif",
-                fontSize: 52,
-                color: positionColor(data.globalRank, data.globalTotal),
-              }}>
-                {ordinalES(data.globalRank)}
-              </span>
-              {podiumEmoji(data.globalRank) && (
-                <span className="text-3xl mb-1">{podiumEmoji(data.globalRank)}</span>
-              )}
-            </div>
-            <div className="text-sm text-gray-400 mt-1">
-              de <span className="font-black text-gray-600">{data.globalTotal}</span> agentes
-            </div>
-            {/* Barra de posición */}
-            <div className="mt-3 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.max(4, 100 - ((data.globalRank - 1) / Math.max(data.globalTotal, 1)) * 100)}%`,
-                  background: positionColor(data.globalRank, data.globalTotal)
-                }} />
-            </div>
-            <div className="text-xs text-gray-400 mt-1.5">
-              Top {Math.max(1, Math.round((data.globalRank / Math.max(data.globalTotal, 1)) * 100))}% de la plataforma
+            <div className="flex items-center gap-1">
+              {MODES.map(m => (
+                <button key={m.value} onClick={() => setMode(m.value)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-xl transition-all whitespace-nowrap"
+                  style={{ background: mode === m.value ? RED : "rgba(255,255,255,0.08)", color: mode === m.value ? "white" : "#9ca3af" }}>
+                  {m.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Posición en equipo */}
-          {data.hasTeam && (
-            <div className="bg-white px-6 py-5">
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 truncate">
-                👥 {data.teamName}
-              </div>
-              <div className="flex items-end gap-2">
-                <span className="font-black leading-none" style={{
-                  fontFamily: "Georgia, serif",
-                  fontSize: 52,
-                  color: positionColor(data.teamRank, data.teamTotal),
-                }}>
-                  {ordinalES(data.teamRank)}
-                </span>
-                {podiumEmoji(data.teamRank) && (
-                  <span className="text-3xl mb-1">{podiumEmoji(data.teamRank)}</span>
-                )}
-              </div>
-              <div className="text-sm text-gray-400 mt-1">
-                de <span className="font-black text-gray-600">{data.teamTotal}</span> en el equipo
-              </div>
-              <div className="mt-3 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.max(4, 100 - ((data.teamRank - 1) / Math.max(data.teamTotal, 1)) * 100)}%`,
-                    background: positionColor(data.teamRank, data.teamTotal)
-                  }} />
-              </div>
-              <div className="text-xs text-gray-400 mt-1.5">
-                {data.teamRank === 1 ? "¡Líder del equipo esta semana! 🔥" :
-                 data.teamRank === 2 ? "A un paso del liderazgo 💪" :
-                 data.teamRank <= Math.ceil(data.teamTotal / 2) ? "En la mitad superior del equipo" :
-                 "Podés subir — el equipo te espera arriba"}
-              </div>
-            </div>
-          )}
+          {/* Descripción del modo */}
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <span>{currentMode.desc}</span>
+            <Tooltip text={currentMode.tooltip} />
+          </div>
         </div>
-      )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 size={18} className="animate-spin" style={{ color: "#4b5563" }} />
+          </div>
+        ) : !data ? (
+          <div className="px-5 pb-8 text-center text-sm text-gray-400">No se pudo cargar el ranking.</div>
+        ) : data.globalTotal <= 1 ? (
+          <div className="px-5 pb-8 text-center">
+            <div className="text-4xl mb-2">🚀</div>
+            <div className="text-sm font-bold text-white">Sos el primero en la plataforma</div>
+            <div className="text-xs text-gray-400 mt-1">A medida que más agentes se sumen vas a ver tu posición.</div>
+          </div>
+        ) : (
+          <div className={`flex divide-x divide-white/10 pb-2`}>
+            <PositionCard
+              label="InmoCoach global"
+              rank={data.globalRank}
+              total={data.globalTotal}
+              emoji="🌐"
+            />
+            {data.hasTeam && (
+              <PositionCard
+                label={data.teamName}
+                rank={data.teamRank}
+                total={data.teamTotal}
+                emoji="👥"
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
