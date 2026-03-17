@@ -914,13 +914,13 @@ export default function HomePage() {
                   <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-row sm:flex-col justify-between sm:justify-center gap-4">
                     <div>
                       <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
-                        IAC · {days}d
+                        IAC · {days === 7 ? "esta semana" : `${days}d`}
                       </div>
                       <div className="text-4xl font-black" style={{ color: iacColor, fontFamily: "Georgia, serif" }}>
                         {iacPeriod}%
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        {data.totals.totalGreen} de {goalPeriod} · {avgSem}/sem
+                        {data.totals.totalGreen} reuniones · meta {goalPeriod}
                       </div>
                       <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                         <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, iacPeriod)}%`, background: iacColor }} />
