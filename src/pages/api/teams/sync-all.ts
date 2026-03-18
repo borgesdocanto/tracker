@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const syncMember = async (member: typeof members[0]) => {
     const accessToken = await getValidAccessToken(member.email);
-    if (!accessToken) return "skipped";
+    if (!accessToken) return { email: member.email, status: "no_token" };
     const events = await syncAndPersist(accessToken, member.email, member.team_id, 90);
     const byDay: Record<string, number> = {};
     for (const e of events) {
@@ -50,18 +50,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { weeklyGoal } = await getGoals();
     const weekIac = Math.min(100, Math.round((weekGreen.length / weeklyGoal) * 100));
     await saveWeeklyStatsAndRank(member.email, weekStart, weekIac, weekGreen.length, (streakData as any)?.best ?? member.streak_best ?? 0);
-    return "synced";
+    return { email: member.email, status: "synced", events: events.length };
   };
 
-  // Procesar en lotes de 5 para no saturar la API de Google ni el timeout de Vercel
   const BATCH_SIZE = 5;
-  const results: PromiseSettledResult<string>[] = [];
+  const memberResults: { email: string; status: string; events?: number; error?: string }[] = [];
   for (let i = 0; i < members.length; i += BATCH_SIZE) {
     const batch = members.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.allSettled(batch.map(syncMember));
-    results.push(...batchResults);
+    for (const r of batchResults) {
+      if (r.status === "fulfilled") memberResults.push(r.value);
+      else memberResults.push({ email: "unknown", status: "error", error: r.reason?.message });
+    }
   }
 
-  const synced = results.filter(r => r.status === "fulfilled" && r.value === "synced").length;
-  return res.status(200).json({ ok: true, synced, total: members.length });
+  const synced = memberResults.filter(r => r.status === "synced").length;
+  const errors = memberResults.filter(r => r.status === "error" || r.status === "no_token");
+  return res.status(200).json({ ok: true, synced, total: members.length, errors, results: memberResults });
 }

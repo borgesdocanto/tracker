@@ -72,6 +72,7 @@ export default function BrokerDashboard() {
   const [showBroker, setShowBroker] = useState(true);
   const [sortBy, setSortBy] = useState<"iac" | "trend" | "streak">("iac");
   const [syncing, setSyncing] = useState(false);
+  const [syncErrors, setSyncErrors] = useState<{email: string; status: string}[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [status, router]);
@@ -105,8 +106,13 @@ export default function BrokerDashboard() {
 
   const syncAll = async () => {
     setSyncing(true);
+    setSyncErrors([]);
     try {
-      await fetch("/api/teams/sync-all", { method: "POST" });
+      const res = await fetch("/api/teams/sync-all", { method: "POST" });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.errors?.length) setSyncErrors(d.errors);
+      }
       await loadAnalytics();
     } catch {}
     setSyncing(false);
@@ -165,6 +171,29 @@ export default function BrokerDashboard() {
       </header>
 
       <main className="max-w-5xl mx-auto px-5 py-6 space-y-5">
+
+        {/* Errores de sincronización */}
+        {syncErrors.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+            <div className="flex items-start gap-3">
+              <span className="text-amber-500 mt-0.5">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800 mb-1">
+                  {syncErrors.length === 1 ? "1 agente" : `${syncErrors.length} agentes`} con problemas de sincronización
+                </p>
+                <div className="space-y-1">
+                  {syncErrors.map((e, i) => (
+                    <div key={i} className="text-xs text-amber-700">
+                      <span className="font-semibold">{e.email.split("@")[0]}</span>
+                      {e.status === "no_token" ? " — no reconectó Google Calendar. Pedile que cierre sesión y vuelva a entrar." : " — error al sincronizar."}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => setSyncErrors([])} className="text-amber-400 hover:text-amber-600 text-xs mt-0.5">✕</button>
+            </div>
+          </div>
+        )}
 
         {/* ── ALERTAS ── */}
         {agents.length > 0 && (needsAttention.length > 0 || onStreak.length > 0) && (

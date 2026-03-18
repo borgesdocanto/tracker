@@ -84,7 +84,9 @@ export default function RankBadge({ stats }: { stats: RankStats }) {
         <div className="flex items-center gap-1">
           {sorted.map((r, i) => (
             <div key={r.slug} className="flex items-center gap-1 flex-1">
-              <div className="flex flex-col items-center flex-1 relative group">
+              <div className="flex flex-col items-center flex-1 relative"
+                onMouseEnter={e => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'block'; }}
+                onMouseLeave={e => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'none'; }}>
                 <div className="relative">
                   <div className="flex items-center justify-center rounded-full transition-all"
                     style={{
@@ -107,9 +109,9 @@ export default function RankBadge({ stats }: { stats: RankStats }) {
                   {r.label.split(" ")[0]}
                 </div>
                 {/* Tooltip al hover */}
-                <div style={{ position:"absolute", bottom:"calc(100% + 6px)", left:"50%", transform:"translateX(-50%)", zIndex:9999, width:160, background:"#111827", color:"white", fontSize:11, borderRadius:10, padding:"6px 10px", lineHeight:1.5, boxShadow:"0 8px 24px rgba(0,0,0,0.3)", pointerEvents:"none", whiteSpace:"normal", textAlign:"center" }}>
+                <div data-tip style={{ display:"none", position:"absolute", bottom:"calc(100% + 6px)", left:"50%", transform:"translateX(-50%)", zIndex:9999, width:160, background:"#111827", color:"white", fontSize:11, borderRadius:10, padding:"6px 10px", lineHeight:1.5, boxShadow:"0 8px 24px rgba(0,0,0,0.3)", pointerEvents:"none", whiteSpace:"normal", textAlign:"center" }}>
                   {r.label}<br/>
-                  <span className="text-gray-400">IAC ≥ {r.minIacUp}% para subir</span>
+                  <span style={{ color:"#9ca3af" }}>IAC ≥ {r.minIacUp}% para subir</span>
                 </div>
               </div>
               {i < sorted.length - 1 && (
