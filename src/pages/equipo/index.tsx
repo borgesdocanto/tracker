@@ -176,19 +176,35 @@ export default function BrokerDashboard() {
         {syncErrors.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
             <div className="flex items-start gap-3">
-              <span className="text-amber-500 mt-0.5">⚠️</span>
+              <span className="mt-0.5">⚠️</span>
               <div className="flex-1">
                 <p className="text-sm font-bold text-amber-800 mb-1">
-                  {syncErrors.length === 1 ? "1 agente" : `${syncErrors.length} agentes`} con problemas de sincronización
+                  {syncErrors.length === 1 ? "1 agente" : `${syncErrors.length} agentes`} sin conexión a Google Calendar
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {syncErrors.map((e, i) => (
-                    <div key={i} className="text-xs text-amber-700">
-                      <span className="font-semibold">{e.email.split("@")[0]}</span>
-                      {e.status === "no_token" ? " — no reconectó Google Calendar. Pedile que cierre sesión y vuelva a entrar." : " — error al sincronizar."}
+                    <div key={i} className="flex items-center justify-between">
+                      <span className="text-xs text-amber-700">
+                        <span className="font-semibold">{e.email.split("@")[0]}</span>
+                        {" — "}{e.status === "no_token" ? "nunca reconectó" : "error al sincronizar"}
+                      </span>
+                      <button
+                        onClick={async () => {
+                          await fetch("/api/admin/ops", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "revoke_google_token", email: e.email }),
+                          });
+                          setSyncErrors(prev => prev.filter(x => x.email !== e.email));
+                        }}
+                        className="text-xs font-bold px-2.5 py-1 rounded-lg ml-3 shrink-0"
+                        style={{ background: "#fef3c7", color: "#92400e" }}>
+                        Forzar reconexión
+                      </button>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-amber-600 mt-2">Al forzar la reconexión, la próxima vez que el agente entre al dashboard lo va a redirigir para reconectar Google Calendar.</p>
               </div>
               <button onClick={() => setSyncErrors([])} className="text-amber-400 hover:text-amber-600 text-xs mt-0.5">✕</button>
             </div>

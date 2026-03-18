@@ -62,6 +62,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Ver logs de sync errors de un usuario
+  if (action === "revoke_google_token") {
+    if (!email) return res.status(400).json({ error: "Email requerido" });
+    await supabaseAdmin.from("subscriptions").update({
+      google_access_token: null,
+      google_refresh_token: null,
+      google_token_expiry: null,
+    }).eq("email", email);
+    return res.status(200).json({ ok: true });
+  }
+
   if (action === "get_sync_errors") {
     if (!email) return res.status(400).json({ error: "Email requerido" });
     const { data } = await supabaseAdmin
