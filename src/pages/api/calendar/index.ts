@@ -1,16 +1,16 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../lib/auth";
-import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
+import { authOptions } from "../../../lib/auth";
+import { getOrCreateSubscription, isFreemiumExpired } from "../../../lib/subscription";
 import { google } from "googleapis";
 import { startOfDay, endOfDay, subDays, addDays, formatISO } from "date-fns";
-import { persistEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC, getEventTypeConfig, EventType } from "../../lib/calendarSync";
-import { getGoals } from "../../lib/appConfig";
-import { supabaseAdmin } from "../../lib/supabase";
-import { getAgentRankStats } from "../../lib/ranks";
-import { computeAndSaveStreak } from "../../lib/streak";
-import { saveWeeklyStatsAndRank } from "../../lib/ranks";
-import { getValidAccessToken } from "../../lib/googleToken";
+import { persistEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC, getEventTypeConfig, EventType } from "../../../lib/calendarSync";
+import { getGoals } from "../../../lib/appConfig";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { getAgentRankStats } from "../../../lib/ranks";
+import { computeAndSaveStreak } from "../../../lib/streak";
+import { saveWeeklyStatsAndRank } from "../../../lib/ranks";
+import { getValidAccessToken } from "../../../lib/googleToken";
 
 const GREEN_COLOR_IDS = new Set(["2", "10"]);
 

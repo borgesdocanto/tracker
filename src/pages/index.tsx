@@ -610,26 +610,72 @@ export default function HomePage() {
     }
   };
 
+  const [syncing, setSyncing] = useState(false); // sync en background
+  const [fromCache, setFromCache] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+
+  const loadFromCache = async (d: number) => {
+    // Paso 1: mostrar datos de DB inmediatamente
+    try {
+      const fetchDays = Math.max(d, 14);
+      const res = await fetch(`/api/calendar/cached?days=${fetchDays}`);
+      if (res.status === 401) { router.push("/relogin"); return false; }
+      if (res.status === 403) { router.push("/expired"); return false; }
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+        setFromCache(true);
+        setLoading(false);
+        return true;
+      }
+    } catch {}
+    return false;
+  };
+
+  const syncWithGoogle = async (d: number, silent = false) => {
+    // Paso 2: sincronizar con Google en background
+    if (!silent) setSyncing(true);
+    try {
+      const fetchDays = Math.max(d, 14);
+      const res = await fetch(`/api/calendar?days=${fetchDays}`);
+      if (res.status === 401) { router.push("/relogin"); return; }
+      if (res.status === 403) { return; } // freemium expirado, ya manejado
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+        setFromCache(false);
+        setLastSyncedAt(json.syncedAt);
+        setError("");
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        // Si hay datos de caché, no mostrar error — solo loggear
+        if (!data) setError(errData.error || "Error de sincronización");
+      }
+    } catch (e: any) {
+      if (!data) setError(e.message);
+    }
+    setSyncing(false);
+  };
+
   const sync = async () => {
     setLoading(true);
     setError("");
-    try {
-      const fetchDays = Math.max(days, 14);
-      const res = await fetch(`/api/calendar?days=${fetchDays}`);
-      if (res.status === 401) {
-        router.push("/relogin");
-        return;
-      }
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Error de sincronización");
-      }
-      setData(await res.json());
-    } catch (e: any) { setError(e.message); }
+    // Primero mostrar caché, luego sincronizar
+    await loadFromCache(days);
+    await syncWithGoogle(days);
     setLoading(false);
   };
 
-  useEffect(() => { if (status === "authenticated") sync(); }, [status, days]);
+  useEffect(() => {
+    if (status === "authenticated") sync();
+  }, [status]);
+
+  // Cuando cambia `days`, mostrar caché primero y re-sincronizar
+  useEffect(() => {
+    if (status !== "authenticated" || !data) return;
+    setLoading(true);
+    loadFromCache(days).then(() => syncWithGoogle(days).then(() => setLoading(false)));
+  }, [days]);
 
   // Auto-navegar a semana anterior si hoy es lunes/martes y esta semana no tiene eventos aún
   useEffect(() => {
@@ -767,10 +813,17 @@ export default function HomePage() {
             </button>
           ) : null}
 
-          <button onClick={sync} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors border border-gray-200">
-            <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">{loading ? "Sincronizando" : "Actualizar"}</span>
+          <button onClick={sync} disabled={loading || syncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border"
+            style={{
+              color: syncing ? "#d97706" : "#6b7280",
+              borderColor: syncing ? "#fcd34d" : "#e5e7eb",
+              background: syncing ? "#fffbeb" : "white",
+            }}>
+            <RefreshCw size={11} className={loading || syncing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">
+              {loading ? "Cargando" : syncing ? "Actualizando" : fromCache ? "Actualizar" : "Actualizar"}
+            </span>
           </button>
 
           {session?.user?.image ? (
