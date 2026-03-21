@@ -369,6 +369,36 @@ export async function syncAndPersist(
 ): Promise<SyncedEvent[]> {
   const events = await fetchCalendarEvents(accessToken, days);
   await persistEvents(userEmail, teamId, events);
+
+  // Borrar de DB los eventos que ya no existen en Google (borrados o cancelados)
+  // Solo dentro del período sincronizado para no tocar historial anterior
+  if (events.length > 0) {
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+    const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const activeIds = events.map(e => e.id);
+
+    // Obtener IDs que están en DB dentro del período
+    const { data: dbEvents } = await supabaseAdmin
+      .from("calendar_events")
+      .select("google_event_id")
+      .eq("user_email", userEmail)
+      .gte("start_at", periodStart)
+      .lte("start_at", periodEnd);
+
+    const dbIds = (dbEvents || []).map(e => e.google_event_id);
+    const toDelete = dbIds.filter(id => !activeIds.includes(id));
+
+    if (toDelete.length > 0) {
+      await supabaseAdmin
+        .from("calendar_events")
+        .delete()
+        .eq("user_email", userEmail)
+        .in("google_event_id", toDelete);
+      console.log(`[syncAndPersist] deleted ${toDelete.length} removed events for ${userEmail}`);
+    }
+  }
+
   return events;
 }
 
