@@ -3,6 +3,7 @@ import OnboardingModal from "../components/OnboardingModal";
 import StreakBadge from "../components/StreakBadge";
 import RankBadge from "../components/RankBadge";
 import RankingPosition from "../components/RankingPosition";
+import AgentVsTeam from "../components/AgentVsTeam";
 import PushPrompt from "../components/PushPrompt";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useRouter } from "next/router";
@@ -1023,6 +1024,9 @@ export default function HomePage() {
 
             {/* Posición en ranking */}
             <RankingPosition />
+
+            {/* Evolución histórica + comparativa vs equipo */}
+            <AgentVsTeam weekOffset={weekOffset} />
 
             {/* Productividad + Trend */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
