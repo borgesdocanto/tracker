@@ -677,54 +677,18 @@ export default function HomePage() {
     loadFromCache(days).then(() => syncWithGoogle(days).then(() => setLoading(false)));
   }, [days]);
 
-  // Polling en tiempo real — ref para evitar stale closures
-  const lastKnownRef = useRef<string | null | undefined>(undefined);
-  const daysRef = useRef(days);
-  useEffect(() => { daysRef.current = days; }, [days]);
-
+  // Refrescar automáticamente cuando el usuario vuelve a la pestaña
   useEffect(() => {
     if (status !== "authenticated") return;
-
-    const poll = async () => {
-      try {
-        const res = await fetch("/api/calendar/last-updated");
-        if (!res.ok) return;
-        const { lastUpdated } = await res.json();
-
-        // Primera vez — inicializar sin actualizar
-        if (lastKnownRef.current === undefined) {
-          lastKnownRef.current = lastUpdated;
-          return;
-        }
-
-        // Si cambió hay datos nuevos — recargar desde DB
-        if (lastUpdated !== lastKnownRef.current) {
-          lastKnownRef.current = lastUpdated;
-          const fetchDays = Math.max(daysRef.current, 14);
-          const cached = await fetch(`/api/calendar/cached?days=${fetchDays}`);
-          if (cached.ok) {
-            const json = await cached.json();
-            setData(json);
-            setFromCache(true);
-          }
-        }
-      } catch {}
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadFromCache(days);
+        syncWithGoogle(days, true);
+      }
     };
-
-    // Primer poll a los 3 segundos para inicializar lastKnown rápido
-    const timeout = setTimeout(poll, 3000);
-    const interval = setInterval(poll, 15000);
-
-    // También refrescar cuando el usuario vuelve a la pestaña
-    const onVisible = () => { if (document.visibilityState === "visible") poll(); };
     document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      clearTimeout(timeout);
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [status]); // solo status — días se lee via ref
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [status, days]);
 
   // Auto-navegar a semana anterior si hoy es lunes/martes y esta semana no tiene eventos aún
   useEffect(() => {
