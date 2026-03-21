@@ -10,6 +10,7 @@ import { supabaseAdmin } from "../../../lib/supabase";
 import { getAgentRankStats } from "../../../lib/ranks";
 import { computeAndSaveStreak } from "../../../lib/streak";
 import { saveWeeklyStatsAndRank } from "../../../lib/ranks";
+import { registerCalendarWatch } from "../../../lib/calendarWatch";
 import { getValidAccessToken } from "../../../lib/googleToken";
 
 const GREEN_COLOR_IDS = new Set(["2", "10"]);
@@ -304,6 +305,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const weekIac = Math.min(100, Math.round((weekGreen.length / weeklyGoal) * 100));
           await saveWeeklyStatsAndRank(session.user?.email!, weekStart, weekIac, weekGreen.length, streakData?.best ?? 0);
           const rankStats = await getAgentRankStats(session.user?.email!);
+
+          // Registrar watch de Google Calendar si no existe (fire-and-forget)
+          supabaseAdmin.from("calendar_watch_channels")
+            .select("channel_id")
+            .eq("user_email", session.user?.email!)
+            .gt("expiration", new Date().toISOString())
+            .limit(1)
+            .then(({ data }) => {
+              if (!data?.length) {
+                registerCalendarWatch(session.user?.email!).catch(() => {});
+              }
+            });
+
           return { streak: streakData, rankStats };
         } catch (e) {
           console.error("streak/rank error:", e);
