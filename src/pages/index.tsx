@@ -6,7 +6,7 @@ import RankingPosition from "../components/RankingPosition";
 import PushPrompt from "../components/PushPrompt";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useRouter } from "next/router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import EmptyDashboard from "../components/EmptyDashboard";
 import Head from "next/head";
 import Link from "next/link";
@@ -677,26 +677,30 @@ export default function HomePage() {
     loadFromCache(days).then(() => syncWithGoogle(days).then(() => setLoading(false)));
   }, [days]);
 
-  // Polling en tiempo real — cada 30s verifica si el webhook actualizó la DB
+  // Polling en tiempo real — ref para evitar stale closures
+  const lastKnownRef = useRef<string | null | undefined>(undefined);
+  const daysRef = useRef(days);
+  useEffect(() => { daysRef.current = days; }, [days]);
+
   useEffect(() => {
     if (status !== "authenticated") return;
-    let lastKnown: string | null | undefined = undefined; // undefined = no inicializado
-    let missed = 0;
 
     const poll = async () => {
       try {
         const res = await fetch("/api/calendar/last-updated");
         if (!res.ok) return;
         const { lastUpdated } = await res.json();
-        missed = 0;
 
         // Primera vez — inicializar sin actualizar
-        if (lastKnown === undefined) { lastKnown = lastUpdated; return; }
+        if (lastKnownRef.current === undefined) {
+          lastKnownRef.current = lastUpdated;
+          return;
+        }
 
-        // Si cambió (incluso de null a un valor), hay datos nuevos
-        if (lastUpdated !== lastKnown) {
-          lastKnown = lastUpdated;
-          const fetchDays = Math.max(days, 14);
+        // Si cambió hay datos nuevos — recargar desde DB
+        if (lastUpdated !== lastKnownRef.current) {
+          lastKnownRef.current = lastUpdated;
+          const fetchDays = Math.max(daysRef.current, 14);
           const cached = await fetch(`/api/calendar/cached?days=${fetchDays}`);
           if (cached.ok) {
             const json = await cached.json();
@@ -704,16 +708,23 @@ export default function HomePage() {
             setFromCache(true);
           }
         }
-      } catch {
-        missed++;
-      }
+      } catch {}
     };
 
-    // Primer poll a los 5 segundos, luego cada 15s
-    const timeout = setTimeout(poll, 5000);
+    // Primer poll a los 3 segundos para inicializar lastKnown rápido
+    const timeout = setTimeout(poll, 3000);
     const interval = setInterval(poll, 15000);
-    return () => { clearTimeout(timeout); clearInterval(interval); };
-  }, [status, days]);
+
+    // También refrescar cuando el usuario vuelve a la pestaña
+    const onVisible = () => { if (document.visibilityState === "visible") poll(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [status]); // solo status — días se lee via ref
 
   // Auto-navegar a semana anterior si hoy es lunes/martes y esta semana no tiene eventos aún
   useEffect(() => {
