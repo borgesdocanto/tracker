@@ -709,9 +709,9 @@ export default function HomePage() {
       }
     };
 
-    // Primer poll a los 5 segundos, luego cada 30s
+    // Primer poll a los 5 segundos, luego cada 15s
     const timeout = setTimeout(poll, 5000);
-    const interval = setInterval(poll, 30000);
+    const interval = setInterval(poll, 15000);
     return () => { clearTimeout(timeout); clearInterval(interval); };
   }, [status, days]);
 

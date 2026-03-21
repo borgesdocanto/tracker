@@ -77,6 +77,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       (streakData as any)?.best ?? sub.streak_best ?? 0
     ).catch(() => null);
 
+    // Actualizar timestamp de última sync — el polling del dashboard lo detecta
+    await supabaseAdmin
+      .from("subscriptions")
+      .update({ last_webhook_sync: new Date().toISOString() })
+      .eq("email", email);
+
     console.log(`[calendarWebhook] ✅ ${email} synced — ${events.length} events`);
   } catch (err: any) {
     console.error("[calendarWebhook] error:", err?.message);

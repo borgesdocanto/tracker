@@ -1,5 +1,4 @@
-// Endpoint liviano para polling — solo devuelve cuándo fue la última sync
-// No llama a Google, solo lee un timestamp de DB
+// Endpoint liviano para polling — devuelve cuándo fue la última sync del webhook
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
@@ -11,17 +10,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).end();
 
-  // Leer el evento más reciente en DB — si cambió desde lastKnown, hay datos nuevos
+  // Leer timestamp de última sync desde subscriptions
   const { data } = await supabaseAdmin
-    .from("calendar_events")
-    .select("updated_at")
-    .eq("user_email", session.user.email)
-    .order("updated_at", { ascending: false })
-    .limit(1)
+    .from("subscriptions")
+    .select("last_webhook_sync")
+    .eq("email", session.user.email)
     .single();
 
   res.setHeader("Cache-Control", "no-store");
   return res.status(200).json({
-    lastUpdated: data?.updated_at ?? null,
+    lastUpdated: data?.last_webhook_sync ?? null,
   });
 }
