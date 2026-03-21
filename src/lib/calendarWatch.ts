@@ -3,7 +3,7 @@ import { google } from "googleapis";
 import { supabaseAdmin } from "./supabase";
 import { getValidAccessToken } from "./googleToken";
 
-const WEBHOOK_URL = `${process.env.NEXTAUTH_URL}/api/webhooks/calendar`;
+const WEBHOOK_URL = `https://hjyyqxjzlgiywgvikzsa.supabase.co/functions/v1/calendar-webhook`;
 
 // Registrar (o renovar) un watch para todos los calendarios de un usuario
 export async function registerCalendarWatch(email: string): Promise<boolean> {

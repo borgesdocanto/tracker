@@ -50,6 +50,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const isManual = req.headers["x-cron-secret"] === process.env.CRON_SECRET || req.query.secret === process.env.CRON_SECRET;
   if (!isVercel && !isManual) return res.status(401).json({ error: "Unauthorized" });
 
+  // Si viene targetEmail (del webhook), sincronizar solo ese usuario
+  const targetEmail = req.body?.targetEmail || req.query?.targetEmail;
+  if (targetEmail && typeof targetEmail === "string") {
+    const { data: user } = await supabaseAdmin
+      .from("subscriptions")
+      .select("email, team_id, streak_best")
+      .eq("email", targetEmail)
+      .single();
+
+    if (!user) return res.status(200).json({ ok: true, message: "Usuario no encontrado" });
+
+    res.status(200).json({ ok: true, message: `Sincronizando ${targetEmail}` });
+    const result = await syncUser(user);
+    console.log(`✅ Webhook sync ${targetEmail}:`, result);
+    return;
+  }
+
   // Todos los usuarios con token de Google (no solo los con racha activa)
   const { data: users } = await supabaseAdmin
     .from("subscriptions")
