@@ -7,7 +7,7 @@ import AgentVsTeam from "../components/AgentVsTeam";
 import PushPrompt from "../components/PushPrompt";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useRouter } from "next/router";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import EmptyDashboard from "../components/EmptyDashboard";
 import Head from "next/head";
 import Link from "next/link";
@@ -678,28 +678,6 @@ export default function HomePage() {
     loadFromCache(days).then(() => syncWithGoogle(days).then(() => setLoading(false)));
   }, [days]);
 
-  // Polling liviano — cada 20s detecta cambios del webhook y actualiza dashboard
-  const lastKnownRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    const poll = async () => {
-      try {
-        const res = await fetch("/api/calendar/last-updated");
-        if (!res.ok) return;
-        const { lastUpdated } = await res.json();
-        if (lastKnownRef.current === undefined) { lastKnownRef.current = lastUpdated; return; }
-        if (lastUpdated !== lastKnownRef.current) {
-          lastKnownRef.current = lastUpdated;
-          const cached = await fetch(`/api/calendar/cached?days=${Math.max(days, 14)}`);
-          if (cached.ok) { setData(await cached.json()); setFromCache(true); }
-        }
-      } catch {}
-    };
-    const t = setTimeout(poll, 4000);
-    const i = setInterval(poll, 20000);
-    return () => { clearTimeout(t); clearInterval(i); };
-  }, [status]);
-
   // Polling liviano — detecta cambios del webhook y actualiza el dashboard
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -725,8 +703,8 @@ export default function HomePage() {
       } catch {}
     };
 
-    const t = setTimeout(poll, 4000); // inicializar baseline a los 4s
-    const i = setInterval(poll, 20000); // chequear cada 20s
+    const t = setTimeout(poll, 4000);
+    const i = setInterval(poll, 20000);
     const onVisible = () => { if (document.visibilityState === "visible") poll(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => { clearTimeout(t); clearInterval(i); document.removeEventListener("visibilitychange", onVisible); };
