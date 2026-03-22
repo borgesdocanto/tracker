@@ -24,14 +24,8 @@ async function syncTeam(teamId: string, apiKey: string): Promise<{ properties: n
     };
 
     const baseUrl = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&limit=500&lang=es_ar`;
-    const [avail, reserv] = await Promise.all([
-      fetchAll(baseUrl),
-      fetchAll(`${baseUrl}&status=3`).catch(() => [] as any[]),
-    ]);
-    const seen = new Set();
-    const allProperties = [...avail, ...reserv].filter((p: any) => {
-      if (seen.has(p.id)) return false; seen.add(p.id); return true;
-    });
+    // Tokko API solo devuelve disponibles — reservadas no disponibles via API pública
+    const allProperties = await fetchAll(baseUrl);
 
     const BATCH = 50;
     for (let i = 0; i < allProperties.length; i += BATCH) {

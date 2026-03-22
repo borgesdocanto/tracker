@@ -121,7 +121,7 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
           </div>
           <div>
             <div className="text-xs text-gray-400 mb-0.5">Reservadas</div>
-            <div className="text-3xl font-black" style={{ fontFamily: "Georgia, serif", color: "#fbbf24" }}>{stats.reserved}</div>
+            <div className="text-xl font-black text-gray-500" title="Tokko no comparte reservadas vía API">—</div>
           </div>
           <div>
             <div className="text-xs text-gray-400 mb-0.5">Fichas OK</div>

@@ -32,18 +32,10 @@ async function fetchAllProps(apiKey: string): Promise<any[]> {
   };
 
   const base = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500`;
-  const [available, reserved] = await Promise.all([
-    fetchPage(base),
-    fetchPage(`${base}&current_localization_id=&status=3`).catch(() => []),
-  ]);
-
-  const allProps = [...available, ...reserved];
-  // Deduplicar por id
-  const seen = new Set();
-  const unique = allProps.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-
-  cache.set(cacheKey, { data: unique, ts: Date.now() });
-  return unique;
+  // Tokko API solo devuelve propiedades disponibles (status 2) — las reservadas no están disponibles via API
+  const allProps = await fetchPage(base);
+  cache.set(cacheKey, { data: allProps, ts: Date.now() });
+  return allProps;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
