@@ -75,7 +75,7 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
     const url = agentEmail
       ? `/api/tokko-portfolio?email=${encodeURIComponent(agentEmail)}`
       : "/api/tokko-portfolio";
-    fetch(url)
+    fetch(url, { cache: "no-store" })
       .then(r => r.ok ? r.json() : null)
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));

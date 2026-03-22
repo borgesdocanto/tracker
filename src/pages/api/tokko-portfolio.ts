@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     let allProps: any[] = [];
     let nextUrl: string | null =
-      `https://www.tokkobroker.com/api/v1/property/?key=${team.tokko_api_key}&format=json&lang=es_ar&limit=500`;
+      `https://www.tokkobroker.com/api/v1/property/?key=${team.tokko_api_key}&format=json&lang=es_ar&limit=500&order_by=-last_update`;
 
     while (nextUrl) {
       const r: Response = await fetch(nextUrl);
