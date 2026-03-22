@@ -4,6 +4,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
 import { supabaseAdmin } from "../../lib/supabase";
 
+export const config = { maxDuration: 60 };
+
+// Cache en memoria — se comparte entre requests del mismo proceso
+// Evita llamar a Tokko en cada carga del dashboard (se invalida cada 5 min)
+const cache = new Map<string, { data: any[]; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+async function fetchAllProps(apiKey: string): Promise<any[]> {
+  const cacheKey = apiKey.slice(-8);
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+
+  let allProps: any[] = [];
+  let nextUrl: string | null =
+    `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500&order_by=-last_update`;
+
+  while (nextUrl) {
+    const r: Response = await fetch(nextUrl);
+    if (!r.ok) throw new Error(`Tokko error ${r.status}`);
+    const d: any = await r.json();
+    allProps = allProps.concat(d.objects || []);
+    nextUrl = d.meta?.next ? `https://www.tokkobroker.com${d.meta.next}` : null;
+  }
+
+  cache.set(cacheKey, { data: allProps, ts: Date.now() });
+  return allProps;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
 
@@ -49,27 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    let allProps: any[] = [];
-    let nextUrl: string | null =
-      `https://www.tokkobroker.com/api/v1/property/?key=${team.tokko_api_key}&format=json&lang=es_ar&limit=500&order_by=-last_update`;
-
-    while (nextUrl) {
-      const r: Response = await fetch(nextUrl);
-      if (!r.ok) throw new Error(`Tokko error ${r.status}`);
-      const d: any = await r.json();
-      allProps = allProps.concat(d.objects || []);
-      nextUrl = d.meta?.next ? `https://www.tokkobroker.com${d.meta.next}` : null;
-    }
+    const allProps = await fetchAllProps(team.tokko_api_key);
 
     const agentProps = allProps.filter((p: any) => p.producer?.id === tokkoAgent.tokko_id);
-    if (agentProps[0]) {
-      const p0 = agentProps[0];
-      const dateKeys = Object.keys(p0).filter(k => k.includes("date") || k.includes("update") || k.includes("created") || k.includes("modified") || k.includes("time"));
-      const dateVals: any = {};
-      dateKeys.forEach(k => dateVals[k] = p0[k]);
-      console.log("[tokko-portfolio] ALL date fields:", JSON.stringify(dateVals));
-      console.log("[tokko-portfolio] ALL keys:", Object.keys(p0).join(", "));
-    }
     const now = new Date();
 
     const properties = agentProps.map((p: any) => {
