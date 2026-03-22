@@ -16,6 +16,7 @@ interface Property {
   photosCount: number;
   hasVideo: boolean;
   hasTour360: boolean;
+  hasBlueprint: boolean;
   daysOnline: number | null;
   daysSinceUpdate: number | null;
   thumbnail: string | null;
@@ -23,10 +24,11 @@ interface Property {
   branch: string | null;
 }
 
-// Ficha completa = más de 15 fotos + (video o tour360) + actualizada hace menos de 30 días
+// Ficha completa = más de 15 fotos + plano + (video o tour360) + actualizada hace menos de 30 días
 function fichaScore(prop: Property): { complete: boolean; missing: string[] } {
   const missing: string[] = [];
   if (prop.photosCount < 15) missing.push(`fotos (${prop.photosCount}/15)`);
+  if (!prop.hasBlueprint) missing.push("plano");
   if (!prop.hasVideo && !prop.hasTour360) missing.push("video o tour 360");
   if (prop.daysSinceUpdate !== null && prop.daysSinceUpdate > 30) missing.push(`actualización (${prop.daysSinceUpdate}d)`);
   return { complete: missing.length === 0, missing };
@@ -200,6 +202,7 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
                   )}
                   {prop.hasVideo && <span className="text-xs text-gray-400">🎥</span>}
                   {prop.hasTour360 && <span className="text-xs text-gray-400">🔄 360</span>}
+                  {prop.hasBlueprint && <span className="text-xs text-gray-400">📐 plano</span>}
                   {prop.daysOnline !== null && <span className="text-xs text-gray-300">{prop.daysOnline}d online</span>}
                   {/* Fecha de última edición */}
                   {prop.daysSinceUpdate !== null && (
