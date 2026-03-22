@@ -6,7 +6,7 @@ import { getGoals } from "../../../lib/appConfig";
 export const config = { maxDuration: 300 }; // 5 minutos
 
 import { getAllActiveSubscriptions } from "../../../lib/subscription";
-import { fetchCalendarEvents, computeWeekStats } from "../../../lib/calendarSync";
+import { fetchCalendarEvents, computeWeekStats, PROCESOS_GOAL, CARTERA_GOAL, EFECTIVIDAD, proyectarOperaciones } from "../../../lib/calendarSync";
 import { computeAndSaveStreak } from "../../../lib/streak";
 import { saveWeeklyStatsAndRank, getNextRank, getRanksFromDB } from "../../../lib/ranks";
 import { generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
@@ -14,29 +14,53 @@ import { supabaseAdmin } from "../../../lib/supabase";
 import { getValidAccessToken } from "../../../lib/googleToken";
 import { FREEMIUM_DAYS } from "../../../lib/brand";
 import { getPlanById } from "../../../lib/plans";
+import { DEFAULT_COACH_PROMPT } from "../admin/coach-prompt";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 
 async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string, streak: number, weeklyGoal: number): Promise<string> {
-  const prompt = `Sos Inmo Coach, un coach de ventas inmobiliarias argentino, directo, motivador y sin vueltas.
+  // Cargar prompt configurable desde DB — mismo que usa el dashboard
+  const { data: promptRow } = await supabaseAdmin
+    .from("app_config").select("value").eq("key", "coach_prompt").single();
+  const coachSystemPrompt = promptRow?.value ?? DEFAULT_COACH_PROMPT;
 
-Analizá esta semana de ${name} y escribí un consejo de 3-4 oraciones. Sin listas, solo párrafos. Usá segunda persona, hablale de vos a vos.
+  const firstName = name.split(" ")[0] || "";
+  const iac = Math.round((stats.greenTotal / weeklyGoal) * 100);
+  const faltanReuniones = Math.max(0, weeklyGoal - stats.greenTotal);
+  const faltanProcesos = Math.max(0, PROCESOS_GOAL - (stats.procesosNuevos ?? 0));
+  const procesosXSemana = stats.procesosNuevos ?? 0;
+  const operacionesProyectadas = proyectarOperaciones(procesosXSemana, 1);
 
-SEMANA:
-- Reuniones cara a cara: ${stats.greenTotal} de ${weeklyGoal} (meta semanal)
-- IAC: ${Math.round((stats.greenTotal / weeklyGoal) * 100)}%
-- Tasaciones: ${stats.tasaciones} · Visitas: ${stats.visitas} · Propuestas: ${stats.propuestas}
+  const prompt = `${coachSystemPrompt}
+
+El nombre del agente es ${firstName}.
+
+LAS 3 VARIABLES QUE MIDEN EL NEGOCIO:
+1. IAC = reuniones cara a cara / ${weeklyGoal} por semana — Objetivo: 100% = ${weeklyGoal} reuniones/semana
+2. Procesos nuevos: objetivo ${PROCESOS_GOAL} por semana
+3. Cartera activa vendible: ${CARTERA_GOAL} propiedades (no medible por agenda)
+
+LÓGICA: Efectividad ${EFECTIVIDAD * 100}% — 6 procesos = 1 transacción
+
+PERÍODO ANALIZADO: semana de ${stats.weekDates} (objetivo: ${weeklyGoal} reuniones, ${PROCESOS_GOAL} procesos nuevos)
+
+MÉTRICAS:
+- Reuniones cara a cara: ${stats.greenTotal} de ${weeklyGoal} (${iac >= 100 ? "✓ En objetivo" : "faltan " + faltanReuniones})
+- IAC: ${iac}%
+- Procesos nuevos: ${procesosXSemana} de ${PROCESOS_GOAL} (${faltanProcesos > 0 ? "faltan " + faltanProcesos : "✓ En objetivo"})
+  - Tasaciones: ${stats.tasaciones} | Visitas: ${stats.visitas} | Propuestas: ${stats.propuestas}
 - Días productivos: ${stats.productiveDays} de ${stats.totalDays}
 ${streak > 0 ? `- Racha: ${streak} días consecutivos` : "- Sin racha activa"}
+- Operaciones proyectadas a 3 meses: ${operacionesProyectadas}
 
-Si estuvo bien, celebralo. Si estuvo flojo, decíselo sin rodeos y dále UNA acción concreta para la semana que viene.`;
+Escribí el análisis en 3-4 oraciones, sin listas, solo párrafos. Usá segunda persona (vos/tenés/hacés).`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 250, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 300, messages: [{ role: "user", content: prompt }] }),
     });
     const data = await res.json();
     return data.content?.map((b: any) => b.text || "").join("") || "Arrancá el lunes con 3 reuniones cara a cara por día y vas a sentir la diferencia.";
