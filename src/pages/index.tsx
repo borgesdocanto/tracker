@@ -537,6 +537,39 @@ function InstaCoacPanel({ data, calView, monthOffset, weekOffset, days = 30 }: {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+function TokkoPortfolioCard() {
+  const [stats, setStats] = useState<{ active: number; complete: number; incomplete: number } | null>(null);
+  useEffect(() => {
+    fetch("/api/tokko-portfolio", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.connected && d.stats) setStats(d.stats); })
+      .catch(() => {});
+  }, []);
+
+  if (!stats) return (
+    <div style={{ fontSize: 12, color: "#9ca3af" }}>Sin datos de Tokko</div>
+  );
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+        <div style={{ background: "#f9fafb", borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ fontSize: 22, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>{stats.active}</div>
+          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 1 }}>Disponibles</div>
+        </div>
+        <div style={{ background: "#f9fafb", borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ fontSize: 22, fontWeight: 500, color: "#16a34a", fontFamily: "Georgia, serif" }}>{stats.complete}</div>
+          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 1 }}>Fichas OK</div>
+        </div>
+      </div>
+      {stats.incomplete > 0 && (
+        <div style={{ fontSize: 11, color: "#d97706", marginTop: 8 }}>
+          ⚠ {stats.incomplete} ficha{stats.incomplete !== 1 ? "s" : ""} por mejorar
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -613,9 +646,10 @@ export default function HomePage() {
     }
   };
 
-  const [syncing, setSyncing] = useState(false); // sync en background
+  const [syncing, setSyncing] = useState(false);
   const [fromCache, setFromCache] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [mobileMenu, setMobileMenu] = useState(false);
 
   const loadFromCache = async (d: number) => {
     // Paso 1: mostrar datos de DB inmediatamente
@@ -792,334 +826,309 @@ export default function HomePage() {
     );
   }
 
+  const iac = (() => {
+    if (!data) return 0;
+    const wt = (days <= 14 && visibleWeekTotals) ? visibleWeekTotals : null;
+    const greens = wt ? wt.totalGreen : data.totals.totalGreen;
+    const goal = data.totals.iacGoal ?? 15;
+    return Math.min(100, Math.round((greens / Math.max(1, days / 7)) / goal * 100));
+  })();
+  const iacColor = iac >= 100 ? "#16a34a" : iac >= 67 ? "#d97706" : "#aa0000";
+  const iacLabel = iac >= 100 ? "En objetivo" : iac >= 67 ? "Buen ritmo" : "Por debajo del objetivo";
+  const iacSemaforo = iac >= 100 ? [true, true, true] : iac >= 67 ? [true, true, false] : [true, false, false];
+  const weekGreens = visibleWeekTotals ? visibleWeekTotals.totalGreen : (data?.totals.totalGreen ?? 0);
+  const weekGoal = data?.totals.iacGoal ?? 15;
+
+  const weekLabel = weekOffset === 0 ? "semana actual"
+    : weekOffset === -1 ? "semana pasada"
+    : `hace ${Math.abs(weekOffset)} sem.`;
+
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f4f5f7", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
       <Head>
         <title>InmoCoach</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
       </Head>
 
-      {/* Top accent line */}
-      <div className="h-0.5 w-full" style={{ background: RED }} />
-
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-2">
-          <div className="font-black text-base tracking-tight shrink-0" style={{ color: RED, fontFamily: "Georgia, serif" }}>
-            Inmo<span className="text-gray-900">Coach</span>
+      {/* ── SIDEBAR desktop ── */}
+      <aside style={{
+        width: "210px", background: "#fff", borderRight: "0.5px solid #e5e7eb",
+        flexShrink: 0, display: "flex", flexDirection: "column",
+        position: "sticky", top: 0, height: "100vh"
+      }} className="hidden md:flex">
+        <div style={{ padding: "18px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ width: 36, height: 36, background: RED, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0 }}>G</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: "#111827", letterSpacing: "-0.3px", fontFamily: "Georgia, serif" }}>
+            Inmo<span style={{ color: RED }}>Coach</span>
           </div>
-          {subPlan === "free" ? (
-            <Link href="/pricing">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-lg cursor-pointer hover:opacity-80 shrink-0"
-                style={{ background: "#fef2f2", color: RED }}>
-                {daysLeft !== null ? `${daysLeft}d` : "→"}
-              </span>
-            </Link>
-          ) : null}
-          <div className="flex-1" />
-          <div style={{ display: "flex", alignItems: "center", background: "#f3f4f6", borderRadius: "12px", padding: "4px", gap: "2px" }} className="hidden sm:flex">
-            {([7, 14, 30, 60, 90] as const).map(d => (
-              <button key={d} onClick={() => handleSetDays(d)}
-                style={days === d
-                  ? { background: "#fff", color: "#111827", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", borderRadius: "8px", padding: "4px 8px", fontSize: "11px", fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }
-                  : { color: "#9ca3af", borderRadius: "8px", padding: "4px 8px", fontSize: "11px", fontWeight: 700, border: "none", cursor: "pointer", background: "transparent", whiteSpace: "nowrap" }}>
-                {d}d
-              </button>
-            ))}
-          </div>
-          {isOwner ? (
-            <button onClick={() => router.push("/equipo")}
-              className="flex items-center p-1.5 rounded-xl text-gray-500 hover:bg-gray-100 border border-gray-200 shrink-0">
-              <Users size={14} />
-            </button>
-          ) : !hasTeam ? (
-            <button onClick={() => router.push(subPlan === "free" ? "/pricing" : "/cuenta")}
-              className="flex items-center p-1.5 rounded-xl hover:opacity-90 border shrink-0"
-              style={{ background: "#fef2f2", color: RED, borderColor: "#fecaca" }}>
-              <Users size={14} />
-            </button>
-          ) : (
-            <Link href="/cuenta">
-              <span className="hidden sm:inline text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer hover:bg-gray-100"
-                style={{ background: "#f3f4f6", color: "#6b7280" }}>Mi cuenta</span>
-            </Link>
-          )}
-          <button onClick={sync} disabled={loading || syncing}
-            className="flex items-center p-1.5 rounded-xl border shrink-0"
-            style={{ color: syncing ? "#d97706" : "#6b7280", borderColor: syncing ? "#fcd34d" : "#e5e7eb", background: syncing ? "#fffbeb" : "white" }}>
-            <RefreshCw size={14} className={loading || syncing ? "animate-spin" : ""} />
-          </button>
-          {session?.user?.image ? (
-            <img src={session.user.image} alt="" className="w-7 h-7 rounded-full cursor-pointer shrink-0"
-              style={{ outline: `2px solid ${RED}`, outlineOffset: "2px" }} onClick={() => signOut({ callbackUrl: "/login" })} />
-          ) : (
-            <button onClick={() => signOut({ callbackUrl: "/login" })} className="text-gray-400 hover:text-gray-700 shrink-0">
-              <LogOut size={15} />
-            </button>
-          )}
         </div>
-      </header>
+        <nav style={{ padding: "10px 8px", flex: 1 }}>
+          {[
+            { label: "Dashboard", active: true, icon: "⊞", onClick: () => {} },
+            { label: "Mi equipo", active: false, icon: "⊙", onClick: () => router.push("/equipo") },
+          ].map(item => (
+            <div key={item.label} onClick={item.onClick} style={{
+              display: "flex", alignItems: "center", gap: 9, padding: "8px 10px",
+              borderRadius: 8, fontSize: 13, cursor: "pointer", marginBottom: 2,
+              background: item.active ? "#fef2f2" : "transparent",
+              color: item.active ? RED : "#6b7280",
+              fontWeight: item.active ? 500 : 400,
+            }}>
+              <span style={{ fontSize: 14 }}>{item.icon}</span>
+              {item.label}
+            </div>
+          ))}
+          {isOwner && (
+            <div onClick={() => router.push("/equipo")} style={{
+              display: "flex", alignItems: "center", gap: 9, padding: "8px 10px",
+              borderRadius: 8, fontSize: 13, cursor: "pointer", color: "#6b7280",
+            }}>
+              <span style={{ fontSize: 14 }}>◎</span> Equipo
+            </div>
+          )}
+        </nav>
+        <div style={{ padding: "12px 16px", borderTop: "0.5px solid #f3f4f6" }}>
+          <div onClick={() => signOut({ callbackUrl: "/login" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, fontSize: 13, cursor: "pointer", color: "#9ca3af" }}>
+            <span style={{ fontSize: 14 }}>↩</span> Salir
+          </div>
+        </div>
+      </aside>
 
-      {/* Days selector — mobile only, scrollable strip below header */}
-      <div className="sm:hidden bg-white border-b border-gray-100 px-4 py-2 flex gap-1 overflow-x-auto">
-        {([7, 14, 30, 60, 90] as const).map(d => (
-          <button key={d} onClick={() => handleSetDays(d)}
-            style={days === d
-              ? { background: "#111827", color: "#fff", borderRadius: "8px", padding: "4px 12px", fontSize: "12px", fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }
-              : { color: "#9ca3af", borderRadius: "8px", padding: "4px 12px", fontSize: "12px", fontWeight: 700, border: "1px solid #e5e7eb", cursor: "pointer", background: "transparent", whiteSpace: "nowrap", flexShrink: 0 }}>
-            {d}d
+      {/* ── MAIN ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+
+        {/* Topbar */}
+        <header style={{ background: "#fff", borderBottom: "0.5px solid #e5e7eb", padding: "11px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 40 }}>
+          {/* Hamburger mobile */}
+          <button onClick={() => setMobileMenu(true)} className="md:hidden" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ width: 18, height: 1.5, background: "#374151", display: "block", borderRadius: 1 }} />
+            <span style={{ width: 18, height: 1.5, background: "#374151", display: "block", borderRadius: 1 }} />
+            <span style={{ width: 18, height: 1.5, background: "#374151", display: "block", borderRadius: 1 }} />
           </button>
-        ))}
+          <div className="hidden md:block">
+            <div style={{ fontSize: 14, color: "#374151" }}>
+              Buenos días, <strong style={{ fontWeight: 500, color: "#111827" }}>{data?.user.name?.split(" ")[0] ?? "..."}</strong>
+            </div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>
+              {data ? `Última sync: ${new Date(data.syncedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs` : "Sincronizando..."}
+            </div>
+          </div>
+          <div className="md:hidden" style={{ fontSize: 15, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>
+            Inmo<span style={{ color: RED }}>Coach</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Days selector desktop */}
+            <div className="hidden md:flex" style={{ alignItems: "center", background: "#f3f4f6", borderRadius: 9, padding: "3px", gap: 2 }}>
+              {([7, 14, 30] as const).map(d => (
+                <button key={d} onClick={() => handleSetDays(d)} style={{
+                  background: days === d ? "#fff" : "transparent",
+                  color: days === d ? "#111827" : "#9ca3af",
+                  boxShadow: days === d ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                  borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer"
+                }}>{d}d</button>
+              ))}
+            </div>
+            <button onClick={sync} disabled={loading || syncing} style={{
+              fontSize: 12, color: syncing ? "#d97706" : "#6b7280",
+              background: "#f9fafb", border: "0.5px solid #e5e7eb",
+              borderRadius: 7, padding: "5px 11px", cursor: "pointer"
+            }}>
+              {syncing ? "↻ Actualizando..." : "↻ Sync"}
+            </button>
+            {session?.user?.image
+              ? <img src={session.user.image} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${RED}`, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })} />
+              : <div style={{ width: 30, height: 30, borderRadius: "50%", background: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 500, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })}>
+                  {data?.user.name?.slice(0, 2).toUpperCase() ?? "IC"}
+                </div>
+            }
+          </div>
+        </header>
+
+        {/* Days selector mobile strip */}
+        <div className="md:hidden" style={{ background: "#fff", borderBottom: "0.5px solid #e5e7eb", padding: "8px 16px", display: "flex", gap: 6, overflowX: "auto" }}>
+          {([7, 14, 30, 60, 90] as const).map(d => (
+            <button key={d} onClick={() => handleSetDays(d)} style={{
+              background: days === d ? "#111827" : "transparent",
+              color: days === d ? "#fff" : "#9ca3af",
+              borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 500,
+              border: days === d ? "none" : "0.5px solid #e5e7eb", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0
+            }}>{d}d</button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <main style={{ padding: "20px", flex: 1 }}>
+          {/* Alerts */}
+          {error && (
+            <div style={{ background: "#fef2f2", border: "0.5px solid #fecaca", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: RED, fontSize: 13 }}>⚠</span>
+              <span style={{ fontSize: 13, color: "#991b1b" }}>{error}</span>
+              {(error.includes("token") || error.includes("auth")) && (
+                <button onClick={() => router.push("/relogin")} style={{ marginLeft: "auto", fontSize: 12, color: RED, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                  Reconectar →
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Week label */}
+          <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>
+            {weekOffset === 0 ? (() => {
+              const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+              const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+              return `Semana del ${mon.getDate()} al ${sun.getDate()} de ${sun.toLocaleDateString("es-AR", { month: "long" })}`;
+            })() : weekLabel}
+            <button onClick={() => setWeekOffset(0)} style={{ marginLeft: 8, fontSize: 10, color: RED, background: "none", border: "none", cursor: "pointer", opacity: weekOffset !== 0 ? 1 : 0.4 }}>Semana actual</button>
+            <button onClick={() => setWeekOffset(w => w - 1)} style={{ marginLeft: 6, fontSize: 14, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>‹</button>
+            <button onClick={() => setWeekOffset(w => w + 1)} style={{ marginLeft: 2, fontSize: 14, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>›</button>
+          </div>
+
+          {/* Cards grid */}
+          {data && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginBottom: 10 }}>
+
+                {/* IAC Card */}
+                <div onClick={() => router.push("/iac")} style={{
+                  background: "#fff", border: "0.5px solid #e5e7eb",
+                  borderTop: `3px solid ${iacColor}`, borderRadius: "0 0 12px 12px",
+                  cursor: "pointer", padding: 16, transition: "border-color 0.15s"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em" }}>Índice de actividad</span>
+                    <span style={{ fontSize: 16, color: "#d1d5db" }}>›</span>
+                  </div>
+                  <div style={{ fontSize: 52, fontWeight: 500, fontFamily: "Georgia, serif", color: iacColor, lineHeight: 1 }}>{iac}%</div>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 5 }}>{weekGreens} de {weekGoal} reuniones · {weekLabel}</div>
+                  <div style={{ height: 3, background: "#f3f4f6", borderRadius: 2, marginTop: 12 }}>
+                    <div style={{ height: "100%", borderRadius: 2, background: iacColor, width: `${Math.min(100, iac)}%`, transition: "width 0.3s" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                    <span style={{ fontSize: 10, color: "#9ca3af" }}>0%</span>
+                    <span style={{ fontSize: 10, color: "#9ca3af" }}>meta: 100%</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 10 }}>
+                    {iacSemaforo.map((on, i) => (
+                      <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: on ? iacColor : "#e5e7eb" }} />
+                    ))}
+                    <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 4 }}>{iacLabel}</span>
+                  </div>
+                </div>
+
+                {/* Racha + Rango */}
+                <div onClick={() => {}} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, cursor: "pointer", padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em" }}>Racha y rango</span>
+                    <span style={{ fontSize: 16, color: "#d1d5db" }}>›</span>
+                  </div>
+                  {data.streak !== undefined && (
+                    <>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                        <div style={{ fontSize: 48, fontWeight: 500, fontFamily: "Georgia, serif", color: "#111827", lineHeight: 1 }}>{data.streak.current}</div>
+                        <div style={{ fontSize: 13, color: "#6b7280" }}>días</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>Récord: {data.streak.best} días</div>
+                    </>
+                  )}
+                  {data.rankStats && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 8, padding: "5px 10px", marginTop: 10 }}>
+                      <span style={{ fontSize: 18 }}>{data.rankStats.currentRank?.icon ?? "🏠"}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{data.rankStats.currentRank?.label ?? "Agente"}</span>
+                    </div>
+                  )}
+                  {data.rankStats?.nextRank && (
+                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>
+                      Próximo: {data.rankStats.nextRank.label}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cartera Tokko */}
+                <div onClick={() => {}} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, cursor: "pointer", padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em" }}>Cartera Tokko</span>
+                    <span style={{ fontSize: 16, color: "#d1d5db" }}>›</span>
+                  </div>
+                  <TokkoPortfolioCard />
+                </div>
+
+                {/* Posición equipo */}
+                <div onClick={() => isOwner ? router.push("/equipo") : {}} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, cursor: isOwner ? "pointer" : "default", padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em" }}>Posición en el equipo</span>
+                    <span style={{ fontSize: 16, color: "#d1d5db" }}>›</span>
+                  </div>
+                  <RankingPosition compact />
+                </div>
+              </div>
+
+              {/* Coach card full width */}
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af" }}>Análisis del coach</span>
+                  <span style={{ fontSize: 11, color: "#9ca3af" }}>Inmo Coach ✦</span>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <InstaCoacPanel data={data} calView={days <= 14 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {!data && !loading && !error && <EmptyDashboard userName={session?.user?.name ?? ""} onSync={sync} syncing={syncing} />}
+        </main>
       </div>
 
-      <main className="max-w-6xl mx-auto px-5 py-6 pb-16 space-y-5" style={{ transition: "opacity 0.15s ease" }}>
-
-        {error && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle size={15} style={{ color: RED }} className="mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-bold text-red-700 mb-0.5">No se pudo conectar con Google Calendar</p>
-                <p className="text-xs text-red-500">{error}</p>
+      {/* ── MOBILE DRAWER ── */}
+      {mobileMenu && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex" }} onClick={() => setMobileMenu(false)}>
+          <div style={{ width: 240, background: "#fff", height: "100%", borderRight: "0.5px solid #e5e7eb", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "16px 14px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 32, height: 32, background: RED, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>G</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>Inmo<span style={{ color: RED }}>Coach</span></div>
               </div>
-              <button onClick={sync} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-100 transition-all shrink-0">
-                Reintentar
-              </button>
+              <button onClick={() => setMobileMenu(false)} style={{ background: "none", border: "none", fontSize: 20, color: "#9ca3af", cursor: "pointer" }}>×</button>
             </div>
-            {error.includes("token") || error.includes("auth") || error.includes("permission") ? (
-              <div className="mt-3 pt-3 border-t border-red-100">
-                <button onClick={() => router.push("/relogin")} className="text-xs font-bold text-red-600 underline">
-                  Reconectar Google Calendar →
-                </button>
+            <nav style={{ padding: 8, flex: 1 }}>
+              {[
+                { label: "Dashboard", onClick: () => { setMobileMenu(false); } },
+                { label: "Mi equipo", onClick: () => { setMobileMenu(false); router.push("/equipo"); } },
+              ].map(item => (
+                <div key={item.label} onClick={item.onClick} style={{
+                  padding: "9px 10px", borderRadius: 8, fontSize: 13, color: "#6b7280", cursor: "pointer", marginBottom: 1
+                }}>{item.label}</div>
+              ))}
+            </nav>
+            <div style={{ padding: "12px 16px", borderTop: "0.5px solid #f3f4f6" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0" }}>
+                {session?.user?.image && <img src={session.user.image} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data?.user.name ?? ""}</div>
+                  <div style={{ fontSize: 11, color: "#9ca3af" }}>{session?.user?.email}</div>
+                </div>
               </div>
-            ) : null}
+              <button onClick={() => signOut({ callbackUrl: "/login" })} style={{ fontSize: 12, color: "#9ca3af", background: "none", border: "none", cursor: "pointer", marginTop: 4 }}>Cerrar sesión →</button>
+            </div>
           </div>
-        )}
+          <div style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
+        </div>
+      )}
 
-        {data && (
-          <>
-            {/* Greeting */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h1 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>
-                  Buenos días, {data.user.name?.split(" ")[0]}.
-                </h1>
-                <p className="text-sm text-gray-400 mt-0.5">
-                  Última sincronización: {new Date(data.syncedAt).toLocaleString("es-AR", { weekday: "long", hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
-              {(() => {
-                const wt = (days <= 14 && visibleWeekTotals) ? visibleWeekTotals : null;
-                const iacPeriod = wt ? wt.iac : Math.round((data.totals.totalGreen / Math.max(1, days / 7)) / (data.totals.iacGoal ?? 15) * 100);
-                const iacColor = iacPeriod >= 100 ? GREEN : iacPeriod >= 67 ? "#d97706" : RED;
-                const iacBg = iacPeriod >= 100 ? "#f0fdf4" : iacPeriod >= 67 ? "#fffbeb" : "#fef2f2";
-                const weekLabel = weekOffset === 0 ? `${days}d` : weekOffset === -1 ? "sem. pasada" : `hace ${Math.abs(weekOffset)} sem.`;
-                return (
-                  <div className="flex flex-col items-end">
-                    <div className="relative group">
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold cursor-default"
-                        style={{ background: iacBg, color: iacColor }}>
-                        IAC {iacPeriod}%
-                        <span className="w-4 h-4 rounded-full border flex items-center justify-center text-xs font-bold opacity-60"
-                          style={{ borderColor: iacColor, color: iacColor, fontSize: "9px" }}>?</span>
-                      </div>
-                      <div className="absolute right-0 top-full mt-2 z-50 w-64 hidden group-hover:block">
-                        <div className="bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 leading-relaxed shadow-xl">
-                          <strong>Índice de Actividad Comercial</strong><br/>Tu nivel de actividad comparado con lo esperable para convertirte en Top Producer. 100% = {data.totals.iacGoal ?? 15} reuniones cara a cara por semana.
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1 text-right">
-                      {(days <= 14 && visibleWeekTotals ? visibleWeekTotals.totalGreen : data.totals.totalGreen)} reuniones · {weekLabel}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* KPIs */}
-            {(() => {
-              const wt = (days <= 14 && visibleWeekTotals) ? visibleWeekTotals : null;
-              const totals = wt ? { ...data.totals, totalGreen: wt.totalGreen, tasaciones: wt.tasaciones, visitas: wt.visitas, propuestas: wt.propuestas, firmas: wt.firmas } : data.totals;
-              const weekLabel2 = weekOffset === 0 ? `${days}d` : weekOffset === -1 ? "sem. pasada" : `hace ${Math.abs(weekOffset)} sem.`;
-              return (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
-              <KpiCard
-                label="Eventos verdes"
-                value={totals.totalGreen}
-                accent
-                sub={`${weekLabel2} · objetivo ${data.totals.iacGoal ?? 15}`}
-                tooltip="Cada vez que estás cara a cara con una persona hablando de tu negocio. Reuniones, visitas, tasaciones, propuestas — todo lo que genera dinero. El motor del negocio."
-              />
-              <KpiCard
-                label="Visitas"
-                value={totals.visitas}
-                sub={`venta · alquiler · propiedad`}
-                tooltip="Cantidad de visitas a propiedades: venta, alquiler o conocer propiedad. Toda visita mueve el pipeline. Enfocate en visitas de venta para maximizar ingresos."
-              />
-              <KpiCard
-                label="Tasaciones · Propuestas"
-                value={`${totals.tasaciones} · ${totals.propuestas}`}
-                sub="captaciones + presentaciones"
-                tooltip={`Se muestran eventos con las palabras "tasación" o "captación" (${totals.tasaciones}) y eventos con "propuesta" o "presentación" (${totals.propuestas}). La propuesta de valor es la segunda fase de la captación: el momento donde te diferenciás para lograr captar en exclusiva.`}
-              />
-              <KpiCard
-                label="Firmas"
-                value={totals.firmas ?? 0}
-                sub="cierres de operación"
-                tooltip='Operaciones cerradas. El evento debe tener la palabra "Firma" en el título (firma de contrato, firma de escritura, etc.).'
-              />
-            </div>
-              );
-            })()}
-
-            {/* Push notifications prompt — solo si ya cerró el onboarding */}
-            {!showOnboarding && <PushPrompt />}
-
-            {/* Streak */}
-            {data.streak !== undefined && (
-              <StreakBadge
-                current={data.streak.current}
-                best={data.streak.best}
-                todayActive={data.streak.todayActive}
-                minGreens={data.streak.minGreens ?? 1}
-                shields={data.streak.shields ?? 0}
-              />
-            )}
-
-            {/* Rango */}
-            {data.rankStats && <RankBadge stats={data.rankStats} />}
-
-            {/* Posición en ranking */}
-            <RankingPosition />
-
-            {/* Evolución histórica + comparativa vs equipo */}
-            <AgentVsTeam weekOffset={weekOffset} />
-
-            {/* Cartera Tokko — solo si el equipo tiene Tokko conectado */}
-            <TokkoPortfolio />
-
-            {/* Productividad + Trend */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 col-span-1 sm:col-span-2" style={{ position: "relative", zIndex: 0 }}>
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Tendencia — eventos verdes</div>
-                <ResponsiveContainer width="100%" height={140}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="dateLabel" tick={{ fontSize: 9, fill: "#d1d5db", fontWeight: 600 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: "#d1d5db" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: 10, border: "none", fontSize: 11, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }} />
-                    <Line type="monotone" dataKey="meta" stroke="#e5e7eb" strokeWidth={1.5} dot={false} strokeDasharray="4 4" name="Meta" />
-                    <Line type="monotone" dataKey="verdes" stroke={GREEN} strokeWidth={2} dot={{ fill: GREEN, r: 3 }} name="Verdes" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              {(() => {
-                const wt = (days <= 14 && visibleWeekTotals) ? visibleWeekTotals : null;
-                const semanas = Math.max(1, days / 7);
-                const greenCount = wt ? wt.totalGreen : data.totals.totalGreen;
-                const iacGoal = wt ? wt.iacGoal : (data.totals.iacGoal ?? 15);
-                const iacPeriod = wt ? wt.iac : Math.round((greenCount / semanas) / iacGoal * 100);
-                const iacColor = iacPeriod >= 100 ? GREEN : iacPeriod >= 67 ? "#d97706" : RED;
-                const goalPeriod = Math.round(iacGoal * semanas);
-                return (
-                  <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-row sm:flex-col justify-between sm:justify-center gap-4">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
-                        IAC · {days === 7 ? "esta semana" : `${days}d`}
-                      </div>
-                      <div className="text-4xl font-black" style={{ color: iacColor, fontFamily: "Georgia, serif" }}>
-                        {iacPeriod}%
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {greenCount} reuniones · meta {goalPeriod}
-                      </div>
-                      <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, iacPeriod)}%`, background: iacColor }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Objetivo semanal</div>
-                      <div className="text-4xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{iacGoal}</div>
-                      <div className="text-xs text-gray-400 mt-1">reuniones cara a cara / semana</div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Calendar — auto semana si ≤30d, mes si >30d */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                  Calendario · {days < 30 ? "vista semana" : "vista mes"}
-                </div>
-              </div>
-
-              {days < 30 ? (
-                <WeeklyView
-                  summaries={data.dailySummaries}
-                  weekOffset={weekOffset}
-                  onPrev={() => setWeekOffset(w => w - 1)}
-                  onNext={() => setWeekOffset(w => w + 1)}
-                />
-              ) : (
-                <MonthlyView
-                  summaries={data.dailySummaries}
-                  monthOffset={monthOffset}
-                  onPrev={() => setMonthOffset(m => m - 1)}
-                  onNext={() => setMonthOffset(m => m + 1)}
-                />
-              )}
-
-              {/* Legend */}
-              <div className="flex items-center gap-4 mt-2 px-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-green-200" />
-                  <span className="text-xs text-gray-400 font-medium">1 a 1 cara a cara</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-gray-200" />
-                  <span className="text-xs text-gray-400 font-medium">Otros eventos</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Inmo Coach */}
-            <InstaCoacPanel data={data} calView={days < 30 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
-          </>
-        )}
-      </main>
-      {showOnboarding && <OnboardingModal onClose={handleOnboardingClose} weeklyGoal={data?.totals?.iacGoal ?? 15} />}
-
+      {showOnboarding && <OnboardingModal onClose={handleOnboardingClose} />}
       {brokerExpiredModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <div className="text-2xl text-center">⚠️</div>
-            <div className="text-base font-black text-gray-900 text-center">Tu equipo no continuó en InmoCoach</div>
-            <p className="text-sm text-gray-500 text-center leading-relaxed">
-              El broker <strong>{brokerExpiredModal.brokerName}</strong> no renovó el plan del equipo.<br/>
-              Tenés 7 días de acceso gratuito para decidir qué hacer.
-            </p>
-            <div className="space-y-2">
-              <a href={`mailto:${brokerExpiredModal.brokerEmail}?subject=InmoCoach - Renovación del equipo`}
-                className="block w-full text-center py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:border-gray-400 transition-all">
-                Contactar a {brokerExpiredModal.brokerName}
-              </a>
-              <button onClick={() => { setBrokerExpiredModal(null); router.push("/pricing"); }}
-                className="block w-full text-center py-2.5 rounded-xl text-sm font-black text-white transition-all"
-                style={{ background: "#aa0000" }}>
-                Contratar plan individual →
-              </button>
-              <button onClick={() => setBrokerExpiredModal(null)}
-                className="block w-full text-center py-2 text-xs text-gray-400 hover:text-gray-600">
-                Cerrar (me quedan días de acceso)
-              </button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%" }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: "#111827", marginBottom: 8 }}>Suscripción del equipo vencida</div>
+            <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
+              El plan de {brokerExpiredModal.brokerName} venció. Contactalo para reactivar el acceso del equipo.
             </div>
+            <a href={`mailto:${brokerExpiredModal.brokerEmail}`} style={{ display: "block", marginTop: 16, fontSize: 13, color: RED }}>
+              {brokerExpiredModal.brokerEmail}
+            </a>
           </div>
         </div>
       )}
+      {subPlan === "free" && <PushPrompt />}
     </div>
   );
 }

@@ -116,7 +116,7 @@ function PositionCard({ label, rank, total, emoji }: { label: string; rank: numb
   );
 }
 
-export default function RankingPosition() {
+export default function RankingPosition({ compact = false }: { compact?: boolean }) {
   const [mode, setMode] = useState("iac_week");
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
