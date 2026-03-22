@@ -10,9 +10,10 @@ export const config = { maxDuration: 60 };
 // Evita llamar a Tokko en cada carga del dashboard (se invalida cada 5 min)
 const cache = new Map<string, { data: any[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const CACHE_VERSION = "v2"; // bump para invalidar cache al deployar
 
 async function fetchAllProps(apiKey: string): Promise<any[]> {
-  const cacheKey = apiKey.slice(-8);
+  const cacheKey = CACHE_VERSION + apiKey.slice(-8);
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
@@ -80,6 +81,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const allProps = await fetchAllProps(team.tokko_api_key);
 
     const agentProps = allProps.filter((p: any) => p.producer?.id === tokkoAgent.tokko_id);
+    // Log temporal para ver campos de fecha disponibles
+    if (agentProps[0]) {
+      const p0 = agentProps[0];
+      const dateFields: any = {};
+      Object.keys(p0).forEach(k => { if (k.includes("date") || k.includes("update") || k.includes("modified") || k.includes("deleted")) dateFields[k] = p0[k]; });
+      console.log("[tokko] date fields:", JSON.stringify(dateFields));
+    }
     const now = new Date();
 
     const properties = agentProps.map((p: any) => {
@@ -116,8 +124,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         daysOnline: p.created_date
           ? Math.floor((now.getTime() - new Date(p.created_date).getTime()) / 86400000)
           : null,
-        daysSinceUpdate: (p.last_update || p.modified_date)
-          ? Math.floor((now.getTime() - new Date(p.last_update || p.modified_date).getTime()) / 86400000)
+        daysSinceUpdate: (p.last_update || p.modified_date || p.deleted_at)
+          ? Math.floor((now.getTime() - new Date(p.last_update || p.modified_date || p.deleted_at).getTime()) / 86400000)
           : null,
         branch: p.branch?.name || null,
       };
@@ -126,18 +134,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const active = properties.filter((p: any) => p.status === 2);
     const reserved = properties.filter((p: any) => p.status === 3);
 
-    // Ficha completa = 15+ fotos + (video o tour360) + actualizada hace menos de 30 días
+    // Ficha completa = 15+ fotos + plano + (video o tour360) + actualizada hace menos de 30 días
     const completeListings = active.filter((p: any) => {
       const goodPhotos = p.photosCount >= 15;
       const hasMedia = p.hasVideo || p.hasTour360;
       const fresh = p.daysSinceUpdate === null || p.daysSinceUpdate <= 30;
-      return goodPhotos && hasMedia && fresh;
+      return goodPhotos && p.hasBlueprint && hasMedia && fresh;
     });
     const incompleteListings = active.filter((p: any) => {
       const goodPhotos = p.photosCount >= 15;
       const hasMedia = p.hasVideo || p.hasTour360;
       const fresh = p.daysSinceUpdate === null || p.daysSinceUpdate <= 30;
-      return !(goodPhotos && hasMedia && fresh);
+      return !(goodPhotos && p.hasBlueprint && hasMedia && fresh);
     });
     const stale = active.filter((p: any) => (p.daysSinceUpdate || 0) > 30);
 
