@@ -1477,107 +1477,14 @@ export default function AdminPanel() {
           <div className="max-w-2xl mx-auto px-5 py-8 space-y-6">
             <div>
               <h2 className="text-base font-bold text-gray-800 mb-1">Integración Tokko Broker</h2>
-              <p className="text-xs text-gray-400">Conectá InmoCoach con tu CRM para ver cartera activa, operaciones y datos de los agentes.</p>
+              <p className="text-xs text-gray-400">Cada broker configura su propia API key desde el panel de su equipo. Acá podés ver el estado de todos los equipos.</p>
             </div>
-
-            {/* API Key */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-              <div className="text-sm font-bold text-gray-700">API Key de Tokko</div>
-              <p className="text-xs text-gray-400">Encontrala en Tokko → Mi empresa → Permisos → Clave API.</p>
-              <div className="flex gap-3">
-                <input
-                  type="password"
-                  placeholder="Pegá tu API key acá"
-                  value={tokkoApiKey}
-                  onChange={e => setTokkoApiKey(e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-gray-400"
-                />
-                <button
-                  onClick={async () => {
-                    setTokkoSaving(true); setTokkoMsg("");
-                    try {
-                      await fetch("/api/admin/config", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ key: "tokko_api_key", value: tokkoApiKey }),
-                      });
-                      setTokkoMsg("✓ Guardada");
-                    } catch { setTokkoMsg("Error al guardar"); }
-                    setTokkoSaving(false);
-                  }}
-                  disabled={tokkoSaving || !tokkoApiKey}
-                  className="px-5 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
-                  style={{ background: RED }}>
-                  {tokkoSaving ? "Guardando..." : "Guardar"}
-                </button>
-              </div>
-              {tokkoMsg && <span className={`text-xs font-semibold ${tokkoMsg.startsWith("✓") ? "text-green-600" : "text-red-500"}`}>{tokkoMsg}</span>}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <div className="text-sm font-bold text-gray-700 mb-4">Equipos con Tokko configurado</div>
+              <p className="text-xs text-gray-400">Los brokers configuran su API key desde <strong>/equipo</strong> → sección Tokko Broker. Una vez configurada, la sync corre automáticamente a las 4am.</p>
             </div>
-
-            {/* Test conexión */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-              <div className="text-sm font-bold text-gray-700">Probar conexión</div>
-              <p className="text-xs text-gray-400">Verificá que la API key esté correcta y ves cuántas propiedades y usuarios tiene tu cuenta.</p>
-              <button
-                onClick={async () => {
-                  setTokkoTesting(true); setTokkoTestResult(null);
-                  try {
-                    const res = await fetch("/api/admin/tokko-test", { method: "POST" });
-                    const d = await res.json();
-                    setTokkoTestResult(d);
-                  } catch { setTokkoTestResult({ ok: false, message: "Error de conexión" }); }
-                  setTokkoTesting(false);
-                }}
-                disabled={tokkoTesting || !tokkoApiKey}
-                className="px-5 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-                {tokkoTesting ? "Probando..." : "Probar conexión con Tokko"}
-              </button>
-
-              {tokkoTestResult && (
-                <div className={`rounded-xl p-4 ${tokkoTestResult.ok ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
-                  <p className={`text-sm font-bold mb-1 ${tokkoTestResult.ok ? "text-green-700" : "text-red-700"}`}>
-                    {tokkoTestResult.ok ? "✓ Conexión exitosa" : "✗ Error"}
-                  </p>
-                  <p className="text-xs text-gray-600">{tokkoTestResult.message}</p>
-                  {tokkoTestResult.ok && (
-                    <div className="flex gap-4 mt-2">
-                      {tokkoTestResult.properties !== undefined && (
-                        <span className="text-xs font-bold text-green-700">🏠 {tokkoTestResult.properties} propiedades</span>
-                      )}
-                      {tokkoTestResult.users !== undefined && (
-                        <span className="text-xs font-bold text-green-700">👥 {tokkoTestResult.users} usuarios</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Sync manual */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-              <div className="text-sm font-bold text-gray-700">Sincronización</div>
-              <p className="text-xs text-gray-400">La sync automática corre una vez al día. También podés forzarla manualmente.</p>
-              <button
-                onClick={async () => {
-                  setTokkoMsg("Sincronizando...");
-                  try {
-                    const res = await fetch("/api/admin/ops", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ action: "sync_tokko" }),
-                    });
-                    const d = await res.json();
-                    setTokkoMsg(d.ok ? `✓ Sync completo — ${d.properties ?? 0} propiedades, ${d.users ?? 0} usuarios` : d.error || "Error");
-                  } catch { setTokkoMsg("Error al sincronizar"); }
-                }}
-                disabled={!tokkoApiKey}
-                className="px-5 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-                Sincronizar ahora
-              </button>
-            </div>
-
             <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4">
-              <p className="text-xs text-amber-700 font-medium">💡 Una vez conectado, cada agente va a ver su cartera activa (propiedades publicadas) en su dashboard. Los datos se actualizan automáticamente cada día.</p>
+              <p className="text-xs text-amber-700 font-medium">💡 Los brokers configuran su API key de Tokko desde su panel de equipo. La sincronización corre automáticamente a las 4am todos los días.</p>
             </div>
           </div>
         )}
