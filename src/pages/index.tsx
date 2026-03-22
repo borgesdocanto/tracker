@@ -122,7 +122,6 @@ function WeeklyView({ summaries, weekOffset, onPrev, onNext }: {
   const byDate = useMemo(() => {
     const m: Record<string, DaySummary> = {};
     summaries.forEach(s => { m[s.date] = s; });
-    console.log("[WeeklyView] summaries:", summaries.length, "keys:", Object.keys(m).slice(0,5), "looking for:", days.map(d => localDateStr(d)));
     return m;
   }, [summaries]);
 

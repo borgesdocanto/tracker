@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { getStoredEvents, IAC_GOAL, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
+import { getStoredEvents, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
 import { getGoals } from "../../../lib/appConfig";
 import { getAgentRankStats } from "../../../lib/ranks";
 import { subDays, addDays, startOfDay, endOfDay } from "date-fns";

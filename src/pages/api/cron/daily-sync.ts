@@ -100,4 +100,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   console.log(`✅ Daily sync completo:`, results);
+
+  // Ejecutar streak-alert inmediatamente después del sync
+  // para que los eventos recién sincronizados sean considerados
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL;
+    const secret = process.env.CRON_SECRET;
+    fetch(`${baseUrl}/api/cron/streak-alert`, {
+      method: "POST",
+      headers: { "x-cron-secret": secret! },
+    }).catch(() => {});
+  } catch {}
 }
