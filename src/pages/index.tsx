@@ -651,8 +651,13 @@ export default function HomePage() {
         setError("");
       } else {
         const errData = await res.json().catch(() => ({}));
-        // Si hay datos de caché, no mostrar error — solo loggear
-        if (!data) setError(errData.error || "Error de sincronización");
+        const errMsg = errData.error || "";
+        // Si el error es de token/auth redirigir siempre, incluso con datos en caché
+        if (errMsg.includes("token") || errMsg.includes("auth") || errMsg.includes("invalid") || errMsg.includes("revoked")) {
+          router.push("/relogin");
+          return;
+        }
+        if (!data) setError(errMsg || "Error de sincronización");
       }
     } catch (e: any) {
       if (!data) setError(e.message);

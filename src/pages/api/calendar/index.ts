@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const sessionToken = (session as any).accessToken;
   const accessToken = sessionToken || await getValidAccessToken(session.user!.email!);
-  if (!accessToken) return res.status(401).json({ error: "Sin token de Calendar" });
+  if (!accessToken) return res.status(401).json({ error: "token_invalid: Sin token de Calendar — reconectá Google" });
 
   const requestedDays = parseInt(req.query.days as string) || 30;
 
@@ -333,6 +333,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (err: any) {
     console.error("Calendar API error:", err?.message);
-    return res.status(500).json({ error: "Error al consultar Google Calendar", detail: err?.message });
+    const msg = err?.message || "";
+    // Token revocado o inválido — devolver 401 para que el dashboard redirija a relogin
+    if (msg.includes("invalid_grant") || msg.includes("Invalid Credentials") || msg.includes("Token has been expired") || msg.includes("revoked")) {
+      return res.status(401).json({ error: "token_invalid: " + msg });
+    }
+    return res.status(500).json({ error: "Error al consultar Google Calendar", detail: msg });
   }
 }
