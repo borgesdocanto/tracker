@@ -666,7 +666,8 @@ export default function HomePage() {
   };
 
   const sync = async () => {
-    setLoading(true);
+    // Solo mostrar loading si no hay datos previos
+    if (!data) setLoading(true);
     setError("");
     // Primero mostrar caché, luego sincronizar
     await loadFromCache(days);
@@ -681,8 +682,8 @@ export default function HomePage() {
   // Cuando cambia `days`, mostrar caché primero y re-sincronizar
   useEffect(() => {
     if (status !== "authenticated" || !data) return;
-    setLoading(true);
-    loadFromCache(days).then(() => syncWithGoogle(days).then(() => setLoading(false)));
+    // No borrar datos — cargar en background
+    loadFromCache(days).then(() => syncWithGoogle(days, true));
   }, [days]);
 
   // Polling liviano — detecta cambios del webhook y actualiza el dashboard
@@ -872,7 +873,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      <main className="max-w-6xl mx-auto px-5 py-6 pb-16 space-y-5">
+      <main className="max-w-6xl mx-auto px-5 py-6 pb-16 space-y-5" style={{ transition: "opacity 0.15s ease" }}>
 
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4">
