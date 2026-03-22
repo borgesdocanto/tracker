@@ -41,6 +41,9 @@ async function syncTeam(teamId: string, apiKey: string): Promise<{ properties: n
           days_since_update: prop.last_update
             ? Math.floor((now.getTime() - new Date(prop.last_update).getTime()) / 86400000)
             : null,
+          days_online: prop.created_date
+            ? Math.floor((now.getTime() - new Date(prop.created_date).getTime()) / 86400000)
+            : null,
           producer_id: prop.producer?.id || null,
           producer_name: prop.producer?.name || null,
           producer_email: prop.producer?.email?.toLowerCase() || null,
