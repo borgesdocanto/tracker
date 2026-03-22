@@ -24,18 +24,6 @@ interface Property {
   branch: string | null;
 }
 
-// Ficha completa = más de 15 fotos + plano + (video o tour360) + actualizada hace menos de 30 días
-function fichaScore(prop: Property): { complete: boolean; missing: string[] } {
-  const missing: string[] = [];
-  if (prop.photosCount < 15) missing.push(`fotos (${prop.photosCount}/15)`);
-  if (!prop.hasBlueprint) missing.push("plano");
-  if (!prop.hasVideo && !prop.hasTour360) missing.push("video o tour 360");
-  // La fecha de actualización se muestra por separado — no la repetimos acá
-  const stale = prop.daysSinceUpdate !== null && prop.daysSinceUpdate > 30;
-  const mediaOk = prop.hasVideo || prop.hasTour360;
-  return { complete: missing.length === 0 && !stale, missing };
-}
-
 interface PortfolioData {
   connected: boolean;
   reason?: string;
@@ -43,17 +31,11 @@ interface PortfolioData {
   stats: {
     total: number;
     active: number;
-    reserved: number;
     complete: number;
     incomplete: number;
     stale: number;
     avgDaysOnline: number;
   };
-}
-
-function weekLabel(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
-  return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 function formatPrice(price: number | null, currency: string | null): string {
@@ -64,10 +46,18 @@ function formatPrice(price: number | null, currency: string | null): string {
 
 function statusLabel(status: number): { label: string; color: string; bg: string } {
   if (status === 2) return { label: "Disponible", color: "#15803d", bg: "#f0fdf4" };
-  if (status === 3) return { label: "Reservada", color: "#d97706", bg: "#fffbeb" };
   if (status === 1) return { label: "A cotizar", color: "#6366f1", bg: "#eef2ff" };
   if (status === 4) return { label: "No disponible", color: "#9ca3af", bg: "#f3f4f6" };
   return { label: "Disponible", color: "#15803d", bg: "#f0fdf4" };
+}
+
+function fichaScore(prop: Property): { complete: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (prop.photosCount < 15) missing.push(`fotos (${prop.photosCount}/15)`);
+  if (!prop.hasBlueprint) missing.push("plano");
+  if (!prop.hasVideo && !prop.hasTour360) missing.push("video o tour 360");
+  const stale = prop.daysSinceUpdate !== null && prop.daysSinceUpdate > 30;
+  return { complete: missing.length === 0 && !stale, missing };
 }
 
 export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) {
@@ -83,22 +73,19 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
       .then(r => r.ok ? r.json() : null)
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [agentEmail]);
 
   if (loading) return (
     <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center">
       <div className="text-xs text-gray-400 animate-pulse">Cargando cartera Tokko...</div>
     </div>
   );
-  if (!data?.connected) return null; // No mostrar nada si no hay Tokko conectado
+  if (!data?.connected) return null;
 
   const { stats, properties } = data;
-
-  const available = properties.filter(p => p.status === 2);
-  const reserved = properties.filter(p => p.status === 3);
   const base = showIncomplete
-    ? available.filter(p => !fichaScore(p).complete)
-    : available;
+    ? properties.filter(p => p.status === 2 && !fichaScore(p).complete)
+    : properties.filter(p => p.status === 2);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
@@ -113,15 +100,10 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
           </a>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <div className="text-xs text-gray-400 mb-0.5">Disponibles</div>
             <div className="text-3xl font-black text-white" style={{ fontFamily: "Georgia, serif" }}>{stats.active}</div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-400 mb-0.5">Reservadas</div>
-            <div className="text-xl font-black text-gray-500" title="Tokko no comparte reservadas vía API">—</div>
           </div>
           <div>
             <div className="text-xs text-gray-400 mb-0.5">Fichas OK</div>
@@ -135,20 +117,14 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
           </button>
         </div>
 
-        {/* Alertas */}
         {stats.stale > 0 && (
           <div className="mt-3 text-xs font-medium" style={{ color: "#fca5a5" }}>
             ⚠️ {stats.stale} propiedad{stats.stale !== 1 ? "es" : ""} sin actualizar hace más de 30 días
           </div>
         )}
-        {stats.incomplete > 0 && (
-          <div className="mt-1 text-xs font-medium" style={{ color: "#fcd34d" }}>
-            ⚠ {stats.incomplete} ficha{stats.incomplete !== 1 ? "s" : ""} por mejorar — tocá el número
-          </div>
-        )}
       </div>
 
-      {/* Banner modo "por actualizar" */}
+      {/* Banner fichas por mejorar */}
       {showIncomplete && (
         <div className="px-4 py-2 bg-red-50 border-b border-red-100 flex items-center justify-between">
           <span className="text-xs font-bold text-red-600">⚠ Mostrando {base.length} ficha{base.length !== 1 ? "s" : ""} por mejorar</span>
@@ -156,45 +132,7 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
         </div>
       )}
 
-      {/* Reservadas — sección destacada */}
-      {reserved.length > 0 && !showIncomplete && (
-        <div className="border-b border-gray-100">
-          <div className="px-4 py-2 bg-amber-50 flex items-center gap-2">
-            <span className="text-xs font-bold text-amber-700">🤝 Reservadas ({reserved.length})</span>
-            <span className="text-xs text-amber-600">— operaciones en curso</span>
-          </div>
-          {reserved.map(prop => {
-            const ficha = fichaScore(prop);
-            return (
-              <div key={prop.id} className="px-4 py-3 flex items-center gap-3 bg-amber-50/30">
-                <div className="w-14 h-12 rounded-xl overflow-hidden shrink-0 bg-amber-100 flex items-center justify-center">
-                  {prop.thumbnail
-                    ? <img src={prop.thumbnail} alt="" className="w-full h-full object-cover" />
-                    : <span className="text-lg">🤝</span>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <a href={prop.editUrl} target="_blank" rel="noopener noreferrer"
-                      className="text-sm font-bold text-gray-800 truncate hover:underline">
-                      {prop.address || prop.title || "Sin dirección"}
-                    </a>
-                    <a href={prop.editUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-gray-300 hover:text-gray-500">
-                      <ExternalLink size={11} />
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold px-1.5 py-0.5 rounded-lg" style={{ background: "#fffbeb", color: "#d97706" }}>Reservada</span>
-                    {prop.type && <span className="text-xs text-gray-400">{prop.type}</span>}
-                    {prop.price && <span className="text-xs font-semibold text-gray-600">· {formatPrice(prop.price, prop.currency)}</span>}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Lista — disponibles */}
+      {/* Lista */}
       <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
         {base.length === 0 ? (
           <div className="px-5 py-6 text-center text-xs text-gray-400">
@@ -205,7 +143,6 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
           const ficha = fichaScore(prop);
           return (
             <div key={prop.id} className="px-4 py-3 flex items-center gap-3">
-              {/* Thumbnail */}
               <div className="w-16 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
                 {prop.thumbnail
                   ? <img src={prop.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -213,7 +150,6 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
               </div>
 
               <div className="flex-1 min-w-0">
-                {/* Dirección + link a Tokko */}
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <a href={prop.editUrl} target="_blank" rel="noopener noreferrer"
                     className="text-sm font-bold text-gray-800 truncate hover:underline">
@@ -232,7 +168,6 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
                   {prop.price && <span className="text-xs font-semibold text-gray-600">· {formatPrice(prop.price, prop.currency)}</span>}
                 </div>
 
-                {/* Indicador ficha */}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {ficha.complete ? (
                     <span className="text-xs font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-lg">✓ Ficha completa</span>
@@ -244,8 +179,6 @@ export default function TokkoPortfolio({ agentEmail }: { agentEmail?: string }) 
                   {prop.hasVideo && <span className="text-xs text-gray-400">🎥</span>}
                   {prop.hasTour360 && <span className="text-xs text-gray-400">🔄 360</span>}
                   {prop.hasBlueprint && <span className="text-xs text-gray-400">📐 plano</span>}
-                  {prop.daysOnline !== null && <span className="text-xs text-gray-300">{prop.daysOnline}d online</span>}
-                  {/* Fecha de última edición */}
                   {prop.daysSinceUpdate !== null && (
                     <span
                       title={prop.daysSinceUpdate > 30

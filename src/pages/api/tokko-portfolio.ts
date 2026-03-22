@@ -17,23 +17,15 @@ async function fetchAllProps(apiKey: string): Promise<any[]> {
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
-  // Traer disponibles (status=2) y reservadas (status=3) en paralelo
-  const fetchPage = async (url: string): Promise<any[]> => {
-    let all: any[] = [];
-    let nextUrl: string | null = url;
-    while (nextUrl) {
-      const r: Response = await fetch(nextUrl);
-      if (!r.ok) throw new Error(`Tokko error ${r.status}`);
-      const d: any = await r.json();
-      all = all.concat(d.objects || []);
-      nextUrl = d.meta?.next ? `https://www.tokkobroker.com${d.meta.next}` : null;
-    }
-    return all;
-  };
-
-  const base = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500`;
-  // Tokko API solo devuelve propiedades disponibles (status 2) — las reservadas no están disponibles via API
-  const allProps = await fetchPage(base);
+  let allProps: any[] = [];
+  let nextUrl: string | null = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500`;
+  while (nextUrl) {
+    const r: Response = await fetch(nextUrl);
+    if (!r.ok) throw new Error(`Tokko error ${r.status}`);
+    const d: any = await r.json();
+    allProps = allProps.concat(d.objects || []);
+    nextUrl = d.meta?.next ? `https://www.tokkobroker.com${d.meta.next}` : null;
+  }
   cache.set(cacheKey, { data: allProps, ts: Date.now() });
   return allProps;
 }
@@ -78,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!tokkoAgent?.tokko_id) {
     return res.status(200).json({
       properties: [], connected: true,
-      stats: { total: 0, active: 0, reserved: 0, withPhotos: 0, stale: 0, avgDaysOnline: 0 },
+      stats: { total: 0, active: 0, withPhotos: 0, stale: 0, avgDaysOnline: 0 },
     });
   }
 
@@ -137,7 +129,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const active = properties.filter((p: any) => p.status === 2);
-    const reserved = properties.filter((p: any) => p.status === 3);
 
     // Ficha completa = 15+ fotos + plano + (video o tour360) + actualizada hace menos de 30 días
     const completeListings = active.filter((p: any) => {
@@ -160,7 +151,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stats: {
         total: properties.length,
         active: active.length,
-        reserved: reserved.length,
         complete: completeListings.length,
         incomplete: incompleteListings.length,
         stale: stale.length,
