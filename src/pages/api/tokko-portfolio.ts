@@ -68,8 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     branch: p.branch_name,
   }));
 
-  const active = properties.filter((p: any) => p.status === 1);
-  const reserved = properties.filter((p: any) => p.status === 2);
+  const active = properties.filter((p: any) => p.status === 2);      // Disponible
+  const reserved = properties.filter((p: any) => p.status === 3);    // Reservada
+  const cotizar = properties.filter((p: any) => p.status === 1);     // A cotizar
   const withPhotos = active.filter((p: any) => p.photosCount >= 5);
   const stale = active.filter((p: any) => p.daysSinceUpdate !== null && p.daysSinceUpdate > 30);
 
@@ -80,6 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       total: properties.length,
       active: active.length,
       reserved: reserved.length,
+      cotizar: cotizar.length,
       withPhotos: withPhotos.length,
       stale: stale.length,
       avgDaysOnline: active.length

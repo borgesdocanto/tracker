@@ -41,10 +41,11 @@ function formatPrice(price: number | null, currency: string | null): string {
 }
 
 function statusLabel(status: number): { label: string; color: string; bg: string } {
-  if (status === 1) return { label: "Publicada", color: "#15803d", bg: "#f0fdf4" };
-  if (status === 2) return { label: "Reservada", color: "#d97706", bg: "#fffbeb" };
-  if (status === 3) return { label: "Vendida", color: "#6b7280", bg: "#f9fafb" };
-  return { label: "No publicada", color: "#9ca3af", bg: "#f3f4f6" };
+  if (status === 2) return { label: "Disponible", color: "#15803d", bg: "#f0fdf4" };
+  if (status === 3) return { label: "Reservada", color: "#d97706", bg: "#fffbeb" };
+  if (status === 1) return { label: "A cotizar", color: "#6366f1", bg: "#eef2ff" };
+  if (status === 4) return { label: "No disponible", color: "#9ca3af", bg: "#f3f4f6" };
+  return { label: "Disponible", color: "#15803d", bg: "#f0fdf4" };
 }
 
 export default function TokkoPortfolio() {
@@ -65,8 +66,8 @@ export default function TokkoPortfolio() {
   const { stats, properties } = data;
 
   const filtered = properties.filter(p => {
-    if (filter === "active") return p.status === 1;
-    if (filter === "stale") return p.status === 1 && (p.daysSinceUpdate || 0) > 30;
+    if (filter === "active") return p.status === 2;
+    if (filter === "stale") return p.status === 2 && (p.daysSinceUpdate || 0) > 30;
     return true;
   });
 
@@ -86,7 +87,7 @@ export default function TokkoPortfolio() {
         {/* KPIs */}
         <div className="grid grid-cols-4 gap-3">
           <div>
-            <div className="text-xs text-gray-400 mb-0.5">Publicadas</div>
+            <div className="text-xs text-gray-400 mb-0.5">Disponibles</div>
             <div className="text-3xl font-black text-white" style={{ fontFamily: "Georgia, serif" }}>{stats.active}</div>
           </div>
           <div>
@@ -119,7 +120,7 @@ export default function TokkoPortfolio() {
       {/* Filtros */}
       <div className="px-5 py-3 border-b border-gray-100 flex gap-2">
         {[
-          { key: "active", label: `Publicadas (${stats.active})` },
+          { key: "active", label: `Disponibles (${stats.active})` },
           { key: "stale", label: `Sin actualizar (${stats.stale})` },
           { key: "all", label: `Todas (${stats.total})` },
         ].map(f => (
