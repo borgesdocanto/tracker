@@ -18,7 +18,7 @@ async function fetchAllProps(apiKey: string): Promise<any[]> {
 
   let allProps: any[] = [];
   let nextUrl: string | null =
-    `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500&order_by=-last_update`;
+    `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500`;
 
   while (nextUrl) {
     const r: Response = await fetch(nextUrl);
