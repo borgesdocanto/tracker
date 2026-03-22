@@ -16,7 +16,7 @@ function getMonday(): string {
   return format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
 }
 
-async function syncUser(user: { email: string; team_id: string | null; streak_best: number }): Promise<"synced" | "skipped" | "error"> {
+async function syncUser(user: { email: string; team_id: string | null; streak_best: number }, fromWebhook = false): Promise<"synced" | "skipped" | "error"> {
   try {
     const accessToken = await getValidAccessToken(user.email);
     if (!accessToken) return "skipped";
@@ -38,6 +38,13 @@ async function syncUser(user: { email: string; team_id: string | null; streak_be
     const weekIac = Math.min(100, Math.round((weekGreen.length / weeklyGoal) * 100));
     await saveWeeklyStatsAndRank(user.email, weekStart, weekIac, weekGreen.length, (streakData as any)?.best ?? user.streak_best ?? 0);
 
+    // Si viene del webhook, actualizar timestamp AQUÍ — después de que los datos están en DB
+    if (fromWebhook) {
+      await supabaseAdmin.from("subscriptions")
+        .update({ last_webhook_sync: new Date().toISOString() })
+        .eq("email", user.email);
+    }
+
     return "synced";
   } catch (err: any) {
     console.error(`Daily sync error ${user.email}:`, err?.message);
@@ -50,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const isManual = req.headers["x-cron-secret"] === process.env.CRON_SECRET || req.query.secret === process.env.CRON_SECRET;
   if (!isVercel && !isManual) return res.status(401).json({ error: "Unauthorized" });
 
-  // Si viene targetEmail (del webhook), sincronizar solo ese usuario
+  // Si viene targetEmail (del webhook), sincronizar solo ese usuario y responder DESPUÉS
   const targetEmail = req.body?.targetEmail || req.query?.targetEmail;
   if (targetEmail && typeof targetEmail === "string") {
     const { data: user } = await supabaseAdmin
@@ -61,10 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!user) return res.status(200).json({ ok: true, message: "Usuario no encontrado" });
 
-    res.status(200).json({ ok: true, message: `Sincronizando ${targetEmail}` });
-    const result = await syncUser(user);
+    // Sync completo ANTES de responder — la Edge Function espera este 200
+    const result = await syncUser(user, true); // fromWebhook=true → escribe last_webhook_sync al final
     console.log(`✅ Webhook sync ${targetEmail}:`, result);
-    return;
+    return res.status(200).json({ ok: true, result });
   }
 
   // Todos los usuarios con token de Google (no solo los con racha activa)
@@ -84,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const results = { synced: 0, skipped: 0, error: 0 };
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
     const batch = users.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.allSettled(batch.map(syncUser));
+    const batchResults = await Promise.allSettled(batch.map(u => syncUser(u)));
     for (const r of batchResults) {
       if (r.status === "fulfilled") results[r.value]++;
       else results.error++;
