@@ -17,20 +17,33 @@ async function fetchAllProps(apiKey: string): Promise<any[]> {
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
-  let allProps: any[] = [];
-  let nextUrl: string | null =
-    `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500`;
+  // Traer disponibles (status=2) y reservadas (status=3) en paralelo
+  const fetchPage = async (url: string): Promise<any[]> => {
+    let all: any[] = [];
+    let nextUrl: string | null = url;
+    while (nextUrl) {
+      const r: Response = await fetch(nextUrl);
+      if (!r.ok) throw new Error(`Tokko error ${r.status}`);
+      const d: any = await r.json();
+      all = all.concat(d.objects || []);
+      nextUrl = d.meta?.next ? `https://www.tokkobroker.com${d.meta.next}` : null;
+    }
+    return all;
+  };
 
-  while (nextUrl) {
-    const r: Response = await fetch(nextUrl);
-    if (!r.ok) throw new Error(`Tokko error ${r.status}`);
-    const d: any = await r.json();
-    allProps = allProps.concat(d.objects || []);
-    nextUrl = d.meta?.next ? `https://www.tokkobroker.com${d.meta.next}` : null;
-  }
+  const base = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&lang=es_ar&limit=500`;
+  const [available, reserved] = await Promise.all([
+    fetchPage(base),
+    fetchPage(`${base}&current_localization_id=&status=3`).catch(() => []),
+  ]);
 
-  cache.set(cacheKey, { data: allProps, ts: Date.now() });
-  return allProps;
+  const allProps = [...available, ...reserved];
+  // Deduplicar por id
+  const seen = new Set();
+  const unique = allProps.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+
+  cache.set(cacheKey, { data: unique, ts: Date.now() });
+  return unique;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

@@ -10,15 +10,28 @@ async function syncTeam(teamId: string, apiKey: string): Promise<{ properties: n
 
   // Propiedades
   try {
-    let allProperties: any[] = [];
-    let nextUrl: string | null = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&limit=500&lang=es_ar`;
-    while (nextUrl) {
-      const fr: Response = await fetch(nextUrl);
-      if (!fr.ok) throw new Error(`Tokko properties ${fr.status}`);
-      const pd: any = await fr.json();
-      allProperties = allProperties.concat(pd.objects || []);
-      nextUrl = pd.meta?.next ? `https://www.tokkobroker.com${pd.meta.next}` : null;
-    }
+    const fetchAll = async (url: string): Promise<any[]> => {
+      let items: any[] = [];
+      let next: string | null = url;
+      while (next) {
+        const fr: Response = await fetch(next);
+        if (!fr.ok) throw new Error(`Tokko properties ${fr.status}`);
+        const pd: any = await fr.json();
+        items = items.concat(pd.objects || []);
+        next = pd.meta?.next ? `https://www.tokkobroker.com${pd.meta.next}` : null;
+      }
+      return items;
+    };
+
+    const baseUrl = `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&limit=500&lang=es_ar`;
+    const [avail, reserv] = await Promise.all([
+      fetchAll(baseUrl),
+      fetchAll(`${baseUrl}&status=3`).catch(() => [] as any[]),
+    ]);
+    const seen = new Set();
+    const allProperties = [...avail, ...reserv].filter((p: any) => {
+      if (seen.has(p.id)) return false; seen.add(p.id); return true;
+    });
 
     const BATCH = 50;
     for (let i = 0; i < allProperties.length; i += BATCH) {
