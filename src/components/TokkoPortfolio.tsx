@@ -30,8 +30,10 @@ function fichaScore(prop: Property): { complete: boolean; missing: string[] } {
   if (prop.photosCount < 15) missing.push(`fotos (${prop.photosCount}/15)`);
   if (!prop.hasBlueprint) missing.push("plano");
   if (!prop.hasVideo && !prop.hasTour360) missing.push("video o tour 360");
-  if (prop.daysSinceUpdate !== null && prop.daysSinceUpdate > 30) missing.push(`actualización (${prop.daysSinceUpdate}d)`);
-  return { complete: missing.length === 0, missing };
+  // La fecha de actualización se muestra por separado — no la repetimos acá
+  const stale = prop.daysSinceUpdate !== null && prop.daysSinceUpdate > 30;
+  const mediaOk = prop.hasVideo || prop.hasTour360;
+  return { complete: missing.length === 0 && !stale, missing };
 }
 
 interface PortfolioData {
