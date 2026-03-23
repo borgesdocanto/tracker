@@ -65,8 +65,28 @@ export default function BrokerDashboard() {
   const router = useRouter();
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [overview, setOverview] = useState<TeamOverview | null>(null);
-  const [portfolio, setPortfolio] = useState<{ connected: boolean; agents: any[] } | null>(null);
+  const [portfolio, setPortfolio] = useState<{ connected: boolean; active: any[]; uninvited: any[] } | null>(null);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
+
+  function InviteButton({ email }: { email: string }) {
+    const [sending, setSending] = useState(false);
+    const [done, setDone] = useState(false);
+    const handleInvite = async () => {
+      setSending(true);
+      const r = await fetch("/api/teams/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const d = await r.json();
+      if (d.ok) setDone(true);
+      else alert(d.error || "Error al invitar");
+      setSending(false);
+    };
+    if (done) return <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 500 }}>✓ Invitado</span>;
+    return (
+      <button onClick={handleInvite} disabled={sending}
+        style={{ background: sending ? "#e5e7eb" : RED, color: sending ? "#9ca3af" : "#fff", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 11, fontWeight: 500, cursor: sending ? "default" : "pointer", flexShrink: 0 }}>
+        {sending ? "Enviando..." : "Invitar a InmoCoach"}
+      </button>
+    );
+  }
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);
@@ -406,54 +426,89 @@ export default function BrokerDashboard() {
         </div>
 
         {/* ── CARTERA TOKKO POR AGENTE ── */}
-        {portfolio?.connected && portfolio.agents.length > 0 && (
+        {portfolio?.connected && (portfolio.active.length > 0 || portfolio.uninvited.length > 0) && (
           <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", marginTop: 12 }}>
             <button onClick={() => setPortfolioOpen(o => !o)}
               style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, textAlign: "left" }}>
               <span style={{ fontSize: 16 }}>🏠</span>
               <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>Cartera Tokko por agente</span>
-              <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 4 }}>{portfolio.agents.reduce((s, a) => s + a.total, 0)} propiedades</span>
+              <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 4 }}>
+                {[...portfolio.active, ...portfolio.uninvited].reduce((s: number, a: any) => s + a.total, 0)} propiedades
+              </span>
               <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{portfolioOpen ? "▲" : "▼"}</span>
             </button>
+
             {portfolioOpen && (
               <div style={{ borderTop: "0.5px solid #f3f4f6" }}>
-                {/* Header */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 80px", gap: 8, padding: "8px 16px", background: "#f9fafb", borderBottom: "0.5px solid #f3f4f6" }}>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af" }}>Agente</div>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", textAlign: "center" }}>Total</div>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", textAlign: "center" }}>Fichas OK</div>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", textAlign: "center" }}>Por mejorar</div>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", textAlign: "center" }}>+30 días</div>
-                </div>
-                {portfolio.agents.map((agent: any, i: number) => {
-                  const pct = agent.total > 0 ? Math.round((agent.complete / agent.total) * 100) : 0;
-                  const health = pct === 100 ? "#16a34a" : pct >= 70 ? "#d97706" : "#dc2626";
-                  return (
-                    <div key={agent.email} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 80px", gap: 8, padding: "12px 16px", borderBottom: i < portfolio.agents.length - 1 ? "0.5px solid #f9fafb" : "none", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{agent.name}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                          <div style={{ flex: 1, height: 3, background: "#f3f4f6", borderRadius: 2, overflow: "hidden" }}>
-                            <div style={{ height: "100%", background: health, borderRadius: 2, width: `${pct}%` }} />
-                          </div>
-                          <span style={{ fontSize: 10, color: health, fontWeight: 500, minWidth: 28 }}>{pct}%</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "center", fontSize: 14, fontWeight: 500, color: "#374151" }}>{agent.total}</div>
-                      <div style={{ textAlign: "center", fontSize: 14, fontWeight: 500, color: "#16a34a" }}>{agent.complete}</div>
-                      <div style={{ textAlign: "center" }}>
-                        {agent.incomplete > 0
-                          ? <span style={{ fontSize: 13, fontWeight: 500, color: "#dc2626", background: "#FEF2F2", borderRadius: 6, padding: "2px 8px" }}>{agent.incomplete}</span>
-                          : <span style={{ fontSize: 13, color: "#9ca3af" }}>—</span>}
-                      </div>
-                      <div style={{ textAlign: "center" }}>
-                        {agent.stale > 0
-                          ? <span style={{ fontSize: 13, fontWeight: 500, color: "#d97706", background: "#FFFBEB", borderRadius: 6, padding: "2px 8px" }}>{agent.stale}</span>
-                          : <span style={{ fontSize: 13, color: "#9ca3af" }}>—</span>}
-                      </div>
+
+                {/* Agentes activos del equipo */}
+                {portfolio.active.length > 0 && (
+                  <>
+                    {/* Header */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px 72px 72px", gap: 8, padding: "8px 16px", background: "#f9fafb", borderBottom: "0.5px solid #f3f4f6" }}>
+                      {["Agente", "Total", "Fichas OK", "Mejorar", "+30d"].map((h, i) => (
+                        <div key={h} style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", textAlign: i > 0 ? "center" : "left" }}>{h}</div>
+                      ))}
                     </div>
-                  );
-                })}
+                    {portfolio.active.map((agent: any, i: number) => {
+                      const pct = agent.total > 0 ? Math.round((agent.complete / agent.total) * 100) : 0;
+                      const health = pct === 100 ? "#16a34a" : pct >= 70 ? "#d97706" : "#dc2626";
+                      return (
+                        <div key={agent.email}
+                          onClick={() => router.push(`/cartera?agentEmail=${encodeURIComponent(agent.email)}&agentName=${encodeURIComponent(agent.name)}`)}
+                          style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px 72px 72px", gap: 8, padding: "11px 16px", borderBottom: i < portfolio.active.length - 1 ? "0.5px solid #f9fafb" : "none", alignItems: "center", cursor: "pointer" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {agent.avatar
+                              ? <img src={agent.avatar} style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0 }} />
+                              : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>{agent.name[0]}</div>}
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{agent.name}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                                <div style={{ width: 48, height: 3, background: "#f3f4f6", borderRadius: 2, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", background: health, borderRadius: 2, width: `${pct}%` }} />
+                                </div>
+                                <span style={{ fontSize: 10, color: health, fontWeight: 500 }}>{pct}%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "center", fontSize: 14, fontWeight: 500, color: "#374151" }}>{agent.total}</div>
+                          <div style={{ textAlign: "center", fontSize: 14, fontWeight: 500, color: "#16a34a" }}>{agent.complete}</div>
+                          <div style={{ textAlign: "center" }}>
+                            {agent.incomplete > 0
+                              ? <span style={{ fontSize: 12, fontWeight: 500, color: "#dc2626", background: "#FEF2F2", borderRadius: 5, padding: "1px 7px" }}>{agent.incomplete}</span>
+                              : <span style={{ fontSize: 12, color: "#d1d5db" }}>—</span>}
+                          </div>
+                          <div style={{ textAlign: "center" }}>
+                            {agent.stale > 0
+                              ? <span style={{ fontSize: 12, fontWeight: 500, color: "#d97706", background: "#FFFBEB", borderRadius: 5, padding: "1px 7px" }}>{agent.stale}</span>
+                              : <span style={{ fontSize: 12, color: "#d1d5db" }}>—</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* Agentes Tokko no invitados */}
+                {portfolio.uninvited.length > 0 && (
+                  <>
+                    <div style={{ padding: "8px 16px", background: "#f9fafb", borderTop: portfolio.active.length > 0 ? "0.5px solid #f3f4f6" : "none", borderBottom: "0.5px solid #f3f4f6" }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>Agentes en Tokko sin invitar</span>
+                    </div>
+                    {portfolio.uninvited.map((agent: any, i: number) => (
+                      <div key={agent.email} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderBottom: i < portfolio.uninvited.length - 1 ? "0.5px solid #f9fafb" : "none" }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
+                          {agent.name[0]}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>{agent.name}</span>
+                          <span style={{ fontSize: 12, color: "#9ca3af", marginLeft: 8 }}>{agent.total} propiedad{agent.total !== 1 ? "es" : ""}</span>
+                        </div>
+                        <InviteButton email={agent.email} />
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -28,17 +28,24 @@ export default function CarteraPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "incomplete" | "stale">("all");
 
+  // When broker views agent's portfolio from /equipo
+  const agentEmail = router.query.agentEmail as string | undefined;
+  const agentName = router.query.agentName as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
   }, [status, router]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetch("/api/tokko-portfolio", { cache: "no-store" })
+    const url = agentEmail
+      ? `/api/tokko-portfolio?agentEmail=${encodeURIComponent(agentEmail)}`
+      : "/api/tokko-portfolio";
+    fetch(url, { cache: "no-store" })
       .then(r => r.ok ? r.json() : null)
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [status]);
+  }, [status, agentEmail]);
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -94,8 +101,17 @@ export default function CarteraPage() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>Cartera Tokko</div>
-              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Estado de tus propiedades publicadas</div>
+              {agentName && (
+                <button onClick={() => router.push("/equipo")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#9ca3af", marginBottom: 6, display: "flex", alignItems: "center", gap: 4, padding: 0 }}>
+                  ← Mi equipo
+                </button>
+              )}
+              <div style={{ fontSize: 22, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>
+                {agentName ? `Cartera de ${agentName}` : "Cartera Tokko"}
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                {agentName ? `Propiedades publicadas de ${agentName}` : "Estado de tus propiedades publicadas"}
+              </div>
             </div>
             <a href="https://www.tokkobroker.com" target="_blank" rel="noopener noreferrer"
               style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6b7280", background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 8, padding: "7px 12px", textDecoration: "none" }}>
