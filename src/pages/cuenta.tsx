@@ -560,9 +560,6 @@ export default function CuentaPage() {
           </div>
         )}
 
-        <div style={{ fontSize: 12, color: "#d1d5db", textAlign: "center" }}>
-          Consultas de facturación: <span style={{ color: "#9ca3af" }}>hola@inmocoach.com.ar</span>
-        </div>
       </div>
 
       {/* Modal volver con equipo */}
