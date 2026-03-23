@@ -113,9 +113,9 @@ export default function BrokerDashboard() {
       if (stRes.ok) { const st = await stRes.json(); setShowTeamLeaders(st.showTeamLeaders ?? true); setShowBroker(st.showBroker ?? true); }
       // Load portfolio
       fetch("/api/analytics/team-portfolio")
-        .then(r => { console.log("[portfolio] status:", r.status); return r.ok ? r.json() : r.json().then(e => { console.error("[portfolio] error:", e); return null; }); })
-        .then(d => { console.log("[portfolio] data:", JSON.stringify(d)); if (d) setPortfolio(d); })
-        .catch(e => console.error("[portfolio] fetch error:", e));
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setPortfolio(d); })
+        .catch(() => {});
     } catch {}
     setLoading(false);
   };
@@ -131,6 +131,13 @@ export default function BrokerDashboard() {
 
   useEffect(() => { if (status === "authenticated") { loadTeam(); loadAnalytics(0); } }, [status]);
   useEffect(() => { if (status === "authenticated") loadAnalytics(weekOffset); }, [weekOffset]);
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/analytics/team-portfolio")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setPortfolio(d); })
+      .catch(() => {});
+  }, [status]);
 
   const syncAll = async () => {
     setSyncing(true);
