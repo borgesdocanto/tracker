@@ -305,10 +305,8 @@ export default function CuentaPage() {
       <Head><title>Mi cuenta — InmoCoach</title></Head>
 
       <style>{`
-        .mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .mc-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        @media (max-width: 900px) { .mc-grid { grid-template-columns: 1fr; } .mc-grid-3 { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 600px) { .mc-grid-3 { grid-template-columns: 1fr; } }
+        .mc-agents { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 900px) { .mc-agents { grid-template-columns: 1fr; } }
       `}</style>
 
       <div style={{ padding: "24px 24px 60px" }}>
@@ -326,218 +324,111 @@ export default function CuentaPage() {
           </div>
         )}
 
-        {data.isVip && (
-          <div style={{ background: "#FFFBEB", border: "0.5px solid #fcd34d", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>👑</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#92400e" }}>Cuenta VIP — acceso permanente</div>
-              <div style={{ fontSize: 12, color: "#b45309" }}>Todo desbloqueado sin vencimiento · Sin cobro</div>
+        {/* ── PLAN FULL WIDTH ── */}
+        <div style={{ background: "#111827", borderRadius: 14, padding: "20px 24px", marginBottom: 16 }}>
+          {data.isVip && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(251,191,36,0.15)", borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>
+              <span style={{ fontSize: 16 }}>👑</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#fcd34d" }}>Cuenta VIP — acceso permanente sin cobro</span>
             </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(170,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {data.isOwner ? <Users size={22} color="#fff" /> : <User size={22} color="#fff" />}
+              </div>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 500, color: "#fff", fontFamily: "Georgia, serif" }}>
+                  {data.plan === "free" ? "Prueba gratuita" : data.isOwner ? `Equipo · ${data.tier}` : "Individual"}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                  {data.plan === "free" ? "7 días gratis" : data.isOwner ? `${data.agentCount} agente${data.agentCount !== 1 ? "s" : ""}` : "1 agente"}
+                  {isPaid && data.discountPct > 0 && <span style={{ marginLeft: 8, color: "#4ade80" }}>· -{data.discountPct}% descuento por volumen</span>}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 36, fontWeight: 500, fontFamily: "Georgia, serif", color: isPaid ? RED : "#6b7280", lineHeight: 1 }}>
+                {isPaid ? formatPriceARS(data.total) : "$0"}
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+                /mes{data.nextPaymentDate && ` · próximo cobro ${formatDate(data.nextPaymentDate)}`}
+              </div>
+            </div>
+          </div>
+          {!isPaid && (
+            <button onClick={() => router.push("/pricing")}
+              style={{ marginTop: 16, background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+              Ver planes →
+            </button>
+          )}
+        </div>
+
+        {/* Pricing widget solo owners */}
+        {isPaid && data.isOwner && (
+          <div style={{ marginBottom: 16 }}>
+            <TeamsPricingWidget agentCount={data.agentCount} onInvite={() => document.getElementById("invite-input")?.focus()} />
           </div>
         )}
 
-        <div className="mc-grid" style={{ marginBottom: 16 }}>
+        {/* ── GRID AGENTES ── */}
+        {isPaid && data.isOwner && (
+          <div className="mc-agents" style={{ marginBottom: 16 }}>
 
-          {/* ── COL IZQUIERDA ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* Plan actual */}
-            <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-              <div style={{ background: "#111827", padding: "20px" }}>
-                <div style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Plan actual</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(170,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {data.isOwner ? <Users size={20} color="#fff" /> : <User size={20} color="#fff" />}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 500, color: "#fff", fontFamily: "Georgia, serif" }}>
-                        {data.plan === "free" ? "Prueba gratuita"
-                          : data.isOwner ? `Equipo · ${data.tier}`
-                          : "Individual"}
-                      </div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
-                        {data.plan === "free" ? "7 días gratis" : data.isOwner ? `${data.agentCount} agente${data.agentCount !== 1 ? "s" : ""}` : "1 agente"}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 32, fontWeight: 500, fontFamily: "Georgia, serif", color: isPaid ? RED : "#6b7280", lineHeight: 1 }}>
-                      {isPaid ? formatPriceARS(data.total) : "$0"}
-                    </div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>/mes</div>
-                  </div>
+            {/* COL IZQ — Invitar + Tokko */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 0, background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+              {/* Input email */}
+              <div style={{ padding: "16px 16px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <UserPlus size={14} color={RED} />
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>Invitar agente</span>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af" }}>{data.agentCount} activos</span>
                 </div>
-                {isPaid && data.discountPct > 0 && (
-                  <div style={{ marginTop: 12, fontSize: 12, color: "#4ade80" }}>
-                    ✓ {data.discountPct}% de descuento por volumen aplicado
-                  </div>
-                )}
-                {isPaid && data.nextPaymentDate && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-                    Próximo cobro: {formatDate(data.nextPaymentDate)}
-                  </div>
-                )}
-              </div>
-              {!isPaid && (
-                <div style={{ padding: 16 }}>
-                  <button onClick={() => router.push("/pricing")}
-                    style={{ width: "100%", background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-                    Ver planes →
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
+                    style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "8px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
+                  <button onClick={invite} disabled={inviting || !newEmail}
+                    style={{ background: newEmail ? RED : "#e5e7eb", color: newEmail ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 500, cursor: newEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 5 }}>
+                    <Mail size={12} />{inviting ? "Enviando..." : "Invitar"}
                   </button>
                 </div>
-              )}
-            </div>
-
-            {/* Cancelar suscripción */}
-            {isPaid && !data.isVip && (
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-                <button onClick={() => setShowCancel(!showCancel)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "14px 20px", display: "flex", alignItems: "center", gap: 8 }}>
-                  <AlertTriangle size={14} color="#9ca3af" />
-                  <span style={{ fontSize: 13, color: "#6b7280" }}>Cancelar suscripción</span>
-                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{showCancel ? "▲" : "▼"}</span>
-                </button>
-                {showCancel && (
-                  <div style={{ borderTop: "0.5px solid #f3f4f6", padding: "16px 20px" }}>
-                    <div style={{ background: "#FEF2F2", border: "0.5px solid #fecaca", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "#991b1b", marginBottom: 4 }}>¿Seguro que querés cancelar?</div>
-                      <div style={{ fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
-                        Seguís con acceso hasta el {formatDate(data.nextPaymentDate)}. Después perdés acceso al historial y al Inmo Coach.
-                      </div>
-                    </div>
-                    <input type="text" placeholder='Escribí "cancelar" para confirmar' value={cancelConfirm} onChange={e => setCancelConfirm(e.target.value)}
-                      style={{ width: "100%", border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
-                    <button onClick={handleCancel} disabled={cancelConfirm.toLowerCase() !== "cancelar" || actionLoading}
-                      style={{ width: "100%", background: cancelConfirm.toLowerCase() === "cancelar" ? "#dc2626" : "#e5e7eb", color: cancelConfirm.toLowerCase() === "cancelar" ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 500, cursor: cancelConfirm.toLowerCase() === "cancelar" ? "pointer" : "not-allowed" }}>
-                      {actionLoading ? "..." : "Cancelar suscripción"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ fontSize: 12, color: "#d1d5db", textAlign: "center" }}>
-              Consultas de facturación: <span style={{ color: "#9ca3af" }}>hola@inmocoach.com.ar</span>
-            </div>
-          </div>
-
-          {/* ── COL DERECHA — solo owners con plan pago ── */}
-          {isPaid && data.isOwner && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-              {/* Pricing widget */}
-              <TeamsPricingWidget agentCount={data.agentCount} onInvite={() => document.getElementById("invite-input")?.focus()} />
-
-              {/* Invitar agente */}
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-                <div style={{ padding: "16px 20px", borderBottom: tokkoAgents.length > 0 ? "0.5px solid #f3f4f6" : "none" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                    <UserPlus size={15} color={RED} />
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Invitar agente</span>
-                    <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{data.agentCount} activos</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
-                      style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
-                    <button onClick={invite} disabled={inviting || !newEmail}
-                      style={{ background: newEmail ? RED : "#e5e7eb", color: newEmail ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12, fontWeight: 500, cursor: newEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6 }}>
-                      <Mail size={12} />
-                      {inviting ? "Enviando..." : "Invitar"}
-                    </button>
-                  </div>
-                  {inviteMsg && <div style={{ fontSize: 12, marginTop: 8, color: inviteMsg.includes("nviada") ? "#16a34a" : "#dc2626" }}>{inviteMsg}</div>}
-                </div>
-
-                {/* Sugerencias desde Tokko */}
-                {tokkoAgents.length > 0 && (
-                  <>
-                    <div style={{ padding: "10px 20px 8px", display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderBottom: "0.5px solid #f3f4f6" }}>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>
-                        🏠 Agentes de Tokko sin invitar
-                      </span>
-                      <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af" }}>{tokkoAgents.length} disponibles</span>
-                    </div>
-                    {tokkoAgents.map(agent => (
-                      <div key={agent.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 20px", borderBottom: "0.5px solid #f9fafb" }}>
-                        {agent.picture
-                          ? <img src={agent.picture} alt="" style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }} />
-                          : <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
-                              {(agent.name || agent.email)[0].toUpperCase()}
-                            </div>
-                        }
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.name || agent.email}</div>
-                          <div style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {agent.email}{agent.branch_name ? ` · ${agent.branch_name}` : ""}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => inviteOne(agent.email)}
-                          disabled={invitingEmails.has(agent.email)}
-                          style={{ background: invitingEmails.has(agent.email) ? "#e5e7eb" : RED, color: invitingEmails.has(agent.email) ? "#9ca3af" : "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
-                          {invitingEmails.has(agent.email) ? "Enviando..." : "Invitar"}
-                        </button>
-                      </div>
-                    ))}
-                  </>
-                )}
+                {inviteMsg && <div style={{ fontSize: 12, marginTop: 8, color: inviteMsg.includes("nviada") ? "#16a34a" : "#dc2626" }}>{inviteMsg}</div>}
               </div>
 
-              {/* Usuarios activos */}
-              {teamMembers.length > 0 && (
-                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 8 }}>
-                    <Users size={13} color="#9ca3af" />
-                    <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>{teamMembers.length} usuarios activos</span>
-                    <span style={{ marginLeft: "auto", fontSize: 11, background: "#fef2f2", color: RED, borderRadius: 6, padding: "2px 8px", fontWeight: 500 }}>
-                      {teamMembers.length} seat{teamMembers.length !== 1 ? "s" : ""}
-                    </span>
+              {/* Sugerencias Tokko */}
+              {tokkoAgents.length > 0 && (
+                <>
+                  <div style={{ padding: "8px 16px", background: "#f9fafb", borderTop: "0.5px solid #f3f4f6", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>🏠 Agentes de Tokko sin invitar</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af" }}>{tokkoAgents.length} disponibles</span>
                   </div>
-                  <div>
-                    {teamMembers.map((a: any) => {
-                      const role = a.team_role || a.teamRole;
-                      return (
-                        <div key={a.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #f9fafb" }}>
-                          {a.avatar
-                            ? <img src={a.avatar} style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0 }} />
-                            : <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
-                                {(a.name || a.email)[0].toUpperCase()}
-                              </div>}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name || a.email}</div>
-                            {a.name && <div style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.email}</div>}
+                  {tokkoAgents.map(agent => (
+                    <div key={agent.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #f9fafb" }}>
+                      {agent.picture
+                        ? <img src={agent.picture} alt="" style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }} />
+                        : <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
+                            {(agent.name || agent.email)[0].toUpperCase()}
                           </div>
-                          {role === "owner" ? (
-                            <span style={{ fontSize: 11, fontWeight: 500, background: "#fef2f2", color: RED, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>Broker</span>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                              {roleLoading === a.email ? <Loader2 size={12} style={{ color: "#9ca3af" }} className="animate-spin" /> : (
-                                <select value={role} onChange={e => changeRole(a.email, e.target.value as "team_leader" | "member")}
-                                  style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 8px", cursor: "pointer" }}>
-                                  <option value="member">Agente</option>
-                                  <option value="team_leader">Team Leader</option>
-                                </select>
-                              )}
-                              <button onClick={() => removeAgent(a.email, a.name || a.email)} disabled={!!removeLoading}
-                                style={{ fontSize: 11, color: "#9ca3af", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
-                                {removeLoading === a.email ? "..." : "Remover"}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      }
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.name || agent.email}</div>
+                        <div style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.email}</div>
+                      </div>
+                      <button onClick={() => inviteOne(agent.email)} disabled={invitingEmails.has(agent.email)}
+                        style={{ background: invitingEmails.has(agent.email) ? "#e5e7eb" : RED, color: invitingEmails.has(agent.email) ? "#9ca3af" : "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
+                        {invitingEmails.has(agent.email) ? "Enviando..." : "Invitar"}
+                      </button>
+                    </div>
+                  ))}
+                </>
               )}
 
               {/* Invitaciones pendientes */}
               {pending.length > 0 && (
-                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 8 }}>
-                    <Clock size={13} color="#9ca3af" />
-                    <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Invitaciones pendientes</span>
+                <>
+                  <div style={{ padding: "8px 16px", background: "#f9fafb", borderTop: "0.5px solid #f3f4f6", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>⏳ Pendientes de aceptar</span>
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af" }}>{pending.length}</span>
                   </div>
                   {pending.map((inv: any) => (
@@ -547,13 +438,13 @@ export default function CuentaPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
-                        <div style={{ fontSize: 11, color: "#9ca3af" }}>Pendiente · {new Date(inv.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>{new Date(inv.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</div>
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         <button onClick={async () => { setResendLoading(inv.token); const r = await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"resend", token: inv.token}) }); const d = await r.json(); setResendLoading(null); setResendMsg(d.ok ? inv.token : null); setTimeout(() => setResendMsg(null), 3000); }}
                           disabled={resendLoading === inv.token}
                           style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
-                          {resendMsg === inv.token ? "✓ Enviado" : resendLoading === inv.token ? "..." : "Reenviar"}
+                          {resendMsg === inv.token ? "✓" : resendLoading === inv.token ? "..." : "Reenviar"}
                         </button>
                         <button onClick={async () => { await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"cancel", token: inv.token}) }); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }}
                           style={{ fontSize: 11, color: "#dc2626", background: "#FEF2F2", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
@@ -562,15 +453,60 @@ export default function CuentaPage() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </>
               )}
+            </div>
 
-              {/* Ex-agentes removidos */}
+            {/* COL DER — Usuarios activos */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 0, background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 8 }}>
+                <Users size={13} color="#9ca3af" />
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>Usuarios activos</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, background: "#fef2f2", color: RED, borderRadius: 6, padding: "2px 8px", fontWeight: 500 }}>
+                  {teamMembers.length} seat{teamMembers.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div>
+                {teamMembers.map((a: any) => {
+                  const role = a.team_role || a.teamRole;
+                  return (
+                    <div key={a.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #f9fafb" }}>
+                      {a.avatar
+                        ? <img src={a.avatar} style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0 }} />
+                        : <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
+                            {(a.name || a.email)[0].toUpperCase()}
+                          </div>}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name || a.email}</div>
+                        {a.name && <div style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.email}</div>}
+                      </div>
+                      {role === "owner" ? (
+                        <span style={{ fontSize: 11, fontWeight: 500, background: "#fef2f2", color: RED, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>Broker</span>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                          {roleLoading === a.email ? <Loader2 size={12} style={{ color: "#9ca3af" }} className="animate-spin" /> : (
+                            <select value={role} onChange={e => changeRole(a.email, e.target.value as "team_leader" | "member")}
+                              style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 8px", cursor: "pointer" }}>
+                              <option value="member">Agente</option>
+                              <option value="team_leader">Team Leader</option>
+                            </select>
+                          )}
+                          <button onClick={() => removeAgent(a.email, a.name || a.email)} disabled={!!removeLoading}
+                            style={{ fontSize: 11, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>
+                            {removeLoading === a.email ? "..." : "Remover"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Ex-agentes */}
               {removedMembers.length > 0 && (
-                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6" }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Agentes removidos</div>
-                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Podés re-invitar cuando venza el bloqueo</div>
+                <>
+                  <div style={{ padding: "8px 16px", background: "#f9fafb", borderTop: "0.5px solid #f3f4f6", borderBottom: "0.5px solid #f3f4f6" }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>Removidos</span>
                   </div>
                   {removedMembers.map((m: any) => {
                     const blockedUntil = new Date(m.blocked_until);
@@ -581,20 +517,51 @@ export default function CuentaPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, color: "#374151" }}>{m.removed_email}</div>
                           <div style={{ fontSize: 11, color: isBlocked ? "#dc2626" : "#16a34a", marginTop: 2 }}>
-                            {isBlocked ? `Bloqueado ${daysLeft} días más` : "Disponible para re-invitar"}
+                            {isBlocked ? `Bloqueado ${daysLeft}d más` : "Disponible para re-invitar"}
                           </div>
                         </div>
                         <button onClick={() => reinviteAgent(m.removed_email)} disabled={isBlocked || reinviteLoading === m.removed_email}
-                          style={{ fontSize: 11, color: isBlocked ? "#9ca3af" : "#374151", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 12px", cursor: isBlocked ? "not-allowed" : "pointer" }}>
-                          {reinviteLoading === m.removed_email ? "Enviando..." : "Re-invitar"}
+                          style={{ fontSize: 11, color: isBlocked ? "#9ca3af" : "#374151", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", cursor: isBlocked ? "not-allowed" : "pointer" }}>
+                          {reinviteLoading === m.removed_email ? "..." : "Re-invitar"}
                         </button>
                       </div>
                     );
                   })}
-                </div>
+                </>
               )}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Cancelar + billing */}
+        {isPaid && !data.isVip && (
+          <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
+            <button onClick={() => setShowCancel(!showCancel)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "14px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertTriangle size={14} color="#9ca3af" />
+              <span style={{ fontSize: 13, color: "#6b7280" }}>Cancelar suscripción</span>
+              <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{showCancel ? "▲" : "▼"}</span>
+            </button>
+            {showCancel && (
+              <div style={{ borderTop: "0.5px solid #f3f4f6", padding: "16px 20px" }}>
+                <div style={{ background: "#FEF2F2", border: "0.5px solid #fecaca", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#991b1b", marginBottom: 4 }}>¿Seguro que querés cancelar?</div>
+                  <div style={{ fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
+                    Seguís con acceso hasta el {formatDate(data.nextPaymentDate)}. Después perdés acceso al historial y al Inmo Coach.
+                  </div>
+                </div>
+                <input type="text" placeholder='Escribí "cancelar" para confirmar' value={cancelConfirm} onChange={e => setCancelConfirm(e.target.value)}
+                  style={{ width: "100%", border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+                <button onClick={handleCancel} disabled={cancelConfirm.toLowerCase() !== "cancelar" || actionLoading}
+                  style={{ width: "100%", background: cancelConfirm.toLowerCase() === "cancelar" ? "#dc2626" : "#e5e7eb", color: cancelConfirm.toLowerCase() === "cancelar" ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 500, cursor: cancelConfirm.toLowerCase() === "cancelar" ? "pointer" : "not-allowed" }}>
+                  {actionLoading ? "..." : "Cancelar suscripción"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: "#d1d5db", textAlign: "center" }}>
+          Consultas de facturación: <span style={{ color: "#9ca3af" }}>hola@inmocoach.com.ar</span>
         </div>
       </div>
 
