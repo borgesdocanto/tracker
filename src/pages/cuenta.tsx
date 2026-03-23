@@ -117,6 +117,7 @@ export default function CuentaPage() {
   const [showBroker, setShowBroker] = useState(true);
   const [anonymizeGlobal, setAnonymizeGlobal] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [rankingOpen, setRankingOpen] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -272,8 +273,6 @@ export default function CuentaPage() {
       </div>
     );
   }
-
-  const [rankingOpen, setRankingOpen] = useState(false);
 
   if (!data) return null;
 
