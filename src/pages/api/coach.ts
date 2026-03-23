@@ -235,6 +235,7 @@ Después del análisis, en línea separada:
         week_totals: totals,
         green_total: totals.totalGreen,
         updated_at: new Date().toISOString(),
+        seen_at: null, // reset seen when regenerated
       }, { onConflict: "user_email,period_key" });
 
     return res.status(200).json({

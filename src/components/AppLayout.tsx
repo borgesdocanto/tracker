@@ -11,6 +11,7 @@ interface NavItem {
   href?: string;
   onClick?: () => void;
   active?: boolean;
+  badge?: number;
   children?: { label: string; href: string; active?: boolean }[];
 }
 
@@ -30,6 +31,7 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
   const [isOwner, setIsOwner] = useState(false);
   const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
   const [agencyName, setAgencyName] = useState<string | null>(null);
+  const [unseenCoach, setUnseenCoach] = useState(0);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -47,6 +49,10 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
           if (d?.agencyName) setAgencyName(d.agencyName);
         })
         .catch(() => {});
+      fetch("/api/coach-seen")
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.unseen) setUnseenCoach(d.unseen); })
+        .catch(() => {});
     }
   }, [status]);
 
@@ -54,7 +60,7 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
 
   const navItems: NavItem[] = [
     { label: "Inicio", icon: "⊞", href: "/", active: path === "/" },
-    { label: "Coach IA", icon: "✧", href: "/coach", active: path === "/coach" },
+    { label: "Coach IA", icon: "✧", href: "/coach", active: path === "/coach", badge: unseenCoach > 0 ? unseenCoach : undefined },
     { label: "Actividad (IAC)", icon: "◈", href: "/iac", active: path === "/iac" },
     { label: "Racha y rango", icon: "✦", href: "/racha-rango", active: path === "/racha-rango" },
     { label: "Cartera Tokko", icon: "🏠", href: "/cartera", active: path === "/cartera" },
@@ -105,6 +111,11 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
           }}>
           <span style={{ fontSize: 14, width: 16, textAlign: "center" }}>{item.icon}</span>
           <span style={{ flex: 1 }}>{item.label}</span>
+          {item.badge && (
+            <span style={{ background: RED, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "1px 6px", minWidth: 16, textAlign: "center" }}>
+              {item.badge}
+            </span>
+          )}
           {isParent && <span style={{ fontSize: 10, color: "#9ca3af" }}>{(open || configOpen) ? "▲" : "▼"}</span>}
         </div>
         {isParent && (open || configOpen) && item.children && (

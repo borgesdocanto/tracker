@@ -113,10 +113,10 @@ export default function CoachPage() {
     // Load report history — and show most recent if current period has no analysis
     fetch("/api/coach-history")
       .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.reports) setHistory(d.reports);
-      })
+      .then(d => { if (d?.reports) setHistory(d.reports); })
       .catch(() => {});
+    // Mark all unseen reports as seen
+    fetch("/api/coach-seen", { method: "POST" }).catch(() => {});
   }, [status]);
 
   const { periodStart, periodEnd, periodLabel, goal } = useMemo(() => {
