@@ -11,6 +11,7 @@ export default function TokkoSetup() {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [tokkoSummary, setTokkoSummary] = useState<{ properties: number; agents: number } | null>(null);
   const [error, setError] = useState("");
 
   const handleSave = async () => {
@@ -26,7 +27,11 @@ export default function TokkoSetup() {
       const d = await r.json();
       if (d.ok) {
         setSaved(true);
-        setTimeout(() => router.push("/"), 1800);
+        // Get tokko summary before redirecting
+        const test = await fetch("/api/admin/tokko-test", { method: "POST" });
+        const td = await test.json();
+        if (td.ok) setTokkoSummary({ properties: td.properties ?? 0, agents: td.users ?? 0 });
+        setTimeout(() => router.push("/cuenta"), 4000);
       } else {
         setError(d.error || "API key inválida. Verificá en Tokko → Mi Empresa → Permisos.");
       }
@@ -130,9 +135,35 @@ export default function TokkoSetup() {
               )}
 
               {saved ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#16a34a", fontSize: 14, fontWeight: 500, padding: "12px 0" }}>
-                  <CheckCircle2 size={20} />
-                  Conectado correctamente. Redirigiendo al dashboard...
+                <div style={{ background: "#EAF3DE", border: "0.5px solid #86efac", borderRadius: 12, padding: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: tokkoSummary ? 14 : 0 }}>
+                    <CheckCircle2 size={20} style={{ color: "#16a34a", flexShrink: 0 }} />
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "#166534" }}>¡Tokko conectado correctamente!</div>
+                  </div>
+                  {tokkoSummary && (
+                    <>
+                      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                        <div style={{ flex: 1, background: "#fff", borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
+                          <div style={{ fontSize: 28, fontWeight: 500, fontFamily: "Georgia, serif", color: "#16a34a" }}>{tokkoSummary.properties}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>propiedades</div>
+                        </div>
+                        <div style={{ flex: 1, background: "#fff", borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
+                          <div style={{ fontSize: 28, fontWeight: 500, fontFamily: "Georgia, serif", color: "#16a34a" }}>{tokkoSummary.agents}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>agentes</div>
+                        </div>
+                      </div>
+                      {tokkoSummary.agents > 0 && (
+                        <button onClick={() => router.push("/cuenta")}
+                          style={{ width: "100%", background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                          Invitar agentes de Tokko a InmoCoach →
+                        </button>
+                      )}
+                      {tokkoSummary.agents === 0 && (
+                        <div style={{ fontSize: 12, color: "#166534" }}>Redirigiendo al dashboard...</div>
+                      )}
+                    </>
+                  )}
+                  {!tokkoSummary && <div style={{ fontSize: 12, color: "#166534" }}>Sincronizando datos...</div>}
                 </div>
               ) : (
                 <button

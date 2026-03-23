@@ -98,6 +98,8 @@ export default function CuentaPage() {
   const [newEmail, setNewEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState("");
+  const [tokkoAgents, setTokkoAgents] = useState<{ name: string; email: string; picture: string | null; branch_name: string | null }[]>([]);
+  const [invitingEmails, setInvitingEmails] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<any[]>([]);
   const [agencyInput, setAgencyInput] = useState("");
   const [agencyName, setAgencyName] = useState("");
@@ -142,6 +144,9 @@ export default function CuentaPage() {
     fetch("/api/teams/settings").then(r => r.ok ? r.json() : null).then(d => {
       if (d) { setShowTeamLeaders(d.showTeamLeaders ?? true); setShowBroker(d.showBroker ?? true); setAnonymizeGlobal(d.anonymizeGlobal ?? false); }
     });
+    fetch("/api/teams/tokko-agents").then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.agents) setTokkoAgents(d.agents);
+    });
   }, [status]);
 
 
@@ -180,9 +185,26 @@ export default function CuentaPage() {
     setInviting(true); setInviteMsg("");
     const res = await fetch("/api/teams/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: newEmail }) });
     const d = await res.json();
-    if (d.ok) { setInviteMsg(`Invitación enviada a ${newEmail}`); setNewEmail(""); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }
+    if (d.ok) {
+      setInviteMsg(`Invitación enviada a ${newEmail}`); setNewEmail("");
+      fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[]));
+      fetch("/api/teams/tokko-agents").then(r=>r.ok?r.json():null).then(d=>{ if(d?.agents) setTokkoAgents(d.agents); });
+    }
     else setInviteMsg(d.error || "Error");
     setInviting(false);
+  };
+
+  const inviteOne = async (email: string) => {
+    setInvitingEmails(prev => new Set([...Array.from(prev), email]));
+    const res = await fetch("/api/teams/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+    const d = await res.json();
+    if (d.ok) {
+      setTokkoAgents(prev => prev.filter(a => a.email.toLowerCase() !== email.toLowerCase()));
+      fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[]));
+    } else {
+      alert(d.error || "Error al invitar");
+    }
+    setInvitingEmails(prev => { const s = new Set(prev); s.delete(email); return s; });
   };
 
   const removeAgent = async (email: string, name: string) => {
@@ -462,23 +484,59 @@ export default function CuentaPage() {
               <TeamsPricingWidget agentCount={data.agentCount} onInvite={() => document.getElementById("invite-input")?.focus()} />
 
               {/* Invitar agente */}
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <UserPlus size={15} color={RED} />
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Invitar agente</span>
-                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{data.agentCount} activos</span>
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", borderBottom: tokkoAgents.length > 0 ? "0.5px solid #f3f4f6" : "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                    <UserPlus size={15} color={RED} />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Invitar agente</span>
+                    <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{data.agentCount} activos</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
+                      style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
+                    <button onClick={invite} disabled={inviting || !newEmail}
+                      style={{ background: newEmail ? RED : "#e5e7eb", color: newEmail ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12, fontWeight: 500, cursor: newEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6 }}>
+                      <Mail size={12} />
+                      {inviting ? "Enviando..." : "Invitar"}
+                    </button>
+                  </div>
+                  {inviteMsg && <div style={{ fontSize: 12, marginTop: 8, color: inviteMsg.includes("nviada") ? "#16a34a" : "#dc2626" }}>{inviteMsg}</div>}
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
-                    style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
-                  <button onClick={invite} disabled={inviting || !newEmail}
-                    style={{ background: newEmail ? RED : "#e5e7eb", color: newEmail ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12, fontWeight: 500, cursor: newEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6 }}>
-                    <Mail size={12} />
-                    {inviting ? "Enviando..." : "Invitar"}
-                  </button>
-                </div>
-                {inviteMsg && <div style={{ fontSize: 12, marginTop: 8, color: inviteMsg.includes("nviada") ? "#16a34a" : "#dc2626" }}>{inviteMsg}</div>}
+
+                {/* Sugerencias desde Tokko */}
+                {tokkoAgents.length > 0 && (
+                  <>
+                    <div style={{ padding: "10px 20px 8px", display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderBottom: "0.5px solid #f3f4f6" }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>
+                        🏠 Agentes de Tokko sin invitar
+                      </span>
+                      <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af" }}>{tokkoAgents.length} disponibles</span>
+                    </div>
+                    {tokkoAgents.map(agent => (
+                      <div key={agent.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 20px", borderBottom: "0.5px solid #f9fafb" }}>
+                        {agent.picture
+                          ? <img src={agent.picture} alt="" style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }} />
+                          : <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
+                              {(agent.name || agent.email)[0].toUpperCase()}
+                            </div>
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.name || agent.email}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {agent.email}{agent.branch_name ? ` · ${agent.branch_name}` : ""}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => inviteOne(agent.email)}
+                          disabled={invitingEmails.has(agent.email)}
+                          style={{ background: invitingEmails.has(agent.email) ? "#e5e7eb" : RED, color: invitingEmails.has(agent.email) ? "#9ca3af" : "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
+                          {invitingEmails.has(agent.email) ? "Enviando..." : "Invitar"}
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
 
               {/* Usuarios activos */}
