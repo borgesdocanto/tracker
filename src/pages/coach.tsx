@@ -7,6 +7,54 @@ import { Brain, RefreshCw, Mail, CheckCircle, Loader2, ChevronLeft, ChevronRight
 
 const RED = "#aa0000";
 
+function TokkoCoachCard() {
+  const [stats, setStats] = useState<{ connected: boolean; active?: number; complete?: number; incomplete?: number; stale?: number } | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/tokko-portfolio", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setStats(d?.connected ? { connected: true, ...d.stats } : { connected: false }))
+      .catch(() => setStats({ connected: false }));
+  }, []);
+
+  if (!stats) return null;
+
+  if (!stats.connected) return (
+    <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>🏠 Cartera Tokko</div>
+      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12, lineHeight: 1.6 }}>
+        Conectá Tokko para que el Coach incluya el estado de tus fichas en el análisis.
+      </div>
+      <button onClick={() => router.push("/tokko-setup")}
+        style={{ width: "100%", background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+        Conectar Tokko →
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 10 }}>🏠 Cartera Tokko</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={{ background: "#f9fafb", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+          <div style={{ fontSize: 20, fontWeight: 500, fontFamily: "Georgia, serif", color: "#111827" }}>{stats.active}</div>
+          <div style={{ fontSize: 10, color: "#9ca3af" }}>disponibles</div>
+        </div>
+        <div style={{ background: stats.incomplete! > 0 ? "#FEF2F2" : "#f9fafb", borderRadius: 8, padding: "8px 10px", textAlign: "center", border: stats.incomplete! > 0 ? "0.5px solid #fecaca" : "none" }}>
+          <div style={{ fontSize: 20, fontWeight: 500, fontFamily: "Georgia, serif", color: stats.incomplete! > 0 ? "#dc2626" : "#16a34a" }}>{stats.incomplete}</div>
+          <div style={{ fontSize: 10, color: stats.incomplete! > 0 ? "#dc2626" : "#9ca3af" }}>por mejorar</div>
+        </div>
+      </div>
+      {(stats.incomplete! > 0 || stats.stale! > 0) && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "#6b7280", lineHeight: 1.5 }}>
+          ✦ El coach incluye este estado en su análisis
+        </div>
+      )}
+    </div>
+  );
+}
+
 function localDateStr(d: Date) { return d.toISOString().slice(0, 10); }
 
 function getMonday(weekOffset = 0) {
@@ -62,10 +110,12 @@ export default function CoachPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => { setCalData(d); setLoading(false); })
       .catch(() => setLoading(false));
-    // Load report history
+    // Load report history — and show most recent if current period has no analysis
     fetch("/api/coach-history")
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.reports) setHistory(d.reports); })
+      .then(d => {
+        if (d?.reports) setHistory(d.reports);
+      })
       .catch(() => {});
   }, [status]);
 
@@ -94,7 +144,7 @@ export default function CoachPage() {
     }
   }, [view, weekOffset, calData]);
 
-  // Auto-fetch cached report on period change
+  // Auto-fetch cached report on period change — fallback to most recent if none
   useEffect(() => {
     if (!periodStart || !calData) return;
     setAdvice(""); setProfile(""); setFromCache(false);
@@ -112,6 +162,18 @@ export default function CoachPage() {
       if (d.fromCache && d.advice) {
         setAdvice(d.advice); setProfile(d.profile || "");
         setFromCache(true); setIsClosed(d.isClosed || false);
+      } else {
+        // No hay para este período — cargar el más reciente del historial
+        fetch("/api/coach-history").then(r => r.ok ? r.json() : null).then(hist => {
+          if (hist?.reports?.length > 0) {
+            const latest = hist.reports[0];
+            if (latest.advice) {
+              setAdvice(latest.advice); setProfile(latest.profile || "");
+              setFromCache(true); setIsClosed(true);
+              setHistory(hist.reports);
+            }
+          }
+        }).catch(() => {});
       }
     }).catch(() => {});
   }, [periodStart, periodEnd, calData]);
@@ -216,17 +278,15 @@ export default function CoachPage() {
           </button>
           {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} style={{ fontSize: 12, color: RED, background: "none", border: "none", cursor: "pointer" }}>Hoy</button>}
 
-          {/* Actions */}
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <button onClick={sendTestEmail} disabled={emailSending || emailSent} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: emailSent ? "#16a34a" : "#6b7280", background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 8, padding: "7px 12px", cursor: "pointer" }}>
-              {emailSending ? <Loader2 size={12} className="animate-spin" /> : emailSent ? <CheckCircle size={12} /> : <Mail size={12} />}
-              {emailSent ? "Enviado" : "Mail de prueba"}
-            </button>
-            <button onClick={() => analyze(true)} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#fff", background: RED, border: "none", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontWeight: 500 }}>
-              {analyzing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              {analyzing ? "Analizando..." : advice ? "Regenerar" : "Analizar"}
-            </button>
-          </div>
+          {/* Status indicator */}
+          {fromCache && !isClosed && (
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#9ca3af" }}>
+              <RefreshCw size={11} />
+              <button onClick={() => analyze(true)} disabled={analyzing} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: RED, textDecoration: "underline" }}>
+                {analyzing ? "Actualizando..." : "Actualizar análisis"}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="coach-grid">
@@ -256,10 +316,8 @@ export default function CoachPage() {
                   <span style={{ fontSize: 11, color: barColor, fontWeight: 500 }}>{periodPct}% del objetivo</span>
                 </div>
                 <div style={{ marginTop: 20, textAlign: "center" }}>
-                  <button onClick={() => analyze(false)} style={{ background: "#111827", color: "#fff", border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <Brain size={16} /> Analizar con Inmo Coach
-                  </button>
-                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>El análisis tarda unos segundos</div>
+                  <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>No hay análisis guardado para este período aún.</div>
+                  <div style={{ fontSize: 11, color: "#d1d5db" }}>El análisis se genera automáticamente cada semana y llega por mail.</div>
                 </div>
               </div>
             )}
@@ -359,6 +417,9 @@ export default function CoachPage() {
                 </div>
               </div>
             )}
+
+            {/* Tokko card */}
+            <TokkoCoachCard />
 
             {/* Info */}
             <div style={{ background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 16 }}>
