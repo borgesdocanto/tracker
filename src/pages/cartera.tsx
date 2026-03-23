@@ -108,15 +108,27 @@ export default function CarteraPage() {
         <div className="ct-kpis" style={{ marginBottom: 20 }}>
 
           {/* Disponibles */}
-          <div style={{ background: "#fff", border: `0.5px solid ${cartColor}20`, borderTop: `3px solid ${cartColor}`, borderRadius: "0 0 12px 12px", padding: 16 }}>
+          <div
+            onClick={() => setFilter("all")}
+            style={{ background: filter === "all" ? "#f9fafb" : "#fff", border: `0.5px solid ${cartColor}20`, borderTop: `3px solid ${cartColor}`, borderRadius: "0 0 12px 12px", padding: 16, cursor: "pointer" }}>
             <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Disponibles</div>
             <div style={{ fontSize: 36, fontWeight: 500, fontFamily: "Georgia, serif", color: cartColor, lineHeight: 1 }}>{stats.active}</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
+              <span style={{ fontWeight: 500, textDecoration: "underline" }}>{filter === "all" ? "mostrando todas" : "ver todas →"}</span>
+            </div>
           </div>
 
           {/* Fichas OK */}
-          <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderTop: "3px solid #16a34a", borderRadius: "0 0 12px 12px", padding: 16 }}>
+          <div
+            onClick={() => setFilter("all")}
+            style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderTop: "3px solid #16a34a", borderRadius: "0 0 12px 12px", padding: 16, cursor: "pointer" }}>
             <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Fichas OK</div>
             <div style={{ fontSize: 36, fontWeight: 500, fontFamily: "Georgia, serif", color: "#16a34a", lineHeight: 1 }}>{stats.complete}</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
+              {stats.complete === stats.active
+                ? <span style={{ color: "#16a34a", fontWeight: 500 }}>Cartera al día ✓</span>
+                : <span>{stats.complete} de {stats.active} completas</span>}
+            </div>
           </div>
 
           {/* Por mejorar — con alerta integrada */}
