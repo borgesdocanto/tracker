@@ -134,7 +134,7 @@ export default function IACPage() {
       <Head><title>Actividad Comercial — InmoCoach</title></Head>
 
       <style>{`
-        .iac-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .iac-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
         .iac-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         @media (max-width: 767px) {
           .iac-grid { grid-template-columns: 1fr; }
@@ -216,7 +216,7 @@ export default function IACPage() {
                 </div>
               ))}
             </div>
-            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+            <div>
               {weekData?.map((d: any) => d.events.length > 0 && (
                 <div key={d.date}>
                   {d.events.filter((e: any) => e.isGreen).map((ev: any) => (
@@ -240,22 +240,22 @@ export default function IACPage() {
 
           {/* Desglose por tipo */}
           <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6" }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Desglose por tipo</div>
+            <div style={{ padding: "12px 14px", borderBottom: "0.5px solid #f3f4f6" }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: "#374151" }}>Desglose por tipo</div>
             </div>
-            <div style={{ padding: "16px" }}>
+            <div style={{ padding: "12px 14px" }}>
               {eventTypes.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, padding: "24px 0" }}>Sin actividad {weekLabel}</div>
+                <div style={{ textAlign: "center", color: "#9ca3af", fontSize: 12, padding: "16px 0" }}>Sin actividad {weekLabel}</div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {eventTypes.map(([type, count]) => (
                     <div key={type}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, color: "#374151", textTransform: "capitalize" }}>{type.replace(/_/g, " ")}</span>
-                        <span style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{count}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                        <span style={{ fontSize: 11, color: "#374151", textTransform: "capitalize" }}>{type.replace(/_/g, " ")}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#111827" }}>{count}</span>
                       </div>
-                      <div style={{ height: 6, background: "#f3f4f6", borderRadius: 3, overflow: "hidden" }}>
-                        <div style={{ height: "100%", background: RED, borderRadius: 3, width: `${Math.round(count / weekTotal * 100)}%` }} />
+                      <div style={{ height: 4, background: "#f3f4f6", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", background: RED, borderRadius: 2, width: `${Math.round(count / weekTotal * 100)}%` }} />
                       </div>
                     </div>
                   ))}
