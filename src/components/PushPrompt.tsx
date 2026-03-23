@@ -1,28 +1,28 @@
-import { Bell, BellOff, X } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useState } from "react";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 
 const RED = "#aa0000";
 
 export default function PushPrompt() {
-  const { status, subscribe, unsubscribe } = usePushNotifications();
+  const { status, subscribe } = usePushNotifications();
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [justEnabled, setJustEnabled] = useState(false);
+  const [done, setDone] = useState(false);
 
-  // No mostrar si está cargando, no soportado, ya concedido, denegado, o si lo cerró
   if (status === "loading" || status === "unsupported" || status === "denied" || dismissed) return null;
 
   if (status === "granted") {
-    if (!justEnabled) return null;
-    // Confirmar activación por 3 segundos
+    if (!done) return null;
     return (
-      <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-3"
-        style={{ fontFamily: "'Helvetica Neue', sans-serif" }}>
-        <Bell size={15} className="text-green-600 shrink-0" />
-        <p className="text-sm font-semibold text-green-700 flex-1">
-          ✅ Notificaciones activadas — te avisamos si tu racha está en riesgo
-        </p>
+      <div style={{
+        position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+        background: "#EAF3DE", border: "0.5px solid #86efac", borderRadius: 12,
+        padding: "10px 20px", display: "flex", alignItems: "center", gap: 10,
+        fontSize: 13, color: "#166534", fontWeight: 500, zIndex: 50,
+        boxShadow: "0 4px 20px rgba(0,0,0,0.1)", whiteSpace: "nowrap",
+      }}>
+        <Bell size={14} /> Notificaciones activadas ✓
       </div>
     );
   }
@@ -31,34 +31,53 @@ export default function PushPrompt() {
     setLoading(true);
     const ok = await subscribe();
     setLoading(false);
-    if (ok) setJustEnabled(true);
+    if (ok) setDone(true);
   };
 
   return (
-    <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 flex items-start gap-3"
-      style={{ fontFamily: "'Helvetica Neue', sans-serif" }}>
-      <div className="text-2xl shrink-0">🔥</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-black text-orange-900">Activá las notificaciones de racha</p>
-        <p className="text-xs text-orange-700 mt-0.5 leading-relaxed">
-          Te avisamos a las 6pm si tu racha está en riesgo — directo en el celu, sin abrir la app.
-        </p>
-        <div className="flex items-center gap-2 mt-3">
-          <button onClick={handleEnable} disabled={loading}
-            className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl text-white disabled:opacity-60 hover:opacity-90 transition-all"
-            style={{ background: RED }}>
-            <Bell size={12} />
-            {loading ? "Activando..." : "Activar notificaciones"}
-          </button>
-          <button onClick={() => setDismissed(true)}
-            className="text-xs text-orange-400 hover:text-orange-600 transition-colors px-2 py-2">
-            Ahora no
-          </button>
-        </div>
-      </div>
-      <button onClick={() => setDismissed(true)} className="text-orange-300 hover:text-orange-500 transition-colors shrink-0">
+    <div style={{
+      position: "fixed", bottom: 20, right: 20,
+      background: "#fff", border: "0.5px solid #e5e7eb",
+      borderRadius: 16, padding: "16px 18px", maxWidth: 320,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.12)", zIndex: 50,
+      fontFamily: "'Helvetica Neue', sans-serif",
+    }}>
+      <button onClick={() => setDismissed(true)} style={{
+        position: "absolute", top: 10, right: 10,
+        background: "none", border: "none", cursor: "pointer", color: "#d1d5db", padding: 4,
+      }}>
         <X size={14} />
       </button>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <div style={{ fontSize: 28, flexShrink: 0, lineHeight: 1 }}>🔥</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", marginBottom: 3 }}>
+            Activá las notificaciones de racha
+          </div>
+          <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+            Te avisamos a las 18hs si tu racha está en riesgo — sin abrir la app.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={handleEnable} disabled={loading} style={{
+          flex: 1, background: RED, color: "#fff", border: "none",
+          borderRadius: 9, padding: "8px 0", fontSize: 12, fontWeight: 500,
+          cursor: loading ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+        }}>
+          <Bell size={12} />
+          {loading ? "Activando..." : "Activar"}
+        </button>
+        <button onClick={() => setDismissed(true)} style={{
+          padding: "8px 12px", fontSize: 12, color: "#9ca3af",
+          background: "#f9fafb", border: "0.5px solid #e5e7eb",
+          borderRadius: 9, cursor: "pointer",
+        }}>
+          No, gracias
+        </button>
+      </div>
     </div>
   );
 }

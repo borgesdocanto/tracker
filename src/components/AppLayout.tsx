@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useSession, signOut } from "next-auth/react";
+import PushPrompt from "./PushPrompt";
 
 const RED = "#aa0000";
 
@@ -49,6 +50,7 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
     { label: "Racha y rango", icon: "✦", href: "/racha-rango", active: path === "/racha-rango" },
     { label: "Cartera Tokko", icon: "🏠", href: "/cartera", active: path === "/cartera" },
     { label: "Posición equipo", icon: "◎", href: "/posicion", active: path === "/posicion" },
+    { label: "Inmo Coach", icon: "✧", href: "/coach", active: path === "/coach" },
     ...(isOwner ? [
       {
         label: "Mi equipo",
@@ -228,6 +230,7 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
           .ic-logo-mobile { display: block !important; }
         }
       `}</style>
+      <PushPrompt />
     </div>
   );
 }

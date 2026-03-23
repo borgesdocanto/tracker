@@ -1,4 +1,5 @@
 import Head from "next/head";
+import AppLayout from "../components/AppLayout";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
@@ -103,103 +104,82 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+    <AppLayout>
       <Head><title>Precios — InmoCoach</title></Head>
-      <div className="h-1 w-full" style={{ background: RED }} />
 
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors">
-            <ArrowLeft size={13} /> Volver
-          </button>
-          <div className="font-black text-lg ml-auto" style={{ fontFamily: "Georgia, serif" }}>
-            Precios · <span style={{ color: RED }}>InmoCoach</span>
-          </div>
-        </div>
-      </header>
+      <style>{`
+        .pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .pr-tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .pr-features { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        @media (max-width: 900px) { .pr-grid { grid-template-columns: 1fr; } .pr-tiers { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .pr-features { grid-template-columns: 1fr; } }
+      `}</style>
 
-      <main className="max-w-3xl mx-auto px-5 py-8 space-y-6">
+      <div style={{ padding: "32px 24px 60px" }}>
 
-        {/* Hero */}
-        <div className="text-center py-4">
-          <h1 className="text-3xl font-black text-gray-900 mb-2" style={{ fontFamily: "Georgia, serif" }}>
+        {/* Page header */}
+        <div style={{ marginBottom: 28, textAlign: "center" }}>
+          <div style={{ fontSize: 28, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif", marginBottom: 6 }}>
             Un precio que crece con vos
-          </h1>
-          <p className="text-gray-500 text-sm">Cuantos más agentes sumás, menos pagás por cada uno.</p>
+          </div>
+          <div style={{ fontSize: 14, color: "#6b7280" }}>7 días gratis · Sin tarjeta de crédito · Cancelás cuando querés</div>
         </div>
 
-        {/* Plan Individual */}
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-          <div className="px-6 py-5 flex items-start justify-between gap-4">
-            <div>
-              <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Individual</div>
-              <div className="text-xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>Para el agente solo</div>
-              <p className="text-sm text-gray-500 mt-1">Dashboard personal, IAC, racha, ranking global.</p>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="font-black text-3xl" style={{ fontFamily: "Georgia, serif", color: RED, lineHeight: 1 }}>
-                {formatPriceARS(BASE_PRICE)}
+        <div className="pr-grid" style={{ marginBottom: 20 }}>
+
+          {/* Plan individual */}
+          <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderTop: `3px solid ${RED}`, borderRadius: "0 0 14px 14px", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px" }}>
+              <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Individual</div>
+              <div style={{ fontSize: 20, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif", marginBottom: 4 }}>Para el agente solo</div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 20 }}>Dashboard personal, IAC, racha, ranking global.</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 20 }}>
+                <div style={{ fontSize: 36, fontWeight: 500, fontFamily: "Georgia, serif", color: RED, lineHeight: 1 }}>{formatPriceARS(BASE_PRICE)}</div>
+                <div style={{ fontSize: 13, color: "#9ca3af" }}>/mes</div>
               </div>
-              <div className="text-xs text-gray-400 mt-1">/mes</div>
+              <button onClick={() => handleCheckout(1)} disabled={checkoutLoading}
+                style={{ width: "100%", background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                Empezar gratis 7 días →
+              </button>
             </div>
           </div>
-          <div className="px-6 pb-5">
-            <button onClick={() => router.push("/login")}
-              className="w-full py-3 rounded-xl text-sm font-black text-white hover:opacity-90 transition-all"
-              style={{ background: RED }}>
-              Empezar gratis 7 días →
-            </button>
+
+          {/* Simulador */}
+          <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderTop: "3px solid #111827", borderRadius: "0 0 14px 14px", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px" }}>
+              <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Equipos</div>
+              <AgentSimulator onCheckout={handleCheckout} />
+            </div>
           </div>
         </div>
 
-        {/* Tabla de tiers */}
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Users size={14} className="text-gray-400" />
-            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Descuentos por equipo</span>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {VOLUME_TIERS.map((tier, i) => {
-              const exampleCount = tier.maxAgents ? Math.floor((tier.minAgents + tier.maxAgents) / 2) : tier.minAgents + 5;
-              const agentPrice = pricePerAgent(BASE_PRICE, tier.minAgents);
-              const isFirst = i === 0;
-              return (
-                <div key={tier.minAgents} className={`px-6 py-4 flex items-center gap-4 ${!isFirst ? "" : ""}`}>
-                  <div className="w-16 shrink-0">
-                    <span className="text-sm font-black text-gray-700">
-                      {tier.minAgents === 1 ? "1–4" : tier.minAgents === 5 ? "5–9" : tier.minAgents === 10 ? "10–19" : "20+"}
-                    </span>
-                    <div className="text-xs text-gray-400">agentes</div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-900">{tier.label}</span>
-                      {tier.discountPct > 0 && (
-                        <span className="text-xs font-black px-2 py-0.5 rounded-full text-white bg-green-500">
-                          -{tier.discountPct}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-black" style={{ color: RED, fontFamily: "Georgia, serif" }}>
-                      {formatPriceARS(agentPrice)}
-                    </div>
-                    <div className="text-xs text-gray-400">/agente/mes</div>
-                  </div>
+        {/* Tiers de descuento */}
+        <div className="pr-tiers" style={{ marginBottom: 20 }}>
+          {VOLUME_TIERS.map((tier, i) => {
+            const agentPrice = pricePerAgent(BASE_PRICE, tier.minAgents);
+            return (
+              <div key={i} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", marginBottom: 4 }}>
+                  {tier.minAgents === 1 ? "1–4" : tier.minAgents === 5 ? "5–9" : tier.minAgents === 10 ? "10–19" : "20+"} agentes
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ fontSize: 22, fontWeight: 500, fontFamily: "Georgia, serif", color: RED, lineHeight: 1 }}>
+                  {formatPriceARS(agentPrice)}
+                </div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>/agente/mes</div>
+                {tier.discountPct > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 11, fontWeight: 500, background: "#EAF3DE", color: "#3B6D11", borderRadius: 6, padding: "2px 7px", display: "inline-block" }}>
+                    -{tier.discountPct}%
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-        {/* Simulador */}
-        <AgentSimulator onCheckout={handleCheckout} />
 
         {/* Qué incluye */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-6">
-          <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Qué incluye el equipo</div>
-          <div className="grid sm:grid-cols-2 gap-3">
+        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: "20px 24px" }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 16 }}>Todo lo que incluye el plan equipo</div>
+          <div className="pr-features">
             {[
               "Dashboard individual para cada agente",
               "Dashboard del broker con ranking del equipo",
@@ -208,27 +188,16 @@ export default function PricingPage() {
               "Ranking interno del equipo",
               "Inmo Coach con IA para cada agente",
               "Mail semanal personalizado por agente",
-              "Invitaciones por email",
-            ].map((feature, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <Check size={13} className="text-green-500 shrink-0 mt-0.5" />
-                <span className="text-sm text-gray-600">{feature}</span>
+              "Integración con Tokko Broker",
+            ].map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ color: "#16a34a", fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
+                <span style={{ fontSize: 13, color: "#4b5563" }}>{f}</span>
               </div>
             ))}
           </div>
         </div>
-
-        {/* CTA */}
-        <div className="text-center pb-4">
-          <p className="text-sm text-gray-400 mb-3">7 días gratis · Sin tarjeta de crédito · Cancelás cuando querés</p>
-          <button onClick={() => handleCheckout(1)} disabled={checkoutLoading}
-            className="px-8 py-3 rounded-xl font-black text-white text-sm hover:opacity-90 transition-all disabled:opacity-60"
-            style={{ background: RED }}>
-            Empezar ahora →
-          </button>
-        </div>
-
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

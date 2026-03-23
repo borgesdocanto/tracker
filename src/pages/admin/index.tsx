@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import AppLayout from "../../components/AppLayout";
 import { requireSuperAdmin } from "../../lib/adminGuard";
 import {
   Users, CreditCard, BarChart2, Zap, Search, RefreshCw, Settings,
@@ -388,46 +389,37 @@ export default function AdminPanel() {
     setEventTypesSaving(false);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>Admin — InmoCoach</title></Head>
-      <div className="h-0.5 w-full" style={{ background: RED }} />
+  const TABS = [
+    { key: "overview", label: "Overview", icon: <BarChart2 size={13} /> },
+    { key: "users", label: "Usuarios", icon: <Users size={13} /> },
+    { key: "teams", label: "Equipos", icon: <Shield size={13} /> },
+    { key: "ops", label: "Ops", icon: <Zap size={13} /> },
+    { key: "precios", label: "Precios", icon: <CreditCard size={13} /> },
+    { key: "eventos", label: "Eventos", icon: <Settings size={13} /> },
+    { key: "goals", label: "Goals", icon: <Target size={13} /> },
+    { key: "coach", label: "Coach AI", icon: <MessageSquare size={13} /> },
+    { key: "midweek", label: "Miércoles", icon: <Mail size={13} /> },
+    { key: "rangos", label: "Rangos", icon: <TrendingUp size={13} /> },
+    { key: "tokko", label: "Tokko", icon: <Building2 size={13} /> },
+  ] as const;
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
-          <div className="font-black text-lg mr-auto" style={{ fontFamily: "Georgia, serif" }}>
-            Inmo<span style={{ color: RED }}>Coach</span>
-            <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-500 align-middle">ADMIN</span>
-          </div>
-          <button onClick={() => router.push("/")}
-            className="text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors">
-            ← Dashboard
-          </button>
-        </div>
-        {/* Tabs */}
-        <div className="max-w-6xl mx-auto px-5 flex gap-1 pb-0">
-          {([
-            { key: "overview", label: "Overview", icon: <BarChart2 size={13} /> },
-            { key: "users", label: "Usuarios", icon: <Users size={13} /> },
-            { key: "teams", label: "Equipos", icon: <Shield size={13} /> },
-            { key: "ops", label: "Operaciones", icon: <Zap size={13} /> },
-            { key: "precios", label: "Precios", icon: <CreditCard size={13} /> },
-            { key: "eventos", label: "Tipos de evento", icon: <Settings size={13} /> },
-            { key: "goals", label: "Goals", icon: <Target size={13} /> },
-            { key: "coach", label: "Coach AI", icon: <MessageSquare size={13} /> },
-            { key: "midweek", label: "Miércoles", icon: <Mail size={13} /> },
-            { key: "rangos", label: "Rangos", icon: <TrendingUp size={13} /> },
-            { key: "tokko", label: "Tokko", icon: <Building2 size={13} /> },
-          ] as const).map(t => (
+  return (
+    <AppLayout greeting="Admin Panel" topbarExtra={
+      <span style={{ fontSize: 11, fontWeight: 500, background: "#fef2f2", color: RED, borderRadius: 6, padding: "3px 8px" }}>ADMIN</span>
+    }>
+      <Head><title>Admin — InmoCoach</title></Head>
+
+      {/* Tab bar */}
+      <div style={{ background: "#fff", borderBottom: "0.5px solid #e5e7eb", overflowX: "auto" }}>
+        <div style={{ display: "flex", padding: "0 16px", gap: 2, minWidth: "max-content" }}>
+          {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors"
-              style={{ borderColor: tab === t.key ? RED : "transparent", color: tab === t.key ? RED : "#9ca3af" }}>
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "10px 14px", fontSize: 12, fontWeight: 500, background: "none", cursor: "pointer", borderBottom: `2px solid ${tab === t.key ? RED : "transparent"}`, color: tab === t.key ? RED : "#9ca3af", whiteSpace: "nowrap" }}>
               {t.icon}{t.label}
             </button>
           ))}
         </div>
-      </header>
+      </div>
 
       <main className="max-w-6xl mx-auto px-5 py-8 space-y-5">
 
@@ -1490,7 +1482,7 @@ export default function AdminPanel() {
         )}
 
       </main>
-    </div>
+    </AppLayout>
   );
 }
 
