@@ -16,12 +16,13 @@ interface NavItem {
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  title?: string;
   agencyLogo?: string | null;
   isOwner?: boolean;
+  topbarExtra?: React.ReactNode;
+  greeting?: string;
 }
 
-export default function AppLayout({ children, agencyLogo, isOwner }: AppLayoutProps) {
+export default function AppLayout({ children, agencyLogo, isOwner, topbarExtra, greeting }: AppLayoutProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -164,7 +165,10 @@ export default function AppLayout({ children, agencyLogo, isOwner }: AppLayoutPr
           <div style={{ fontSize: 15, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }} className="ic-logo-mobile">
             Inmo<span style={{ color: RED }}>Coach</span>
           </div>
-          <div style={{ flex: 1 }} />
+          <div style={{ flex: 1 }}>
+            {greeting && <div style={{ fontSize: 13, color: "#374151", fontWeight: 500 }} className="ic-greeting">{greeting}</div>}
+          </div>
+          {topbarExtra && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{topbarExtra}</div>}
           {session?.user?.image
             ? <img src={session.user.image} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${RED}`, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })} />
             : <div style={{ width: 30, height: 30, borderRadius: "50%", background: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 500, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })}>

@@ -5,6 +5,7 @@ import RankBadge from "../components/RankBadge";
 import RankingPosition from "../components/RankingPosition";
 import AgentVsTeam from "../components/AgentVsTeam";
 import TokkoPortfolio from "../components/TokkoPortfolio";
+import AppLayout from "../components/AppLayout";
 import PushPrompt from "../components/PushPrompt";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useRouter } from "next/router";
@@ -911,392 +912,251 @@ export default function HomePage() {
     : weekOffset === -1 ? "semana pasada"
     : `hace ${Math.abs(weekOffset)} sem.`;
 
+  const greeting = (() => {
+    const h = new Date().getHours();
+    const name = data?.user.name?.split(" ")[0] ?? session?.user?.name?.split(" ")[0] ?? "";
+    if (h < 12) return `Buenos días, ${name}`;
+    if (h < 19) return `Buenas tardes, ${name}`;
+    return `Buenas noches, ${name}`;
+  })();
+
+  const topbarExtra = (
+    <>
+      <div className="ic-days-desktop" style={{ alignItems: "center", background: "#f3f4f6", borderRadius: 9, padding: "3px", gap: 2 }}>
+        {([7, 14, 30] as const).map(d => (
+          <button key={d} onClick={() => handleSetDays(d)} style={{
+            background: days === d ? "#fff" : "transparent",
+            color: days === d ? "#111827" : "#9ca3af",
+            boxShadow: days === d ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+            borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer"
+          }}>{d}d</button>
+        ))}
+      </div>
+      <button onClick={sync} disabled={loading || syncing} style={{
+        fontSize: 12, color: syncing ? "#d97706" : "#6b7280",
+        background: "#f9fafb", border: "0.5px solid #e5e7eb",
+        borderRadius: 7, padding: "5px 10px", cursor: "pointer", whiteSpace: "nowrap"
+      }}>
+        {syncing ? "↻ Actualizando..." : "↻ Sync"}
+      </button>
+    </>
+  );
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f4f5f7", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head>
-        <title>InmoCoach</title>
-        <style>{`
-          .ic-sidebar { display: flex; }
-          .ic-topbar-greeting { display: block; }
-          .ic-topbar-logo { display: none; }
-          .ic-hamburger { display: none; }
-          .ic-days-desktop { display: flex; }
-          .ic-days-mobile { display: none; }
-          .ic-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
-          @media (max-width: 767px) {
-            .ic-sidebar { display: none !important; }
-            .ic-topbar-greeting { display: none; }
-            .ic-topbar-logo { display: block; }
-            .ic-hamburger { display: flex; }
-            .ic-days-desktop { display: none; }
-            .ic-days-mobile { display: flex; }
-            .ic-cards-grid { grid-template-columns: 1fr; }
-          }
-        `}</style>
-      </Head>
+    <AppLayout isOwner={isOwner} greeting={greeting} topbarExtra={topbarExtra}>
+      <Head><title>InmoCoach</title></Head>
 
-      {/* ── SIDEBAR desktop ── */}
-      <aside style={{
-        width: "210px", background: "#fff", borderRight: "0.5px solid #e5e7eb",
-        flexShrink: 0, display: "flex", flexDirection: "column",
-        position: "sticky", top: 0, height: "100vh"
-      }} className="ic-sidebar">
-        <div style={{ padding: "18px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ width: 36, height: 36, background: RED, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0 }}>G</div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: "#111827", letterSpacing: "-0.3px", fontFamily: "Georgia, serif" }}>
-            Inmo<span style={{ color: RED }}>Coach</span>
+      <style>{`
+        .ic-days-desktop { display: flex; }
+        .ic-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 767px) {
+          .ic-days-desktop { display: none; }
+          .ic-cards-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
+
+      {/* Days mobile strip */}
+      <div style={{ background: "#fff", borderBottom: "0.5px solid #e5e7eb", padding: "8px 16px", display: "none", gap: 6, overflowX: "auto" }} className="ic-days-mobile-strip">
+        {([7, 14, 30, 60, 90] as const).map(d => (
+          <button key={d} onClick={() => handleSetDays(d)} style={{
+            background: days === d ? "#111827" : "transparent", color: days === d ? "#fff" : "#9ca3af",
+            borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 500,
+            border: days === d ? "none" : "0.5px solid #e5e7eb", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0
+          }}>{d}d</button>
+        ))}
+      </div>
+
+      <div style={{ padding: "20px" }}>
+        {/* Alert */}
+        {error && (
+          <div style={{ background: "#fef2f2", border: "0.5px solid #fecaca", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ color: RED, fontSize: 13 }}>⚠</span>
+            <span style={{ fontSize: 13, color: "#991b1b" }}>{error}</span>
+            {(error.includes("token") || error.includes("auth")) && (
+              <button onClick={() => router.push("/relogin")} style={{ marginLeft: "auto", fontSize: 12, color: RED, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                Reconectar →
+              </button>
+            )}
           </div>
-        </div>
-        <nav style={{ padding: "10px 8px", flex: 1 }}>
-          {[
-            { label: "Dashboard", active: true, icon: "⊞", onClick: () => {} },
-            { label: "Mi equipo", active: false, icon: "⊙", onClick: () => router.push("/equipo") },
-          ].map(item => (
-            <div key={item.label} onClick={item.onClick} style={{
-              display: "flex", alignItems: "center", gap: 9, padding: "8px 10px",
-              borderRadius: 8, fontSize: 13, cursor: "pointer", marginBottom: 2,
-              background: item.active ? "#fef2f2" : "transparent",
-              color: item.active ? RED : "#6b7280",
-              fontWeight: item.active ? 500 : 400,
-            }}>
-              <span style={{ fontSize: 14 }}>{item.icon}</span>
-              {item.label}
-            </div>
-          ))}
-          {isOwner && (
-            <div onClick={() => router.push("/equipo")} style={{
-              display: "flex", alignItems: "center", gap: 9, padding: "8px 10px",
-              borderRadius: 8, fontSize: 13, cursor: "pointer", color: "#6b7280",
-            }}>
-              <span style={{ fontSize: 14 }}>◎</span> Equipo
-            </div>
-          )}
-        </nav>
-        <div style={{ padding: "12px 16px", borderTop: "0.5px solid #f3f4f6" }}>
-          <div onClick={() => signOut({ callbackUrl: "/login" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, fontSize: 13, cursor: "pointer", color: "#9ca3af" }}>
-            <span style={{ fontSize: 14 }}>↩</span> Salir
-          </div>
-        </div>
-      </aside>
+        )}
 
-      {/* ── MAIN ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-
-        {/* Topbar */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #e5e7eb", padding: "11px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 40 }}>
-          {/* Hamburger mobile */}
-          <button onClick={() => setMobileMenu(true)} className="ic-hamburger" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", flexDirection: "column", gap: 4 }}>
-            <span style={{ width: 18, height: 1.5, background: "#374151", display: "block", borderRadius: 1 }} />
-            <span style={{ width: 18, height: 1.5, background: "#374151", display: "block", borderRadius: 1 }} />
-            <span style={{ width: 18, height: 1.5, background: "#374151", display: "block", borderRadius: 1 }} />
-          </button>
-          <div className="ic-topbar-greeting">
-            <div style={{ fontSize: 14, color: "#374151" }}>
-              Buenos días, <strong style={{ fontWeight: 500, color: "#111827" }}>{data?.user.name?.split(" ")[0] ?? "..."}</strong>
-            </div>
-            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>
-              {data ? `Última sync: ${new Date(data.syncedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs` : "Sincronizando..."}
-            </div>
-          </div>
-          <div className="ic-topbar-logo" style={{ fontSize: 15, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>
-            Inmo<span style={{ color: RED }}>Coach</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Days selector desktop */}
-            <div className="ic-days-desktop" style={{ alignItems: "center", background: "#f3f4f6", borderRadius: 9, padding: "3px", gap: 2 }}>
-              {([7, 14, 30] as const).map(d => (
-                <button key={d} onClick={() => handleSetDays(d)} style={{
-                  background: days === d ? "#fff" : "transparent",
-                  color: days === d ? "#111827" : "#9ca3af",
-                  boxShadow: days === d ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                  borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer"
-                }}>{d}d</button>
-              ))}
-            </div>
-            <button onClick={sync} disabled={loading || syncing} style={{
-              fontSize: 12, color: syncing ? "#d97706" : "#6b7280",
-              background: "#f9fafb", border: "0.5px solid #e5e7eb",
-              borderRadius: 7, padding: "5px 11px", cursor: "pointer"
-            }}>
-              {syncing ? "↻ Actualizando..." : "↻ Sync"}
-            </button>
-            {session?.user?.image
-              ? <img src={session.user.image} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${RED}`, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })} />
-              : <div style={{ width: 30, height: 30, borderRadius: "50%", background: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 500, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })}>
-                  {data?.user.name?.slice(0, 2).toUpperCase() ?? "IC"}
-                </div>
-            }
-          </div>
-        </header>
-
-        {/* Days selector mobile strip */}
-        <div className="ic-days-mobile" style={{ background: "#fff", borderBottom: "0.5px solid #e5e7eb", padding: "8px 16px", gap: 6, overflowX: "auto" }}>
-          {([7, 14, 30, 60, 90] as const).map(d => (
-            <button key={d} onClick={() => handleSetDays(d)} style={{
-              background: days === d ? "#111827" : "transparent",
-              color: days === d ? "#fff" : "#9ca3af",
-              borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 500,
-              border: days === d ? "none" : "0.5px solid #e5e7eb", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0
-            }}>{d}d</button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <main style={{ padding: "20px", flex: 1 }}>
-          {/* Alerts */}
-          {error && (
-            <div style={{ background: "#fef2f2", border: "0.5px solid #fecaca", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: RED, fontSize: 13 }}>⚠</span>
-              <span style={{ fontSize: 13, color: "#991b1b" }}>{error}</span>
-              {(error.includes("token") || error.includes("auth")) && (
-                <button onClick={() => router.push("/relogin")} style={{ marginLeft: "auto", fontSize: 12, color: RED, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-                  Reconectar →
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Week label */}
-          <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>
+        {/* Week nav */}
+        <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14, display: "flex", alignItems: "center", gap: 4 }}>
+          <span>
             {weekOffset === 0 ? (() => {
               const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
               const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
               return `Semana del ${mon.getDate()} al ${sun.getDate()} de ${sun.toLocaleDateString("es-AR", { month: "long" })}`;
             })() : weekLabel}
-            <button onClick={() => setWeekOffset(0)} style={{ marginLeft: 8, fontSize: 10, color: RED, background: "none", border: "none", cursor: "pointer", opacity: weekOffset !== 0 ? 1 : 0.4 }}>Semana actual</button>
-            <button onClick={() => setWeekOffset(w => w - 1)} style={{ marginLeft: 6, fontSize: 14, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>‹</button>
-            <button onClick={() => setWeekOffset(w => w + 1)} style={{ marginLeft: 2, fontSize: 14, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>›</button>
-          </div>
+          </span>
+          <button onClick={() => setWeekOffset(w => w - 1)} style={{ fontSize: 14, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>‹</button>
+          <button onClick={() => setWeekOffset(w => w + 1)} style={{ fontSize: 14, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>›</button>
+          {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} style={{ fontSize: 10, color: RED, background: "none", border: "none", cursor: "pointer" }}>Hoy</button>}
+        </div>
 
-          {/* Cards grid */}
-          {data && (
-            <>
-              <div className="ic-cards-grid" style={{ gap: 12, marginBottom: 12 }}>
+        {/* Cards */}
+        {data && (
+          <>
+            <div className="ic-cards-grid" style={{ gap: 12, marginBottom: 12 }}>
 
-                {/* ── 1. IAC ── */}
-                <div onClick={() => router.push("/iac")} style={{
-                  background: "#fff",
-                  border: `0.5px solid ${iacColor}20`,
-                  borderTop: `4px solid ${iacColor}`,
-                  borderRadius: "0 0 14px 14px",
-                  cursor: "pointer", overflow: "hidden",
-                }}>
-                  {/* colored header band */}
-                  <div style={{ background: `${iacColor}08`, padding: "14px 16px 10px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 10, fontWeight: 500, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Actividad comercial</span>
-                        <span title="Reuniones cara a cara realizadas vs el objetivo semanal. 100% = motor encendido, pipeline activo." style={{ fontSize: 10, color: "#d1d5db", cursor: "help", border: "0.5px solid #e5e7eb", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>?</span>
-                      </div>
-                      <span style={{ fontSize: 13, color: "#d1d5db" }}>›</span>
+              {/* IAC */}
+              <div onClick={() => router.push("/iac")} style={{
+                background: "#fff", border: `0.5px solid ${iacColor}20`,
+                borderTop: `4px solid ${iacColor}`, borderRadius: "0 0 14px 14px",
+                cursor: "pointer", overflow: "hidden",
+              }}>
+                <div style={{ background: `${iacColor}08`, padding: "14px 16px 10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Actividad comercial</span>
+                      <span title="Reuniones cara a cara realizadas vs el objetivo semanal. 100% = motor encendido, pipeline activo." style={{ fontSize: 10, color: "#d1d5db", cursor: "help", border: "0.5px solid #e5e7eb", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>?</span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8 }}>
-                      <div style={{ fontSize: 56, fontWeight: 500, fontFamily: "Georgia, serif", color: iacColor, lineHeight: 1 }}>{iac}%</div>
-                      <div style={{
-                        fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 20,
-                        background: iac >= 100 ? "#EAF3DE" : iac >= 67 ? "#FAEEDA" : "#FCEBEB",
-                        color: iac >= 100 ? "#3B6D11" : iac >= 67 ? "#854F0B" : "#A32D2D",
-                      }}>{iacLabel}</div>
-                    </div>
-                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                      {weekGreens} de {weekGoal} reuniones · {weekLabel}
-                    </div>
+                    <span style={{ fontSize: 13, color: "#d1d5db" }}>›</span>
                   </div>
-                  {/* progress */}
-                  <div style={{ padding: "10px 16px 14px" }}>
-                    <div style={{ height: 6, background: "#f3f4f6", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 3, background: iacColor, width: `${Math.min(100, iac)}%`, transition: "width 0.4s ease" }} />
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8 }}>
+                    <div style={{ fontSize: 56, fontWeight: 500, fontFamily: "Georgia, serif", color: iacColor, lineHeight: 1 }}>{iac}%</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 20, background: iac >= 100 ? "#EAF3DE" : iac >= 67 ? "#FAEEDA" : "#FCEBEB", color: iac >= 100 ? "#3B6D11" : iac >= 67 ? "#854F0B" : "#A32D2D" }}>{iacLabel}</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>{weekGreens} de {weekGoal} reuniones · {weekLabel}</div>
+                </div>
+                <div style={{ padding: "10px 16px 14px" }}>
+                  <div style={{ height: 6, background: "#f3f4f6", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 3, background: iacColor, width: `${Math.min(100, iac)}%` }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                    <span style={{ fontSize: 10, color: "#9ca3af" }}>0</span>
+                    <span style={{ fontSize: 10, color: iacColor, fontWeight: 500 }}>{weekGoal} meta</span>
+                  </div>
+                  {visibleWeekTotals && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                      {visibleWeekTotals.tasaciones > 0 && <span style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>🏠 {visibleWeekTotals.tasaciones} tasac.</span>}
+                      {visibleWeekTotals.visitas > 0 && <span style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>👁 {visibleWeekTotals.visitas} visitas</span>}
+                      {visibleWeekTotals.propuestas > 0 && <span style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>📋 {visibleWeekTotals.propuestas} prop.</span>}
+                      {visibleWeekTotals.firmas > 0 && <span style={{ fontSize: 10, background: "#EAF3DE", color: "#3B6D11", borderRadius: 6, padding: "2px 7px", fontWeight: 500 }}>✓ {visibleWeekTotals.firmas} firma{visibleWeekTotals.firmas !== 1 ? "s" : ""}</span>}
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-                      <span style={{ fontSize: 10, color: "#9ca3af" }}>0</span>
-                      <span style={{ fontSize: 10, color: iacColor, fontWeight: 500 }}>{weekGoal} meta</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Cartera */}
+              <TokkoPortfolioCard />
+
+              {/* Racha + Rango */}
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", cursor: "pointer" }}>
+                <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Racha y rango</span>
+                      <span title="Días consecutivos con al menos 1 reunión verde. Si perdés un día, la racha se reinicia. El rango sube según tu IAC sostenido." style={{ fontSize: 10, color: "#d1d5db", cursor: "help", border: "0.5px solid #e5e7eb", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>?</span>
                     </div>
-                    {/* desglose */}
-                    {visibleWeekTotals && (
-                      <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                        {visibleWeekTotals.tasaciones > 0 && <span style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>🏠 {visibleWeekTotals.tasaciones} tasac.</span>}
-                        {visibleWeekTotals.visitas > 0 && <span style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>👁 {visibleWeekTotals.visitas} visitas</span>}
-                        {visibleWeekTotals.propuestas > 0 && <span style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>📋 {visibleWeekTotals.propuestas} prop.</span>}
-                        {visibleWeekTotals.firmas > 0 && <span style={{ fontSize: 10, background: "#EAF3DE", color: "#3B6D11", borderRadius: 6, padding: "2px 7px", fontWeight: 500 }}>✓ {visibleWeekTotals.firmas} firma{visibleWeekTotals.firmas !== 1 ? "s" : ""}</span>}
-                      </div>
-                    )}
+                    <span style={{ fontSize: 13, color: "#d1d5db" }}>›</span>
                   </div>
                 </div>
-
-                {/* ── 2. CARTERA TOKKO ── */}
-                <TokkoPortfolioCard />
-
-                {/* ── 3. RACHA + RANGO ── */}
-                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", cursor: "pointer" }}>
-                  <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 10, fontWeight: 500, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Racha y rango</span>
-                        <span title="Días consecutivos con al menos 1 reunión verde. Si perdés un día, la racha se reinicia. El rango sube según tu IAC sostenido en el tiempo." style={{ fontSize: 10, color: "#d1d5db", cursor: "help", border: "0.5px solid #e5e7eb", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>?</span>
+                <div style={{ padding: "12px 16px 14px" }}>
+                  {data.streak !== undefined && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+                          <div style={{ fontSize: 44, fontWeight: 500, fontFamily: "Georgia, serif", color: data.streak.current > 0 ? "#111827" : "#9ca3af", lineHeight: 1 }}>{data.streak.current}</div>
+                          <div style={{ fontSize: 13, color: "#6b7280" }}>días</div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Récord: {data.streak.best} días 🏆</div>
                       </div>
-                      <span style={{ fontSize: 13, color: "#d1d5db" }}>›</span>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 36, lineHeight: 1 }}>{data.streak.current >= 20 ? "🔥" : data.streak.current >= 10 ? "⚡" : data.streak.current > 0 ? "✦" : "💤"}</div>
+                        <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{data.streak.current >= 20 ? "En llamas" : data.streak.current >= 10 ? "Muy activo" : data.streak.current > 0 ? "Activo" : "Sin racha"}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ padding: "12px 16px 14px" }}>
-
-                    {/* Racha */}
-                    {data.streak !== undefined && (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-                            <div style={{ fontSize: 44, fontWeight: 500, fontFamily: "Georgia, serif", color: data.streak.current > 0 ? "#111827" : "#9ca3af", lineHeight: 1 }}>{data.streak.current}</div>
-                            <div style={{ fontSize: 13, color: "#6b7280" }}>días</div>
-                          </div>
-                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Récord personal: {data.streak.best} días 🏆</div>
+                  )}
+                  {data.streak !== undefined && (
+                    <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} title="Escudo protector" style={{ width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: i < (data.streak as any).shields ? "#EEF2FF" : "#f3f4f6", border: `0.5px solid ${i < (data.streak as any).shields ? "#c7d2fe" : "#e5e7eb"}` }}>
+                          {i < (data.streak as any).shields ? "🛡" : "·"}
                         </div>
-                        <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 36, lineHeight: 1 }}>
-                            {data.streak.current >= 20 ? "🔥" : data.streak.current >= 10 ? "⚡" : data.streak.current > 0 ? "✦" : "💤"}
+                      ))}
+                      <span style={{ fontSize: 11, color: "#9ca3af", alignSelf: "center", marginLeft: 2 }}>protectores</span>
+                    </div>
+                  )}
+                  {data.rankStats && (
+                    <div style={{ background: "#f9fafb", borderRadius: 10, padding: "10px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 22 }}>{data.rankStats.currentRank?.icon ?? "🏠"}</span>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.rankStats.currentRank?.label ?? "Agente"}</div>
+                            <div style={{ fontSize: 10, color: "#9ca3af" }}>rango actual</div>
                           </div>
-                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>
-                            {data.streak.current >= 20 ? "En llamas" : data.streak.current >= 10 ? "Muy activo" : data.streak.current > 0 ? "Activo" : "Sin racha"}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Protectores */}
-                    {data.streak !== undefined && (
-                      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} title="Escudo protector — te salva de perder la racha un día sin actividad" style={{
-                            width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-                            background: i < (data.streak as any).shields ? "#EEF2FF" : "#f3f4f6",
-                            border: `0.5px solid ${i < (data.streak as any).shields ? "#c7d2fe" : "#e5e7eb"}`,
-                          }}>
-                            {i < (data.streak as any).shields ? "🛡" : "·"}
-                          </div>
-                        ))}
-                        <span style={{ fontSize: 11, color: "#9ca3af", alignSelf: "center", marginLeft: 2 }}>protectores</span>
-                      </div>
-                    )}
-
-                    {/* Rango */}
-                    {data.rankStats && (
-                      <div style={{ background: "#f9fafb", borderRadius: 10, padding: "10px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 22 }}>{data.rankStats.currentRank?.icon ?? "🏠"}</span>
-                            <div>
-                              <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.rankStats.currentRank?.label ?? "Agente"}</div>
-                              <div style={{ fontSize: 10, color: "#9ca3af" }}>rango actual</div>
-                            </div>
-                          </div>
-                          {data.rankStats.nextRank && (
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ fontSize: 11, color: "#9ca3af" }}>próximo</div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                                <span style={{ fontSize: 14 }}>{data.rankStats.nextRank.icon}</span>
-                                <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{data.rankStats.nextRank.label}</span>
-                              </div>
-                            </div>
-                          )}
                         </div>
                         {data.rankStats.nextRank && (
-                          <div style={{ marginTop: 8 }}>
-                            <div style={{ height: 3, background: "#e5e7eb", borderRadius: 2, overflow: "hidden" }}>
-                              <div style={{ height: "100%", background: "#6366f1", borderRadius: 2, width: `${Math.min(100, (data.rankStats as any).progressPct ?? 40)}%` }} />
-                            </div>
-                            <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3 }}>
-                              {(data.rankStats as any).weeksAtCurrentIAC ?? 0} sem. en objetivo · necesitás {(data.rankStats as any).weeksToNext ?? "?"} más
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 11, color: "#9ca3af" }}>próximo</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                              <span style={{ fontSize: 14 }}>{data.rankStats.nextRank.icon}</span>
+                              <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{data.rankStats.nextRank.label}</span>
                             </div>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── 4. POSICIÓN ── */}
-                <div onClick={() => isOwner ? router.push("/equipo") : undefined} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", cursor: isOwner ? "pointer" : "default" }}>
-                  <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f9fafb" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 10, fontWeight: 500, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Posición en el equipo</span>
-                        <span title="Tu posición en el ranking del equipo esta semana, basada en IAC. Se calcula comparando tus reuniones cara a cara con las del resto del equipo." style={{ fontSize: 10, color: "#d1d5db", cursor: "help", border: "0.5px solid #e5e7eb", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>?</span>
-                      </div>
-                      {isOwner && <span style={{ fontSize: 13, color: "#d1d5db" }}>›</span>}
+                      {data.rankStats.nextRank && (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ height: 3, background: "#e5e7eb", borderRadius: 2, overflow: "hidden" }}>
+                            <div style={{ height: "100%", background: "#6366f1", borderRadius: 2, width: `${Math.min(100, (data.rankStats as any).progressPct ?? 40)}%` }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3 }}>
+                            {(data.rankStats as any).weeksAtCurrentIAC ?? 0} sem. en objetivo · necesitás {(data.rankStats as any).weeksToNext ?? "?"} más
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div style={{ padding: "12px 16px 14px" }}>
-                    <RankingPosition compact />
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Coach card full width */}
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af" }}>Análisis del coach</span>
-                  <span style={{ fontSize: 11, color: "#9ca3af" }}>Inmo Coach ✦</span>
+              {/* Posición */}
+              <div onClick={() => isOwner ? router.push("/equipo") : undefined} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", cursor: isOwner ? "pointer" : "default" }}>
+                <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Posición en el equipo</span>
+                      <span title="Tu posición en el ranking del equipo esta semana, basada en IAC." style={{ fontSize: 10, color: "#d1d5db", cursor: "help", border: "0.5px solid #e5e7eb", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>?</span>
+                    </div>
+                    {isOwner && <span style={{ fontSize: 13, color: "#d1d5db" }}>›</span>}
+                  </div>
                 </div>
-                <div style={{ padding: 16 }}>
-                  <InstaCoacPanel data={data} calView={days <= 14 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
+                <div style={{ padding: "12px 16px 14px" }}>
+                  <RankingPosition compact />
                 </div>
               </div>
-            </>
-          )}
+            </div>
 
-          {!data && !loading && !error && <EmptyDashboard userName={session?.user?.name ?? ""} onSync={sync} syncing={syncing} />}
-        </main>
+            {/* Coach */}
+            <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af" }}>Análisis del coach</span>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>Inmo Coach ✦</span>
+              </div>
+              <div style={{ padding: 16 }}>
+                <InstaCoacPanel data={data} calView={days <= 14 ? "week" : "month"} monthOffset={monthOffset} weekOffset={weekOffset} days={days} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {!data && !loading && !error && <EmptyDashboard userName={session?.user?.name ?? ""} onSync={sync} syncing={syncing} />}
       </div>
-
-      {/* ── MOBILE DRAWER ── */}
-      {mobileMenu && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex" }} onClick={() => setMobileMenu(false)}>
-          <div style={{ width: 240, background: "#fff", height: "100%", borderRight: "0.5px solid #e5e7eb", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: "16px 14px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 32, height: 32, background: RED, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>G</div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>Inmo<span style={{ color: RED }}>Coach</span></div>
-              </div>
-              <button onClick={() => setMobileMenu(false)} style={{ background: "none", border: "none", fontSize: 20, color: "#9ca3af", cursor: "pointer" }}>×</button>
-            </div>
-            <nav style={{ padding: 8, flex: 1 }}>
-              {[
-                { label: "Dashboard", onClick: () => { setMobileMenu(false); } },
-                { label: "Mi equipo", onClick: () => { setMobileMenu(false); router.push("/equipo"); } },
-              ].map(item => (
-                <div key={item.label} onClick={item.onClick} style={{
-                  padding: "9px 10px", borderRadius: 8, fontSize: 13, color: "#6b7280", cursor: "pointer", marginBottom: 1
-                }}>{item.label}</div>
-              ))}
-            </nav>
-            <div style={{ padding: "12px 16px", borderTop: "0.5px solid #f3f4f6" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0" }}>
-                {session?.user?.image && <img src={session.user.image} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data?.user.name ?? ""}</div>
-                  <div style={{ fontSize: 11, color: "#9ca3af" }}>{session?.user?.email}</div>
-                </div>
-              </div>
-              <button onClick={() => signOut({ callbackUrl: "/login" })} style={{ fontSize: 12, color: "#9ca3af", background: "none", border: "none", cursor: "pointer", marginTop: 4 }}>Cerrar sesión →</button>
-            </div>
-          </div>
-          <div style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
-        </div>
-      )}
 
       {showOnboarding && <OnboardingModal onClose={handleOnboardingClose} />}
       {brokerExpiredModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%" }}>
             <div style={{ fontSize: 16, fontWeight: 500, color: "#111827", marginBottom: 8 }}>Suscripción del equipo vencida</div>
-            <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
-              El plan de {brokerExpiredModal.brokerName} venció. Contactalo para reactivar el acceso del equipo.
-            </div>
-            <a href={`mailto:${brokerExpiredModal.brokerEmail}`} style={{ display: "block", marginTop: 16, fontSize: 13, color: RED }}>
-              {brokerExpiredModal.brokerEmail}
-            </a>
+            <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>El plan de {brokerExpiredModal.brokerName} venció. Contactalo para reactivar el acceso del equipo.</div>
+            <a href={`mailto:${brokerExpiredModal.brokerEmail}`} style={{ display: "block", marginTop: 16, fontSize: 13, color: RED }}>{brokerExpiredModal.brokerEmail}</a>
           </div>
         </div>
       )}
       {subPlan === "free" && <PushPrompt />}
-    </div>
+    </AppLayout>
   );
 }
