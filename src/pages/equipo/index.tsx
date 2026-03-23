@@ -2,6 +2,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import AppLayout from "../../components/AppLayout";
 import {
   ArrowLeft, Loader2, Users,
   TrendingUp, TrendingDown, Minus, AlertTriangle,
@@ -144,32 +145,14 @@ export default function BrokerDashboard() {
   const todayMeetings = agents.reduce((sum, a) => sum + (a.sparkline?.[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1] ?? 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+    <AppLayout greeting={`${agencyName || "Mi Equipo"}`} topbarExtra={
+      <button onClick={syncAll} disabled={syncing}
+        style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: syncing ? "#d97706" : "#6b7280", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
+        <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
+        {syncing ? "Sincronizando..." : "Sync equipo"}
+      </button>
+    }>
       <Head><title>{agencyName || "Mi Equipo"} — InmoCoach</title></Head>
-      <div className="h-1 w-full" style={{ background: RED }} />
-
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-4">
-          <button onClick={() => router.push("/")} className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors">
-            <ArrowLeft size={13} /> Volver
-          </button>
-          <div className="flex-1 text-center font-black text-lg tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
-            {agencyName || "Mi Equipo"} · <span style={{ color: RED }}>InmoCoach</span>
-          </div>
-          {isOwner && (
-            <button onClick={() => router.push("/cuenta")} className="text-xs font-semibold text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
-              Gestionar →
-            </button>
-          )}
-          <button onClick={syncAll} disabled={syncing}
-            title="Sincronizar calendarios de todo el equipo"
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
-            <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">{syncing ? "Sincronizando..." : "Sync equipo"}</span>
-          </button>
-        </div>
-      </header>
-
       <main className="max-w-5xl mx-auto px-5 py-6 space-y-5">
 
         {/* Errores de sincronización */}
@@ -454,7 +437,7 @@ export default function BrokerDashboard() {
         {isOwner && <TokkoConfig />}
 
       </main>
-    </div>
+    </AppLayout>
   );
 }
 

@@ -1,6 +1,7 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
+import AppLayout from "../components/AppLayout";
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, Users, User, AlertTriangle, Loader2, CheckCircle, UserPlus, Mail, Clock, Shield, X, ChevronUp, ChevronDown, Info } from "lucide-react";
 import TeamsPricingWidget from "../components/TeamsPricingWidget";
@@ -277,22 +278,9 @@ export default function CuentaPage() {
   const isPaid = (data.plan !== "free" && data.status === "active") || data.isVip === true;
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+    <AppLayout>
       <Head><title>Mi cuenta — InmoCoach</title></Head>
-      <div className="h-1 w-full" style={{ background: RED }} />
-
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-xl mx-auto px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.push("/")} className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors">
-            <ArrowLeft size={13} /> Dashboard
-          </button>
-          <div className="font-black text-lg ml-auto" style={{ fontFamily: "Georgia, serif" }}>
-            Mi <span style={{ color: RED }}>cuenta</span>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-xl mx-auto px-5 py-6 space-y-4">
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 20px 60px" }}>
 
         {/* Éxito */}
         {success && (
@@ -645,7 +633,7 @@ export default function CuentaPage() {
         <p className="text-xs text-center text-gray-300 pb-4">
           Para consultas sobre facturación escribí a <span className="text-gray-400">hola@inmocoach.com.ar</span>
         </p>
-      </main>
+      </div>
 
       {/* Modal broker vuelve con equipo pausado */}
       {retornarModal && (
@@ -720,6 +708,6 @@ export default function CuentaPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }

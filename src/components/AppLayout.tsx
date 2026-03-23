@@ -24,7 +24,9 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [configOpen, setConfigOpen] = useState(router.pathname.startsWith("/tokko") || router.pathname.startsWith("/config"));
+  const [configOpen, setConfigOpen] = useState(
+    router.pathname.startsWith("/tokko") || router.pathname.startsWith("/config") || router.pathname === "/cuenta"
+  );
   const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
@@ -47,12 +49,20 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
     { label: "Racha y rango", icon: "✦", href: "/racha-rango", active: path === "/racha-rango" },
     { label: "Cartera Tokko", icon: "🏠", href: "/cartera", active: path === "/cartera" },
     { label: "Posición equipo", icon: "◎", href: "/posicion", active: path === "/posicion" },
-    ...(isOwner ? [{ label: "Mi equipo", icon: "⊙", href: "/equipo", active: path.startsWith("/equipo") }] : []),
+    ...(isOwner ? [
+      {
+        label: "Mi equipo",
+        icon: "⊙",
+        href: "/equipo",
+        active: path.startsWith("/equipo"),
+      } as NavItem,
+    ] : []),
     {
       label: "Configuración",
       icon: "⚙",
-      active: path.startsWith("/tokko") || path.startsWith("/config"),
+      active: path.startsWith("/tokko") || path.startsWith("/config") || path === "/cuenta",
       children: [
+        { label: "Mi cuenta", href: "/cuenta", active: path === "/cuenta" },
         { label: "Tokko Broker", href: "/tokko-setup", active: path === "/tokko-setup" },
       ],
     },
