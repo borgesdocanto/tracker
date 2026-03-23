@@ -389,61 +389,6 @@ export default function CuentaPage() {
               )}
             </div>
 
-            {/* Nombre inmobiliaria */}
-            {isPaid && data.isOwner && (
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nombre de la inmobiliaria</div>
-                <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>Se muestra en el dashboard del equipo</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input value={agencyInput} onChange={e => setAgencyInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && saveAgency()}
-                    placeholder="Ej: GALAS Propiedades"
-                    style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
-                  <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
-                    style={{ background: agencyInput !== agencyName ? RED : "#e5e7eb", color: agencyInput !== agencyName ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12, fontWeight: 500, cursor: agencyInput !== agencyName ? "pointer" : "not-allowed" }}>
-                    {agencySaving ? "..." : "Guardar"}
-                  </button>
-                </div>
-                {agencyMsg && <div style={{ fontSize: 11, color: "#16a34a", marginTop: 6 }}>✓ {agencyMsg}</div>}
-              </div>
-            )}
-
-            {/* Preferencias de ranking — submenú colapsable */}
-            {isPaid && data.isOwner && (
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
-                <button onClick={() => setRankingOpen(o => !o)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>Preferencias de ranking</span>
-                    {settingsSaving && <Loader2 size={11} style={{ color: "#9ca3af" }} className="animate-spin" />}
-                  </div>
-                  <span style={{ fontSize: 12, color: "#9ca3af" }}>{rankingOpen ? "▲" : "▼"}</span>
-                </button>
-                {rankingOpen && (
-                  <div style={{ borderTop: "0.5px solid #f3f4f6" }}>
-                    <div style={{ padding: "10px 20px 4px", fontSize: 11, color: "#9ca3af" }}>
-                      Configurá cómo se muestran los usuarios en el ranking interno del equipo.
-                    </div>
-                    {[
-                      { label: "Mostrar Broker en ranking", sub: "Si está desactivado, el broker no aparece en el ranking interno", val: showBroker, set: setShowBroker, key: "showBroker" },
-                      { label: "Mostrar Team Leaders en ranking", sub: "Si está desactivado, solo aparecen los agentes", val: showTeamLeaders, set: setShowTeamLeaders, key: "showTeamLeaders" },
-                      { label: "Anonimizar equipo en ranking global", sub: 'Los agentes aparecen como "Agente #N" en el ranking público', val: anonymizeGlobal, set: setAnonymizeGlobal, key: "anonymizeGlobal" },
-                    ].map(s => (
-                      <div key={s.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "0.5px solid #f9fafb" }}>
-                        <div style={{ flex: 1, paddingRight: 16 }}>
-                          <div style={{ fontSize: 13, color: "#374151" }}>{s.label}</div>
-                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{s.sub}</div>
-                        </div>
-                        <div onClick={() => { const v = !s.val; s.set(v); saveSetting(s.key, v); }}
-                          style={{ position: "relative", width: 40, height: 22, borderRadius: 11, background: s.val ? RED : "#e5e7eb", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
-                          <div style={{ position: "absolute", top: 2, width: 18, height: 18, background: "#fff", borderRadius: "50%", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.2s", left: s.val ? "calc(100% - 20px)" : 2 }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Cancelar suscripción */}
             {isPaid && !data.isVip && (
               <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>

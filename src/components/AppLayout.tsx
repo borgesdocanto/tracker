@@ -16,12 +16,11 @@ interface NavItem {
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  agencyLogo?: string | null;
   topbarExtra?: React.ReactNode;
   greeting?: string;
 }
 
-export default function AppLayout({ children, agencyLogo, topbarExtra, greeting }: AppLayoutProps) {
+export default function AppLayout({ children, topbarExtra, greeting }: AppLayoutProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -29,6 +28,8 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
     router.pathname.startsWith("/tokko") || router.pathname.startsWith("/config") || router.pathname === "/cuenta"
   );
   const [isOwner, setIsOwner] = useState(false);
+  const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
+  const [agencyName, setAgencyName] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -37,6 +38,13 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
         .then(d => {
           const role = d.subscription?.teamRole;
           setIsOwner(role === "owner" || role === "team_leader");
+        })
+        .catch(() => {});
+      fetch("/api/agency-info")
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d?.logo) setAgencyLogo(d.logo);
+          if (d?.agencyName) setAgencyName(d.agencyName);
         })
         .catch(() => {});
     }
@@ -66,6 +74,7 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
       children: [
         { label: "Mi cuenta", href: "/cuenta", active: path === "/cuenta" },
         { label: "Tokko Broker", href: "/tokko-setup", active: path === "/tokko-setup" },
+        { label: "Ranking", href: "/config/ranking", active: path === "/config/ranking" },
       ],
     },
   ];
@@ -127,11 +136,18 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
       {/* Logo */}
       <div style={{ padding: "18px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 10 }}>
         {agencyLogo
-          ? <img src={agencyLogo} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "contain" }} />
-          : <div style={{ width: 36, height: 36, background: RED, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0 }}>G</div>
+          ? <img src={agencyLogo} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "contain", background: "#f9fafb", border: "0.5px solid #e5e7eb" }} />
+          : <div style={{ width: 36, height: 36, background: RED, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+              {agencyName ? agencyName.slice(0, 1).toUpperCase() : "G"}
+            </div>
         }
-        <div style={{ fontSize: 15, fontWeight: 500, color: "#111827", letterSpacing: "-0.3px", fontFamily: "Georgia, serif" }}>
-          Inmo<span style={{ color: RED }}>Coach</span>
+        <div style={{ minWidth: 0 }}>
+          {agencyName && (
+            <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agencyName}</div>
+          )}
+          <div style={{ fontSize: agencyName ? 11 : 15, fontWeight: 500, color: agencyName ? "#9ca3af" : "#111827", letterSpacing: "-0.3px", fontFamily: "Georgia, serif" }}>
+            Inmo<span style={{ color: RED }}>Coach</span>
+          </div>
         </div>
         {mobile && (
           <button onClick={() => setMobileMenu(false)} style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 20, color: "#9ca3af", cursor: "pointer" }}>×</button>
