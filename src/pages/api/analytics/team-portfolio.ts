@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // All available properties
   const { data: properties } = await supabaseAdmin
     .from("tokko_properties")
-    .select("producer_email, producer_name, days_since_update, photos_count")
+    .select("producer_email, producer_name, days_since_update, days_online, photos_count")
     .eq("team_id", sub.team_id)
     .eq("status", 2);
 
@@ -78,7 +78,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     byAgent[email].total++;
 
     const hasPhotos = (p.photos_count || 0) >= 15;
-    const stale = p.days_since_update !== null && p.days_since_update > 30;
+    // days_since_update is null when Tokko's last_update field is null — fall back to days_online
+    const ageDays = p.days_since_update ?? p.days_online;
+    const stale = ageDays !== null && ageDays > 90;
     const complete = hasPhotos && !stale;
     if (complete) byAgent[email].complete++;
     else byAgent[email].incomplete++;

@@ -130,20 +130,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const active = properties.filter((p: any) => p.status === 2);
 
-    // Ficha completa = 15+ fotos + plano + (video o tour360) + actualizada hace menos de 30 días
+    // Ficha completa = 15+ fotos + plano + (video o tour360)
+    // daysSinceUpdate is null when Tokko last_update=null — use daysOnline (>90d) as stale proxy
+    const isStale = (p: any) => {
+      const age = p.daysSinceUpdate ?? p.daysOnline;
+      return age !== null && age > 90;
+    };
     const completeListings = active.filter((p: any) => {
       const goodPhotos = p.photosCount >= 15;
       const hasMedia = p.hasVideo || p.hasTour360;
-      const fresh = p.daysSinceUpdate === null || p.daysSinceUpdate <= 30;
-      return goodPhotos && p.hasBlueprint && hasMedia && fresh;
+      return goodPhotos && p.hasBlueprint && hasMedia && !isStale(p);
     });
     const incompleteListings = active.filter((p: any) => {
       const goodPhotos = p.photosCount >= 15;
       const hasMedia = p.hasVideo || p.hasTour360;
-      const fresh = p.daysSinceUpdate === null || p.daysSinceUpdate <= 30;
-      return !(goodPhotos && p.hasBlueprint && hasMedia && fresh);
+      return !(goodPhotos && p.hasBlueprint && hasMedia && !isStale(p));
     });
-    const stale = active.filter((p: any) => (p.daysSinceUpdate || 0) > 30);
+    const stale = active.filter(isStale);
 
     return res.status(200).json({
       connected: true,

@@ -17,7 +17,9 @@ function fichaScore(prop: any) {
   if (prop.photosCount < 15) missing.push(`fotos (${prop.photosCount}/15)`);
   if (!prop.hasBlueprint) missing.push("plano");
   if (!prop.hasVideo && !prop.hasTour360) missing.push("video o tour 360");
-  const stale = prop.daysSinceUpdate !== null && prop.daysSinceUpdate > 30;
+  // Use daysOnline as fallback when daysSinceUpdate is null (Tokko last_update field often null)
+  const ageDays = prop.daysSinceUpdate ?? prop.daysOnline;
+  const stale = ageDays !== null && ageDays > 90;
   return { complete: missing.length === 0 && !stale, missing };
 }
 
@@ -79,7 +81,7 @@ export default function CarteraPage() {
   const filtered = filter === "incomplete"
     ? available.filter((p: any) => !fichaScore(p).complete)
     : filter === "stale"
-    ? available.filter((p: any) => p.daysSinceUpdate !== null && p.daysSinceUpdate > 30)
+    ? available.filter((p: any) => { const age = p.daysSinceUpdate ?? p.daysOnline; return age !== null && age > 90; })
     : available;
 
   return (
@@ -251,15 +253,15 @@ export default function CarteraPage() {
                       {prop.hasVideo && <span style={{ fontSize: 11, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>🎥 video</span>}
                       {prop.hasTour360 && <span style={{ fontSize: 11, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>🔄 360</span>}
                       {prop.hasBlueprint && <span style={{ fontSize: 11, background: "#f3f4f6", color: "#374151", borderRadius: 6, padding: "2px 7px" }}>📐 plano</span>}
-                      {prop.daysSinceUpdate !== null && (
+                      {(() => { const age = prop.daysSinceUpdate ?? prop.daysOnline; return age !== null ? (
                         <span style={{
                           fontSize: 11, fontWeight: 500, padding: "2px 7px", borderRadius: 6,
-                          background: prop.daysSinceUpdate > 30 ? "#FEF2F2" : "#f0fdf4",
-                          color: prop.daysSinceUpdate > 30 ? "#dc2626" : "#16a34a",
-                        }} title={prop.daysSinceUpdate > 30 ? "Actualizá la foto, descripción, precio o el video." : ""}>
-                          {prop.daysSinceUpdate > 30 ? `⚠ Sin editar ${prop.daysSinceUpdate}d` : `✓ Editada hace ${prop.daysSinceUpdate}d`}
+                          background: age > 90 ? "#FEF2F2" : "#f0fdf4",
+                          color: age > 90 ? "#dc2626" : "#16a34a",
+                        }} title={age > 90 ? "Publicada hace más de 90 días — revisá precio y fotos." : ""}>
+                          {age > 90 ? `⚠ +90 días online` : `✓ ${age}d online`}
                         </span>
-                      )}
+                      ) : null; })()}
                       {prop.referenceCode && <span style={{ fontSize: 11, color: "#9ca3af", fontFamily: "monospace" }}>#{prop.referenceCode}</span>}
                     </div>
                   </div>
