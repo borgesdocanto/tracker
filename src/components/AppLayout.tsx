@@ -54,11 +54,11 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
 
   const navItems: NavItem[] = [
     { label: "Inicio", icon: "⊞", href: "/", active: path === "/" },
+    { label: "Coach IA", icon: "✧", href: "/coach", active: path === "/coach" },
     { label: "Actividad (IAC)", icon: "◈", href: "/iac", active: path === "/iac" },
     { label: "Racha y rango", icon: "✦", href: "/racha-rango", active: path === "/racha-rango" },
     { label: "Cartera Tokko", icon: "🏠", href: "/cartera", active: path === "/cartera" },
     { label: "Posición equipo", icon: "◎", href: "/posicion", active: path === "/posicion" },
-    { label: "Inmo Coach", icon: "✧", href: "/coach", active: path === "/coach" },
     ...(isOwner ? [
       {
         label: "Mi equipo",
@@ -133,21 +133,21 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      {/* InmoCoach — centrado */}
-      <div style={{ padding: "14px 16px 10px", borderBottom: "none", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-        <div style={{ fontSize: 16, fontWeight: 500, color: "#111827", letterSpacing: "-0.3px", fontFamily: "Georgia, serif", textAlign: "center" }}>
+      {/* InmoCoach — centrado, más grande */}
+      <div style={{ padding: "18px 16px 12px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+        <div style={{ fontSize: 20, fontWeight: 500, color: "#111827", letterSpacing: "-0.5px", fontFamily: "Georgia, serif", textAlign: "center" }}>
           Inmo<span style={{ color: RED }}>Coach</span>
         </div>
         {mobile && (
-          <button onClick={() => setMobileMenu(false)} style={{ position: "absolute", right: 12, background: "none", border: "none", fontSize: 20, color: "#9ca3af", cursor: "pointer" }}>×</button>
+          <button onClick={() => setMobileMenu(false)} style={{ position: "absolute", right: 12, background: "none", border: "none", fontSize: 22, color: "#9ca3af", cursor: "pointer" }}>×</button>
         )}
       </div>
 
-      {/* Logo inmobiliaria — centrado full width */}
-      <div style={{ padding: "8px 16px 14px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {/* Logo inmobiliaria — centrado, más grande */}
+      <div style={{ padding: "6px 16px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {agencyLogo
-          ? <img src={agencyLogo} alt="" style={{ maxHeight: 44, maxWidth: 160, objectFit: "contain" }} />
-          : <div style={{ width: 44, height: 44, background: RED, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "#fff" }}>
+          ? <img src={agencyLogo} alt="" style={{ maxHeight: 56, maxWidth: 170, objectFit: "contain" }} />
+          : <div style={{ width: 52, height: 52, background: RED, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: "#fff" }}>
               G
             </div>
         }
