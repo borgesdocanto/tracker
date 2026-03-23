@@ -24,6 +24,9 @@ interface WeeklyReportData {
   nextRankMinIac?: number;
   activeWeeks?: number;
   iacAvg?: number;
+  coachBien?: string;
+  coachOportunidades?: string;
+  coachAcciones?: string;
 }
 
 export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
@@ -33,6 +36,7 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
     planName, isExpiringSoon, daysLeft, streak = 0,
     rankSlug = "junior", rankLabel = "Agente Junior", rankIcon = "🏠",
     nextRankLabel, nextRankMinWeeks, nextRankMinIac, activeWeeks = 0, iacAvg = 0,
+    coachBien = "", coachOportunidades = "", coachAcciones = "",
   } = data;
 
   const firstName = userName?.split(" ")[0] ?? "Inmobiliario";
@@ -222,26 +226,51 @@ export function generateWeeklyEmailHtml(data: WeeklyReportData): string {
           </td>
         </tr>
 
-        <!-- Inmo Coach -->
+        <!-- Carta del Coach -->
         <tr>
-          <td style="background:#ffffff;padding:0 32px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="border:1px solid #e5e7eb;border-left:4px solid #aa0000;border-radius:0 12px 12px 0;padding:20px 22px;background:#ffffff;">
-              <tr>
-                <td>
-                  <p style="margin:0 0 14px;font-size:10px;font-weight:900;color:#aa0000;text-transform:uppercase;letter-spacing:2px;">
-                    Inmo<span style="color:#aa0000;">Coach</span>
-                  </p>
-                  ${adviceParts.map((part, i) => `
-                    <p style="margin:0 0 ${i < adviceParts.length - 1 ? "12px" : "0"};font-size:14px;color:#374151;line-height:1.75;font-weight:${i === 0 ? "600" : "400"};">
-                      ${part.replace(/\n/g, "<br>")}
-                    </p>
-                  `).join("")}
-                </td>
-              </tr>
-            </table>
+          <td style="background:#111827;padding:28px 32px;">
+            <p style="margin:0 0 6px;font-family:Georgia,serif;font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:2px;">
+              Inmo<span style="color:#aa0000;">Coach</span>
+            </p>
+            <p style="margin:0;font-size:15px;color:#fff;line-height:1.8;font-style:italic;">
+              ${coachAdvice}
+            </p>
           </td>
         </tr>
+
+        <!-- 3 secciones -->
+        ${coachBien ? `
+        <tr>
+          <td style="background:#f0fdf4;padding:20px 32px;border-top:1px solid #dcfce7;">
+            <p style="margin:0 0 6px;font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:1.5px;">✓ Lo que hiciste bien</p>
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.75;">${coachBien}</p>
+          </td>
+        </tr>` : ""}
+
+        ${coachOportunidades ? `
+        <tr>
+          <td style="background:#fffbeb;padding:20px 32px;border-top:1px solid #fef08a;">
+            <p style="margin:0 0 6px;font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1.5px;">↓ Dónde perdés oportunidades</p>
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.75;">${coachOportunidades}</p>
+          </td>
+        </tr>` : ""}
+
+        ${coachAcciones ? `
+        <tr>
+          <td style="background:#fef2f2;padding:20px 32px;border-top:1px solid #fecaca;border-bottom:1px solid #fecaca;">
+            <p style="margin:0 0 10px;font-size:10px;font-weight:700;color:#aa0000;text-transform:uppercase;letter-spacing:1.5px;">→ Acciones para esta semana</p>
+            ${coachAcciones.split("|").map((a: string) => `
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+                <tr>
+                  <td style="width:20px;vertical-align:top;padding-top:2px;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:#aa0000;margin-top:5px;"></div>
+                  </td>
+                  <td style="font-size:14px;color:#374151;line-height:1.6;">${a.trim()}</td>
+                </tr>
+              </table>
+            `).join("")}
+          </td>
+        </tr>` : ""}
 
         <!-- CTA -->
         <tr>

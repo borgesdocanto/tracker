@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { supabaseAdmin } from "../../lib/supabase";
+import { getAgentTokkoStats, formatTokkoSectionForPrompt } from "../../lib/tokkoPortfolio";
 import { IAC_GOAL, PROCESOS_GOAL, CARTERA_GOAL, EFECTIVIDAD, calcIAC, proyectarOperaciones } from "../../lib/calendarSync";
 import { getGoals } from "../../lib/appConfig";
 import { DEFAULT_COACH_PROMPT } from "./admin/coach-prompt";
@@ -139,37 +140,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ? `el mes de ${periodLabel} (objetivo: ${iacGoalPeriodo} reuniones = ${weeklyGoal}/semana × 4 semanas, ${PROCESOS_GOAL * 4} procesos nuevos)`
     : `la semana del ${periodLabel} (objetivo: ${weeklyGoal} reuniones cara a cara, ${PROCESOS_GOAL} procesos nuevos)`;
 
-  // Obtener datos de cartera Tokko si el equipo está conectado (silencioso — no bloquea si falla)
+  // Datos Tokko en vivo — API directa, no DB
   let tokkoSection = "";
   try {
-    const { data: teamSub } = await supabaseAdmin
-      .from("subscriptions").select("team_id").eq("email", userEmail).single();
-    if (teamSub?.team_id) {
-      const { data: team } = await supabaseAdmin
-        .from("teams").select("tokko_api_key").eq("id", teamSub.team_id).single();
-      if (team?.tokko_api_key) {
-        const { data: tokkoAgent } = await supabaseAdmin
-          .from("tokko_agents").select("tokko_id")
-          .eq("team_id", teamSub.team_id).ilike("email", userEmail).single();
-        if (tokkoAgent?.tokko_id) {
-          const { data: props } = await supabaseAdmin
-            .from("tokko_properties")
-            .select("status, photos_count, days_since_update")
-            .eq("team_id", teamSub.team_id)
-            .eq("producer_id", tokkoAgent.tokko_id);
-          if (props && props.length > 0) {
-            const active = props.filter((p: any) => p.status === 2);
-            const stale = active.filter((p: any) => (p.days_since_update || 0) > 30);
-            const goodPhotos = active.filter((p: any) => (p.photos_count || 0) >= 15);
-            const avgDays = stale.length
-              ? Math.round(stale.reduce((s: number, p: any) => s + (p.days_since_update || 0), 0) / stale.length)
-              : 0;
-            tokkoSection = `\nCARTERA DE PROPIEDADES (datos de Tokko Broker):\n- Propiedades disponibles: ${active.length}\n- Con ficha completa (≥15 fotos): ${goodPhotos.length} de ${active.length}\n- Sin actualizar hace más de 30 días: ${stale.length}${stale.length > 0 ? ` (promedio ${avgDays} días sin editar)` : ""}\n${stale.length > 0 ? "⚠ Tiene propiedades abandonadas que podrían frenar operaciones." : "✓ Cartera al día."}`;
-          }
-        }
-      }
-    }
-  } catch { /* silencioso — Tokko es opcional */ }
+    const tokkoStats = await getAgentTokkoStats(userEmail);
+    if (tokkoStats) tokkoSection = formatTokkoSectionForPrompt(tokkoStats);
+  } catch { /* silencioso */ }
 
   // Prompt = parte configurable (de DB) + datos dinámicos del período
   const prompt = `${coachSystemPrompt}\n\n${nombreStr}\n\nLAS 3 VARIABLES QUE MIDEN EL NEGOCIO:

@@ -3,10 +3,10 @@ import { Resend } from "resend";
 import { subDays, startOfWeek } from "date-fns";
 import { getGoals } from "../../../lib/appConfig";
 
-export const config = { maxDuration: 300 }; // 5 minutos
+export const config = { maxDuration: 300 };
 
 import { getAllActiveSubscriptions } from "../../../lib/subscription";
-import { fetchCalendarEvents, computeWeekStats, PROCESOS_GOAL, CARTERA_GOAL, EFECTIVIDAD, proyectarOperaciones } from "../../../lib/calendarSync";
+import { fetchCalendarEvents, computeWeekStats, PROCESOS_GOAL, EFECTIVIDAD, proyectarOperaciones } from "../../../lib/calendarSync";
 import { computeAndSaveStreak } from "../../../lib/streak";
 import { saveWeeklyStatsAndRank, getNextRank, getRanksFromDB } from "../../../lib/ranks";
 import { generateWeeklyEmailHtml } from "../../../lib/emailTemplate";
@@ -15,12 +15,24 @@ import { getValidAccessToken } from "../../../lib/googleToken";
 import { FREEMIUM_DAYS } from "../../../lib/brand";
 import { getPlanById } from "../../../lib/plans";
 import { DEFAULT_COACH_PROMPT } from "../admin/coach-prompt";
+import { getAgentTokkoStats, formatTokkoSectionForPrompt } from "../../../lib/tokkoPortfolio";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+export interface CoachSections {
+  carta: string;
+  bien: string;
+  oportunidades: string;
+  acciones: string;
+}
 
-async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, name: string, streak: number, weeklyGoal: number): Promise<string> {
-  // Cargar prompt configurable desde DB — mismo que usa el dashboard
+async function generateCoachAdvice(
+  stats: ReturnType<typeof computeWeekStats>,
+  name: string,
+  streak: number,
+  weeklyGoal: number,
+  userEmail: string
+): Promise<CoachSections> {
   const { data: promptRow } = await supabaseAdmin
     .from("app_config").select("value").eq("key", "coach_prompt").single();
   const coachSystemPrompt = promptRow?.value ?? DEFAULT_COACH_PROMPT;
@@ -32,40 +44,59 @@ async function generateCoachAdvice(stats: ReturnType<typeof computeWeekStats>, n
   const procesosXSemana = stats.procesosNuevos ?? 0;
   const operacionesProyectadas = proyectarOperaciones(procesosXSemana, 1);
 
+  const tokkoStats = await getAgentTokkoStats(userEmail);
+  const tokkoSection = tokkoStats ? formatTokkoSectionForPrompt(tokkoStats) : "";
+
   const prompt = `${coachSystemPrompt}
 
 El nombre del agente es ${firstName}.
 
-LAS 3 VARIABLES QUE MIDEN EL NEGOCIO:
-1. IAC = reuniones cara a cara / ${weeklyGoal} por semana — Objetivo: 100% = ${weeklyGoal} reuniones/semana
+LAS VARIABLES QUE MIDEN EL NEGOCIO:
+1. IAC = reuniones cara a cara / ${weeklyGoal} por semana
 2. Procesos nuevos: objetivo ${PROCESOS_GOAL} por semana
-3. Cartera activa vendible: ${CARTERA_GOAL} propiedades (no medible por agenda)
-
+3. Calidad de cartera Tokko: fichas completas y actualizadas generan más consultas
 LÓGICA: Efectividad ${EFECTIVIDAD * 100}% — 6 procesos = 1 transacción
 
-PERÍODO ANALIZADO: semana de ${stats.weekDates} (objetivo: ${weeklyGoal} reuniones, ${PROCESOS_GOAL} procesos nuevos)
-
-MÉTRICAS:
-- Reuniones cara a cara: ${stats.greenTotal} de ${weeklyGoal} (${iac >= 100 ? "✓ En objetivo" : "faltan " + faltanReuniones})
-- IAC: ${iac}%
-- Procesos nuevos: ${procesosXSemana} de ${PROCESOS_GOAL} (${faltanProcesos > 0 ? "faltan " + faltanProcesos : "✓ En objetivo"})
-  - Tasaciones: ${stats.tasaciones} | Visitas: ${stats.visitas} | Propuestas: ${stats.propuestas}
+PERÍODO: semana de ${stats.weekDates}
+MÉTRICAS DE ACTIVIDAD:
+- Reuniones cara a cara: ${stats.greenTotal} de ${weeklyGoal} — IAC ${iac}%${faltanReuniones > 0 ? ` (faltan ${faltanReuniones})` : " ✓"}
+- Procesos nuevos: ${procesosXSemana} de ${PROCESOS_GOAL}${faltanProcesos > 0 ? ` (faltan ${faltanProcesos})` : " ✓"}
+  · Tasaciones: ${stats.tasaciones} | Visitas: ${stats.visitas} | Propuestas: ${stats.propuestas}
 - Días productivos: ${stats.productiveDays} de ${stats.totalDays}
 ${streak > 0 ? `- Racha: ${streak} días consecutivos` : "- Sin racha activa"}
 - Operaciones proyectadas a 3 meses: ${operacionesProyectadas}
+${tokkoSection}
 
-Escribí el análisis en 3-4 oraciones, sin listas, solo párrafos. Usá segunda persona (vos/tenés/hacés).`;
+Respondé EXACTAMENTE en este formato JSON, sin texto antes ni después, sin markdown:
+{
+  "carta": "Párrafo motivador y directo de 3-4 oraciones. Tono de coach. Integrá actividad Y cartera Tokko si hay datos. Vos/tenés/hacés.",
+  "bien": "1-2 oraciones sobre lo que hizo bien. Específico con números.",
+  "oportunidades": "1-2 oraciones sobre dónde perdió oportunidades. Incluir Tokko si hay problemas.",
+  "acciones": "2-3 acciones concretas para esta semana. Al menos una de cartera Tokko si hay problemas. Separadas por | (pipe)."
+}`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 300, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 600, messages: [{ role: "user", content: prompt }] }),
     });
-    const data = await res.json();
-    return data.content?.map((b: any) => b.text || "").join("") || "Arrancá el lunes con 3 reuniones cara a cara por día y vas a sentir la diferencia.";
+    const d = await res.json();
+    const text = d.content?.map((b: any) => b.text || "").join("") || "";
+    const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+    return {
+      carta: parsed.carta || "",
+      bien: parsed.bien || "",
+      oportunidades: parsed.oportunidades || "",
+      acciones: parsed.acciones || "",
+    };
   } catch {
-    return "Arrancá el lunes con 3 reuniones cara a cara por día y vas a sentir la diferencia.";
+    return {
+      carta: `${firstName}, esta semana lograste ${stats.greenTotal} reuniones cara a cara — IAC ${iac}%. Seguí sumando días productivos y revisá el estado de tus fichas en Tokko.`,
+      bien: `Lograste ${stats.greenTotal} reuniones cara a cara y ${procesosXSemana} procesos nuevos esta semana.`,
+      oportunidades: faltanReuniones > 0 ? `Te faltan ${faltanReuniones} reuniones para llegar al objetivo semanal de ${weeklyGoal}.` : "Llegaste al objetivo de reuniones esta semana.",
+      acciones: `Agendá ${Math.min(faltanReuniones || 3, 5)} reuniones cara a cara antes del jueves | Revisá tus fichas en Tokko | Contactá ${Math.max(1, faltanProcesos)} prospectos nuevos`,
+    };
   }
 }
 
@@ -96,7 +127,7 @@ async function processUser(sub: any): Promise<"sent" | "failed" | "skipped"> {
     const activeWeeks = weekHistory?.length ?? 0;
     const iacAvg = activeWeeks > 0 ? Math.round(weekHistory!.reduce((s: number, w: any) => s + w.iac, 0) / activeWeeks) : 0;
 
-    const coachAdvice = await generateCoachAdvice(stats, sub.name || sub.email, streakData.current, weeklyGoal);
+    const coachSections = await generateCoachAdvice(stats, sub.name || sub.email, streakData.current, weeklyGoal, sub.email);
 
     const createdAt = new Date(subData?.created_at ?? Date.now());
     const daysUsed = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
@@ -110,7 +141,7 @@ async function processUser(sub: any): Promise<"sent" | "failed" | "skipped"> {
       weekStart: lastSunday.toISOString().slice(0, 10),
       greenTotal: stats.greenTotal, tasaciones: stats.tasaciones, visitas: stats.visitas,
       propuestas: stats.propuestas, productiveDays: stats.productiveDays, totalDays: stats.totalDays,
-      productivityRate: stats.productivityRate, coachAdvice, planName: plan.name,
+      productivityRate: stats.productivityRate, coachAdvice: coachSections.carta, coachBien: coachSections.bien, coachOportunidades: coachSections.oportunidades, coachAcciones: coachSections.acciones, planName: plan.name,
       isExpiringSoon: (subData?.plan || "free") === "free" && daysLeft <= 2, daysLeft,
       streak: streakData.current, rankSlug: rank.slug, rankLabel: rank.label, rankIcon: rank.icon,
       nextRankLabel: nextRank?.label, nextRankMinWeeks: nextRank?.minWeeks, nextRankMinIac: (nextRank as any)?.minIacUp ?? (nextRank as any)?.minIacAvg,
