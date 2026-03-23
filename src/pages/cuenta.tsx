@@ -277,431 +277,368 @@ export default function CuentaPage() {
 
   const isPaid = (data.plan !== "free" && data.status === "active") || data.isVip === true;
 
+  const [rankingOpen, setRankingOpen] = useState(false);
+
   return (
     <AppLayout>
       <Head><title>Mi cuenta — InmoCoach</title></Head>
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 20px 60px" }}>
 
-        {/* Éxito */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 flex items-center gap-3">
-            <CheckCircle size={16} className="text-green-600 shrink-0" />
-            <p className="text-sm font-semibold text-green-700">{success}</p>
-          </div>
-        )}
+      <style>{`
+        .mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .mc-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        @media (max-width: 900px) { .mc-grid { grid-template-columns: 1fr; } .mc-grid-3 { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .mc-grid-3 { grid-template-columns: 1fr; } }
+      `}</style>
 
-        {/* Plan actual */}
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Plan actual</div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: isPaid ? "#fef2f2" : "#f3f4f6" }}>
-                  {data.isOwner ? <Users size={18} style={{ color: isPaid ? RED : "#9ca3af" }} />
-                    : <User size={18} style={{ color: isPaid ? RED : "#9ca3af" }} />}
-                </div>
-                <div>
-                  <div className="font-black text-gray-900">
-                    {data.plan === "free" ? "Prueba gratuita"
-                      : data.isOwner ? `Equipo · ${data.tier}`
-                      : "Individual"}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {data.plan === "free" ? "7 días gratis"
-                      : data.isOwner ? `${data.agentCount} agente${data.agentCount !== 1 ? "s" : ""}`
-                      : "1 agente"}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-black text-2xl" style={{ fontFamily: "Georgia, serif", color: isPaid ? RED : "#9ca3af", lineHeight: 1 }}>
-                  {isPaid ? formatPriceARS(data.total) : "$0"}
-                </div>
-                <div className="text-xs text-gray-400">/mes</div>
-              </div>
-            </div>
-          </div>
+      <div style={{ padding: "24px 24px 60px" }}>
 
-          {/* Info de facturación */}
-          {isPaid && (
-            <div className="px-5 py-3 bg-gray-50 space-y-2">
-              {data.discountPct > 0 && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Precio por agente</span>
-                  <span className="font-bold text-green-600">{formatPriceARS(pricePerAgent(BASE_PRICE, data.agentCount))}/agente · -{data.discountPct}%</span>
-                </div>
-              )}
-              {data.nextPaymentDate && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Próximo cobro</span>
-                  <span className="font-semibold text-gray-700">{formatDate(data.nextPaymentDate)}</span>
-                </div>
-              )}
-            </div>
-          )}
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>Mi cuenta</div>
+          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Plan, equipo y configuración</div>
         </div>
 
+        {success && (
+          <div style={{ background: "#EAF3DE", border: "0.5px solid #86efac", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <CheckCircle size={15} style={{ color: "#16a34a", flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: "#166534" }}>{success}</span>
+          </div>
+        )}
 
-
-        {/* VIP badge */}
         {data.isVip && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-3">
-            <span className="text-2xl">👑</span>
+          <div style={{ background: "#FFFBEB", border: "0.5px solid #fcd34d", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>👑</span>
             <div>
-              <p className="text-sm font-black text-amber-800">Cuenta VIP activa permanente</p>
-              <p className="text-xs text-amber-600 mt-0.5">Acceso completo sin vencimiento · Sin cobro</p>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#92400e" }}>Cuenta VIP — acceso permanente</div>
+              <div style={{ fontSize: 12, color: "#b45309" }}>Todo desbloqueado sin vencimiento · Sin cobro</div>
             </div>
           </div>
         )}
 
-        {/* ── GESTIÓN DE EQUIPO (solo owners) ── */}
-        {isPaid && data.isOwner && (
-          <>
-            {/* Nombre de la inmobiliaria */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield size={14} className="text-gray-400" />
-                <span className="font-black text-sm text-gray-900">Nombre de la inmobiliaria</span>
-              </div>
-              <div className="flex gap-2">
-                <input value={agencyInput} onChange={e => setAgencyInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveAgency()}
-                  placeholder="Ej: GALAS Propiedades"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40 hover:opacity-90" style={{ background: RED }}>
-                  {agencySaving ? <Loader2 size={12} className="animate-spin" /> : "Guardar"}
-                </button>
-              </div>
-              {agencyMsg && <p className="text-xs mt-2 font-medium text-green-600">{agencyMsg}</p>}
-            </div>
+        <div className="mc-grid" style={{ marginBottom: 16 }}>
 
-            {/* Pricing widget */}
-            <TeamsPricingWidget
-              agentCount={data.agentCount}
-              onInvite={() => document.getElementById("invite-input")?.focus()}
-            />
+          {/* ── COL IZQUIERDA ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            {/* Invitar agente */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <UserPlus size={14} style={{ color: RED }} />
-                <span className="font-black text-sm text-gray-900">Invitar agente</span><Tooltip text="Cada agente que invitás suma un seat al plan. El precio por agente baja automáticamente al alcanzar 5, 10 o 20 usuarios activos (incluye al broker)." />
-                <span className="ml-auto text-xs text-gray-400">{data.agentCount} activos</span>
-              </div>
-              <div className="flex gap-2">
-                <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                <button onClick={invite} disabled={inviting || !newEmail}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-50 hover:opacity-90"
-                  style={{ background: RED }}>
-                  {inviting ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
-                  {inviting ? "Enviando..." : "Invitar"}
-                </button>
-              </div>
-              {inviteMsg && <p className={`text-xs mt-2 font-medium ${inviteMsg.includes("nviada") ? "text-green-600" : "text-red-500"}`}>{inviteMsg}</p>}
-            </div>
-
-            {/* Usuarios activos */}
-            {teamMembers.length > 0 && (
-              <div className="bg-white border border-gray-100 rounded-2xl">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Users size={13} className="text-gray-400" />
-                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">{teamMembers.length} usuarios activos</span><Tooltip text="El plan se cobra por la cantidad de usuarios activos en tu equipo, incluyendo vos como broker. Remover un usuario reduce el costo en el próximo ciclo de facturación." />
-                  <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "#fef2f2", color: RED }}>{teamMembers.length} seat{teamMembers.length !== 1 ? "s" : ""} activos</span>
-                </div>
-                <div className="px-5 py-2.5 bg-blue-50 border-b border-blue-100 flex items-start gap-2">
-                  <Info size={12} className="text-blue-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-700 leading-relaxed">
-                    Tu plan se factura por <strong>{teamMembers.length} usuario{teamMembers.length !== 1 ? "s" : ""}</strong> — el mínimo contratado no puede ser menor a los usuarios activos. Para reducir el costo, primero removés el usuario y el plan baja automáticamente al siguiente ciclo.
-                  </p>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {teamMembers.map((a: any) => {
-                    const role = a.team_role || a.teamRole;
-                    return (
-                    <div key={a.email} className="flex items-center gap-3 px-5 py-3">
-                      {a.avatar ? <img src={a.avatar} className="w-8 h-8 rounded-full shrink-0" /> :
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">{(a.name||a.email)[0].toUpperCase()}</div>}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-800 truncate">{a.name || a.email}</div>
-                        {a.name && <div className="text-xs text-gray-400 truncate">{a.email}</div>}
-                      </div>
-                      {role === "owner" ? (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg shrink-0" style={{ background: "#fef2f2", color: RED }}>Broker</span>
-                      ) : (
-                        <div className="flex items-center gap-2 shrink-0">
-                          {roleLoading === a.email ? <Loader2 size={12} className="animate-spin text-gray-300" /> : (
-                            <select value={role}
-                              onChange={e => changeRole(a.email, e.target.value as "team_leader" | "member")}
-                              className="text-xs font-semibold text-gray-600 bg-gray-100 border-0 rounded-lg px-2 py-1.5 cursor-pointer focus:outline-none appearance-none">
-                              <option value="member">Agente</option>
-                              <option value="team_leader">Team Leader</option>
-                            </select>
-                          )}
-                          <button onClick={() => removeAgent(a.email, a.name || a.email)} disabled={!!removeLoading}
-                            className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-gray-300 hover:text-red-400 bg-gray-50">
-                            {removeLoading === a.email ? <Loader2 size={11} className="animate-spin" /> : "Remover"}
-                          </button>
-                        </div>
-                      )}
+            {/* Plan actual */}
+            <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ background: "#111827", padding: "20px" }}>
+                <div style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Plan actual</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(170,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {data.isOwner ? <Users size={20} color="#fff" /> : <User size={20} color="#fff" />}
                     </div>
-                    );
-                  })}
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 500, color: "#fff", fontFamily: "Georgia, serif" }}>
+                        {data.plan === "free" ? "Prueba gratuita"
+                          : data.isOwner ? `Equipo · ${data.tier}`
+                          : "Individual"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                        {data.plan === "free" ? "7 días gratis" : data.isOwner ? `${data.agentCount} agente${data.agentCount !== 1 ? "s" : ""}` : "1 agente"}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 32, fontWeight: 500, fontFamily: "Georgia, serif", color: isPaid ? RED : "#6b7280", lineHeight: 1 }}>
+                      {isPaid ? formatPriceARS(data.total) : "$0"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>/mes</div>
+                  </div>
                 </div>
+                {isPaid && data.discountPct > 0 && (
+                  <div style={{ marginTop: 12, fontSize: 12, color: "#4ade80" }}>
+                    ✓ {data.discountPct}% de descuento por volumen aplicado
+                  </div>
+                )}
+                {isPaid && data.nextPaymentDate && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                    Próximo cobro: {formatDate(data.nextPaymentDate)}
+                  </div>
+                )}
+              </div>
+              {!isPaid && (
+                <div style={{ padding: 16 }}>
+                  <button onClick={() => router.push("/pricing")}
+                    style={{ width: "100%", background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                    Ver planes →
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Nombre inmobiliaria */}
+            {isPaid && data.isOwner && (
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nombre de la inmobiliaria</div>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>Se muestra en el dashboard del equipo</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={agencyInput} onChange={e => setAgencyInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && saveAgency()}
+                    placeholder="Ej: GALAS Propiedades"
+                    style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
+                  <button onClick={saveAgency} disabled={agencySaving || agencyInput === agencyName}
+                    style={{ background: agencyInput !== agencyName ? RED : "#e5e7eb", color: agencyInput !== agencyName ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12, fontWeight: 500, cursor: agencyInput !== agencyName ? "pointer" : "not-allowed" }}>
+                    {agencySaving ? "..." : "Guardar"}
+                  </button>
+                </div>
+                {agencyMsg && <div style={{ fontSize: 11, color: "#16a34a", marginTop: 6 }}>✓ {agencyMsg}</div>}
               </div>
             )}
 
-            {/* Invitaciones pendientes */}
-            {pending.length > 0 && (
-              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Clock size={13} className="text-gray-400" />
-                  <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Invitaciones pendientes</span>
-                  <span className="ml-auto text-xs text-gray-400">{pending.length}</span>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {pending.map((inv: any) => (
-                    <div key={inv.token} className="flex items-center gap-3 px-5 py-3 flex-wrap">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">{inv.email[0].toUpperCase()}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-600 truncate">{inv.email}</div>
-                        <div className="text-xs text-gray-400">Pendiente de aceptar · {new Date(inv.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</div>
+            {/* Preferencias de ranking — submenú colapsable */}
+            {isPaid && data.isOwner && (
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                <button onClick={() => setRankingOpen(o => !o)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>Preferencias de ranking</span>
+                    {settingsSaving && <Loader2 size={11} style={{ color: "#9ca3af" }} className="animate-spin" />}
+                  </div>
+                  <span style={{ fontSize: 12, color: "#9ca3af" }}>{rankingOpen ? "▲" : "▼"}</span>
+                </button>
+                {rankingOpen && (
+                  <div style={{ borderTop: "0.5px solid #f3f4f6" }}>
+                    <div style={{ padding: "10px 20px 4px", fontSize: 11, color: "#9ca3af" }}>
+                      Configurá cómo se muestran los usuarios en el ranking interno del equipo.
+                    </div>
+                    {[
+                      { label: "Mostrar Broker en ranking", sub: "Si está desactivado, el broker no aparece en el ranking interno", val: showBroker, set: setShowBroker, key: "showBroker" },
+                      { label: "Mostrar Team Leaders en ranking", sub: "Si está desactivado, solo aparecen los agentes", val: showTeamLeaders, set: setShowTeamLeaders, key: "showTeamLeaders" },
+                      { label: "Anonimizar equipo en ranking global", sub: 'Los agentes aparecen como "Agente #N" en el ranking público', val: anonymizeGlobal, set: setAnonymizeGlobal, key: "anonymizeGlobal" },
+                    ].map(s => (
+                      <div key={s.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "0.5px solid #f9fafb" }}>
+                        <div style={{ flex: 1, paddingRight: 16 }}>
+                          <div style={{ fontSize: 13, color: "#374151" }}>{s.label}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{s.sub}</div>
+                        </div>
+                        <div onClick={() => { const v = !s.val; s.set(v); saveSetting(s.key, v); }}
+                          style={{ position: "relative", width: 40, height: 22, borderRadius: 11, background: s.val ? RED : "#e5e7eb", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                          <div style={{ position: "absolute", top: 2, width: 18, height: 18, background: "#fff", borderRadius: "50%", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.2s", left: s.val ? "calc(100% - 20px)" : 2 }} />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={async () => {
-                            setResendLoading(inv.token); setResendMsg(null);
-                            const r = await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"resend", token: inv.token}) });
-                            const d = await r.json();
-                            setResendLoading(null);
-                            setResendMsg(d.ok ? inv.token : null);
-                            if (!d.ok) alert(d.error || "Error al reenviar");
-                            setTimeout(() => setResendMsg(null), 3000);
-                          }}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cancelar suscripción */}
+            {isPaid && !data.isVip && (
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                <button onClick={() => setShowCancel(!showCancel)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "14px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <AlertTriangle size={14} color="#9ca3af" />
+                  <span style={{ fontSize: 13, color: "#6b7280" }}>Cancelar suscripción</span>
+                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{showCancel ? "▲" : "▼"}</span>
+                </button>
+                {showCancel && (
+                  <div style={{ borderTop: "0.5px solid #f3f4f6", padding: "16px 20px" }}>
+                    <div style={{ background: "#FEF2F2", border: "0.5px solid #fecaca", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "#991b1b", marginBottom: 4 }}>¿Seguro que querés cancelar?</div>
+                      <div style={{ fontSize: 12, color: "#b91c1c", lineHeight: 1.6 }}>
+                        Seguís con acceso hasta el {formatDate(data.nextPaymentDate)}. Después perdés acceso al historial y al Inmo Coach.
+                      </div>
+                    </div>
+                    <input type="text" placeholder='Escribí "cancelar" para confirmar' value={cancelConfirm} onChange={e => setCancelConfirm(e.target.value)}
+                      style={{ width: "100%", border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+                    <button onClick={handleCancel} disabled={cancelConfirm.toLowerCase() !== "cancelar" || actionLoading}
+                      style={{ width: "100%", background: cancelConfirm.toLowerCase() === "cancelar" ? "#dc2626" : "#e5e7eb", color: cancelConfirm.toLowerCase() === "cancelar" ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 500, cursor: cancelConfirm.toLowerCase() === "cancelar" ? "pointer" : "not-allowed" }}>
+                      {actionLoading ? "..." : "Cancelar suscripción"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ fontSize: 12, color: "#d1d5db", textAlign: "center" }}>
+              Consultas de facturación: <span style={{ color: "#9ca3af" }}>hola@inmocoach.com.ar</span>
+            </div>
+          </div>
+
+          {/* ── COL DERECHA — solo owners con plan pago ── */}
+          {isPaid && data.isOwner && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* Pricing widget */}
+              <TeamsPricingWidget agentCount={data.agentCount} onInvite={() => document.getElementById("invite-input")?.focus()} />
+
+              {/* Invitar agente */}
+              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <UserPlus size={15} color={RED} />
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Invitar agente</span>
+                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>{data.agentCount} activos</span>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input id="invite-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && invite()} placeholder="email@dominio.com"
+                    style={{ flex: 1, border: "0.5px solid #d1d5db", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", background: "#f9fafb" }} />
+                  <button onClick={invite} disabled={inviting || !newEmail}
+                    style={{ background: newEmail ? RED : "#e5e7eb", color: newEmail ? "#fff" : "#9ca3af", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12, fontWeight: 500, cursor: newEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Mail size={12} />
+                    {inviting ? "Enviando..." : "Invitar"}
+                  </button>
+                </div>
+                {inviteMsg && <div style={{ fontSize: 12, marginTop: 8, color: inviteMsg.includes("nviada") ? "#16a34a" : "#dc2626" }}>{inviteMsg}</div>}
+              </div>
+
+              {/* Usuarios activos */}
+              {teamMembers.length > 0 && (
+                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Users size={13} color="#9ca3af" />
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>{teamMembers.length} usuarios activos</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, background: "#fef2f2", color: RED, borderRadius: 6, padding: "2px 8px", fontWeight: 500 }}>
+                      {teamMembers.length} seat{teamMembers.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div>
+                    {teamMembers.map((a: any) => {
+                      const role = a.team_role || a.teamRole;
+                      return (
+                        <div key={a.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #f9fafb" }}>
+                          {a.avatar
+                            ? <img src={a.avatar} style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0 }} />
+                            : <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
+                                {(a.name || a.email)[0].toUpperCase()}
+                              </div>}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name || a.email}</div>
+                            {a.name && <div style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.email}</div>}
+                          </div>
+                          {role === "owner" ? (
+                            <span style={{ fontSize: 11, fontWeight: 500, background: "#fef2f2", color: RED, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>Broker</span>
+                          ) : (
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                              {roleLoading === a.email ? <Loader2 size={12} style={{ color: "#9ca3af" }} className="animate-spin" /> : (
+                                <select value={role} onChange={e => changeRole(a.email, e.target.value as "team_leader" | "member")}
+                                  style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 8px", cursor: "pointer" }}>
+                                  <option value="member">Agente</option>
+                                  <option value="team_leader">Team Leader</option>
+                                </select>
+                              )}
+                              <button onClick={() => removeAgent(a.email, a.name || a.email)} disabled={!!removeLoading}
+                                style={{ fontSize: 11, color: "#9ca3af", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
+                                {removeLoading === a.email ? "..." : "Remover"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Invitaciones pendientes */}
+              {pending.length > 0 && (
+                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Clock size={13} color="#9ca3af" />
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Invitaciones pendientes</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af" }}>{pending.length}</span>
+                  </div>
+                  {pending.map((inv: any) => (
+                    <div key={inv.token} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #f9fafb", flexWrap: "wrap" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 500, color: "#9ca3af", flexShrink: 0 }}>
+                        {inv.email[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>Pendiente · {new Date(inv.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button onClick={async () => { setResendLoading(inv.token); const r = await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"resend", token: inv.token}) }); const d = await r.json(); setResendLoading(null); setResendMsg(d.ok ? inv.token : null); setTimeout(() => setResendMsg(null), 3000); }}
                           disabled={resendLoading === inv.token}
-                          className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
-                          {resendLoading === inv.token ? <Loader2 size={11} className="animate-spin" /> : resendMsg === inv.token ? <CheckCircle size={11} className="text-green-500" /> : <Mail size={11} />}
-                          {resendMsg === inv.token ? "Enviado" : "Reenviar"}
+                          style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
+                          {resendMsg === inv.token ? "✓ Enviado" : resendLoading === inv.token ? "..." : "Reenviar"}
                         </button>
                         <button onClick={async () => { await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"cancel", token: inv.token}) }); fetch("/api/teams/invite").then(r=>r.json()).then(d=>setPending(d.pending||[])); }}
-                          className="text-xs font-semibold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors">
+                          style={{ fontSize: 11, color: "#dc2626", background: "#FEF2F2", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
                           Cancelar
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Preferencias de ranking */}
-            <div className="bg-white border border-gray-100 rounded-2xl">
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Preferencias de ranking</span><Tooltip text="Estas configuraciones solo afectan cómo se muestran los usuarios en el ranking interno del equipo. No afecta el costo ni el acceso." />
-                {settingsSaving && <Loader2 size={11} className="animate-spin text-gray-300 ml-auto" />}
-              </div>
-              <div className="divide-y divide-gray-50">
-                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-800">Mostrar Broker en ranking del equipo</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, el broker no aparece en el ranking interno</div>
+              {/* Ex-agentes removidos */}
+              {removedMembers.length > 0 && (
+                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6" }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Agentes removidos</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Podés re-invitar cuando venza el bloqueo</div>
                   </div>
-                  <div onClick={() => { const v = !showBroker; setShowBroker(v); saveSetting("showBroker", v); }}
-                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
-                    style={{ background: showBroker ? RED : "#e5e7eb" }}>
-                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
-                      style={{ left: showBroker ? "calc(100% - 22px)" : "2px" }} />
-                  </div>
-                </label>
-                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-800">Mostrar Team Leaders en ranking del equipo</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Si está desactivado, solo aparecen los agentes (members)</div>
-                  </div>
-                  <div onClick={() => { const v = !showTeamLeaders; setShowTeamLeaders(v); saveSetting("showTeamLeaders", v); }}
-                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
-                    style={{ background: showTeamLeaders ? RED : "#e5e7eb" }}>
-                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
-                      style={{ left: showTeamLeaders ? "calc(100% - 22px)" : "2px" }} />
-                  </div>
-                </label>
-                <label className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-800">Anonimizar equipo en ranking global</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Los agentes aparecen como "Agente #N" en el ranking público</div>
-                  </div>
-                  <div onClick={() => { const v = !anonymizeGlobal; setAnonymizeGlobal(v); saveSetting("anonymizeGlobal", v); }}
-                    className="relative shrink-0 ml-4 w-11 h-6 rounded-full transition-colors cursor-pointer"
-                    style={{ background: anonymizeGlobal ? RED : "#e5e7eb" }}>
-                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"
-                      style={{ left: anonymizeGlobal ? "calc(100% - 22px)" : "2px" }} />
-                  </div>
-                </label>
-              </div>
-            </div>
-
-          </>
-        )}
-
-        {/* Cancelar */}
-        {isPaid && !data.isVip && (
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-            <button onClick={() => setShowCancel(!showCancel)}
-              className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={15} className="text-gray-400" />
-                <span className="font-bold text-sm text-gray-500">Cancelar suscripción</span>
-              </div>
-              {showCancel ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
-            </button>
-
-            {showCancel && (
-              <div className="px-5 pb-5 border-t border-gray-50">
-                <div className="pt-4 space-y-3">
-                  <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-                    <p className="text-sm text-red-700 font-semibold mb-1">¿Seguro que querés cancelar?</p>
-                    <p className="text-xs text-red-500 leading-relaxed">
-                      Seguís con acceso hasta el {formatDate(data.nextPaymentDate)}. Después tu cuenta vuelve al plan gratuito y perdés acceso al historial y al Inmo Coach.
-                    </p>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder='Escribí "cancelar" para confirmar'
-                    value={cancelConfirm}
-                    onChange={e => setCancelConfirm(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-300"
-                  />
-                  <button onClick={handleCancel}
-                    disabled={cancelConfirm.toLowerCase() !== "cancelar" || actionLoading}
-                    className="w-full py-3 rounded-xl font-black text-sm transition-all disabled:opacity-30 flex items-center justify-center gap-2"
-                    style={{ background: "#ef4444", color: "#fff" }}>
-                    {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
-                    Cancelar suscripción
-                  </button>
+                  {removedMembers.map((m: any) => {
+                    const blockedUntil = new Date(m.blocked_until);
+                    const isBlocked = blockedUntil > new Date();
+                    const daysLeft = Math.ceil((blockedUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    return (
+                      <div key={m.removed_email} style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: "0.5px solid #f9fafb" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, color: "#374151" }}>{m.removed_email}</div>
+                          <div style={{ fontSize: 11, color: isBlocked ? "#dc2626" : "#16a34a", marginTop: 2 }}>
+                            {isBlocked ? `Bloqueado ${daysLeft} días más` : "Disponible para re-invitar"}
+                          </div>
+                        </div>
+                        <button onClick={() => reinviteAgent(m.removed_email)} disabled={isBlocked || reinviteLoading === m.removed_email}
+                          style={{ fontSize: 11, color: isBlocked ? "#9ca3af" : "#374151", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 12px", cursor: isBlocked ? "not-allowed" : "pointer" }}>
+                          {reinviteLoading === m.removed_email ? "Enviando..." : "Re-invitar"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Free — ir a pagar */}
-        {!isPaid && (
-          <div className="bg-white border border-gray-100 rounded-2xl px-5 py-5 text-center">
-            <p className="text-sm text-gray-500 mb-4">No tenés una suscripción activa.</p>
-            <button onClick={() => router.push("/pricing")}
-              className="px-8 py-3 rounded-xl font-black text-white text-sm hover:opacity-90 transition-all"
-              style={{ background: RED }}>
-              Ver planes →
-            </button>
-          </div>
-        )}
-
-        {/* Ex-agentes removidos */}
-        {removedMembers.length > 0 && (
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <div className="text-sm font-black text-gray-800">Agentes removidos</div>
-              <div className="text-xs text-gray-400 mt-0.5">Podés re-invitar cuando se cumpla el período de bloqueo</div>
+              )}
             </div>
-            <div className="divide-y divide-gray-50">
-              {removedMembers.map((m: any) => {
-                const blockedUntil = new Date(m.blocked_until);
-                const isBlocked = blockedUntil > new Date();
-                const daysLeft = Math.ceil((blockedUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                return (
-                  <div key={m.removed_email} className="px-5 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-700">{m.removed_email}</div>
-                      {isBlocked
-                        ? <div className="text-xs text-red-400">Bloqueado {daysLeft} días más (hasta {blockedUntil.toLocaleDateString("es-AR")})</div>
-                        : <div className="text-xs text-green-600">Disponible para re-invitar</div>
-                      }
-                    </div>
-                    <button onClick={() => reinviteAgent(m.removed_email)}
-                      disabled={isBlocked || reinviteLoading === m.removed_email}
-                      className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                      {reinviteLoading === m.removed_email ? "Enviando..." : "Re-invitar"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <p className="text-xs text-center text-gray-300 pb-4">
-          Para consultas sobre facturación escribí a <span className="text-gray-400">hola@inmocoach.com.ar</span>
-        </p>
+          )}
+        </div>
       </div>
 
-      {/* Modal broker vuelve con equipo pausado */}
+      {/* Modal volver con equipo */}
       {retornarModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5">
-            <div className="text-center">
-              <div className="text-3xl mb-2">👋</div>
-              <div className="text-lg font-black text-gray-900">Bienvenido de vuelta</div>
-              <p className="text-sm text-gray-500 mt-1">Tenías un equipo en InmoCoach. ¿Cómo querés continuar?</p>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%", padding: 28 }}>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>👋</div>
+              <div style={{ fontSize: 18, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>Bienvenido de vuelta</div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>¿Cómo querés continuar?</div>
             </div>
-
-            <div className="space-y-3">
-              {/* Opción 1: Retomar equipo */}
-              <div className="border-2 border-gray-100 hover:border-red-200 rounded-2xl p-4 cursor-pointer transition-all"
-                onClick={retornarConEquipo}>
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl">👥</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { icon: "👥", title: "Retomar mi equipo", desc: `Seguís como broker con tu equipo. Se cobra por ${data?.agentCount || 1} agentes.`, action: retornarConEquipo },
+                { icon: "👤", title: "Plan individual", desc: "Solo para vos. Tu equipo anterior se eliminará.", action: retornarIndividual },
+              ].map(opt => (
+                <div key={opt.title} onClick={opt.action} style={{ border: "0.5px solid #e5e7eb", borderRadius: 12, padding: 16, cursor: "pointer", display: "flex", gap: 12 }}>
+                  <span style={{ fontSize: 24, flexShrink: 0 }}>{opt.icon}</span>
                   <div>
-                    <div className="text-sm font-black text-gray-900">Retomar mi equipo</div>
-                    <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                      Seguís como broker con tu equipo existente. Vas a poder re-invitar a tus agentes uno a uno.
-                      Se cobra el plan por la cantidad de agentes que tenías (<strong>{data?.agentCount || 1}</strong>).
-                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>{opt.title}</div>
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{opt.desc}</div>
                   </div>
                 </div>
-              </div>
-
-              {/* Opción 2: Plan individual */}
-              <div className="border-2 border-gray-100 hover:border-gray-300 rounded-2xl p-4 cursor-pointer transition-all"
-                onClick={retornarIndividual}>
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl">👤</div>
-                  <div>
-                    <div className="text-sm font-black text-gray-900">Contratar plan individual</div>
-                    <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                      Usás InmoCoach solo para vos. <span className="text-red-500 font-semibold">Tu equipo anterior se eliminará</span> y deberás invitar agentes de nuevo si querés armar uno.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
-
-            {retornarLoading && (
-              <p className="text-xs text-center text-gray-400 animate-pulse">Procesando...</p>
-            )}
+            {retornarLoading && <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", marginTop: 16 }}>Procesando...</div>}
           </div>
         </div>
       )}
 
-      {/* Modal confirmación remoción */}
+      {/* Modal confirmar remoción */}
       {removeModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <div className="text-2xl text-center">⚠️</div>
-            <div className="text-base font-black text-gray-900 text-center">¿Remover a {removeModal.name}?</div>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1.5 text-sm text-amber-800">
-              <div>• Tendrá <strong>7 días de acceso gratuito</strong>, luego deberá contratar plan individual.</div>
-              <div>• <strong>No podrás volver a invitarlo por 60 días</strong> desde hoy.</div>
-              <div>• El precio de tu plan baja en el próximo ciclo de facturación.</div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 16, maxWidth: 380, width: "100%", padding: 24 }}>
+            <div style={{ fontSize: 24, textAlign: "center", marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: "#111827", textAlign: "center", marginBottom: 12 }}>¿Remover a {removeModal.name}?</div>
+            <div style={{ background: "#FFFBEB", border: "0.5px solid #fcd34d", borderRadius: 10, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "#92400e", lineHeight: 1.6 }}>
+              • Tendrá 7 días de acceso gratuito, luego deberá contratar plan individual.<br />
+              • No podrás volver a invitarlo por 60 días.<br />
+              • El precio baja en el próximo ciclo de facturación.
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setRemoveModal(null)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 hover:border-gray-400 transition-all">
-                Cancelar
-              </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setRemoveModal(null)} style={{ flex: 1, background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 10, padding: "10px 0", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={confirmRemove} disabled={removeLoading === removeModal.email}
-                className="flex-1 py-2.5 rounded-xl text-sm font-black text-white transition-all disabled:opacity-50"
-                style={{ background: "#aa0000" }}>
+                style={{ flex: 1, background: RED, color: "#fff", border: "none", borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
                 {removeLoading === removeModal.email ? "Removiendo..." : "Sí, remover"}
               </button>
             </div>
