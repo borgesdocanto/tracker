@@ -1,6 +1,6 @@
 // /api/calendar/sync-now
-// Llamado por el dashboard al cargar — sincroniza si los datos tienen más de STALE_MINUTES minutos
-// Responde inmediatamente (no bloquea el render) y sincroniza en background
+// Sincroniza Google Calendar y persiste en DB si los datos tienen más de STALE_MINUTES.
+// En Vercel serverless el background work se mata — hay que sincronizar ANTES de responder.
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
@@ -10,8 +10,11 @@ import { syncAndPersist } from "../../../lib/calendarSync";
 import { getValidAccessToken } from "../../../lib/googleToken";
 import { computeAndSaveStreak } from "../../../lib/streak";
 import { saveWeeklyStatsAndRank } from "../../../lib/ranks";
+import { getGoals } from "../../../lib/appConfig";
 
-const STALE_MINUTES = 10; // sync si los datos tienen más de 10 min
+export const config = { maxDuration: 30 };
+
+const STALE_MINUTES = 10;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -22,50 +25,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const sub = await getOrCreateSubscription(session.user.email);
   if (isFreemiumExpired(sub)) return res.status(403).end();
 
-  // Check last sync time
+  // Revisar cuándo fue la última sync
   const { data: subData } = await supabaseAdmin
     .from("subscriptions")
-    .select("last_webhook_sync, google_access_token, streak_best, team_id")
+    .select("last_webhook_sync, team_id, streak_best")
     .eq("email", session.user.email)
     .single();
 
-  const lastSync = subData?.last_webhook_sync
-    ? new Date(subData.last_webhook_sync)
-    : null;
-  const minutesSince = lastSync
-    ? (Date.now() - lastSync.getTime()) / 60000
-    : 999;
+  const lastSync = subData?.last_webhook_sync ? new Date(subData.last_webhook_sync) : null;
+  const minutesSince = lastSync ? (Date.now() - lastSync.getTime()) / 60000 : 999;
 
-  // If synced recently, skip
   if (minutesSince < STALE_MINUTES) {
     return res.status(200).json({ synced: false, reason: "recent", minutesSince: Math.round(minutesSince) });
   }
 
-  // Respond immediately — sync in background
-  res.status(200).json({ synced: true, reason: "stale", minutesSince: Math.round(minutesSince) });
+  // Obtener access token
+  const accessToken = await getValidAccessToken(session.user.email);
+  if (!accessToken) {
+    return res.status(200).json({ synced: false, reason: "no_token" });
+  }
 
-  // Background sync (after response sent)
   try {
-    const accessToken = await getValidAccessToken(session.user.email);
-    if (!accessToken) return;
-
+    // Sincronizar ANTES de responder (Vercel mata el proceso post-respuesta)
     await syncAndPersist(accessToken, session.user.email, subData?.team_id ?? null, 90);
 
-    // Update last_webhook_sync so polling detects the change
+    // Marcar sync completada — el polling del dashboard lo detectará
+    const syncedAt = new Date().toISOString();
     await supabaseAdmin
       .from("subscriptions")
-      .update({ last_webhook_sync: new Date().toISOString() })
+      .update({ last_webhook_sync: syncedAt })
       .eq("email", session.user.email);
 
-    // Update streak & rank in background
+    // Actualizar streak y rank con los nuevos datos
     try {
+      const { weeklyGoal } = await getGoals();
       const { data: events } = await supabaseAdmin
         .from("calendar_events")
         .select("start_at, is_productive")
         .eq("user_email", session.user.email)
         .gte("start_at", new Date(Date.now() - 90 * 86400000).toISOString());
 
-      if (events) {
+      if (events?.length) {
         const byDay: Record<string, number> = {};
         events.filter(e => e.is_productive).forEach(e => {
           const day = e.start_at.slice(0, 10);
@@ -73,16 +73,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         const summaries = Object.entries(byDay).map(([date, greenCount]) => ({ date, greenCount }));
         const streakData = await computeAndSaveStreak(session.user.email, summaries);
-        const monday = new Date();
-        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+
+        const now = new Date();
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
         monday.setHours(0, 0, 0, 0);
         const weekStart = monday.toISOString().slice(0, 10);
         const weekGreen = summaries.filter(d => d.date >= weekStart).reduce((s, d) => s + d.greenCount, 0);
-        const iac = Math.min(100, Math.round((weekGreen / 15) * 100));
+        const iac = Math.min(100, Math.round((weekGreen / weeklyGoal) * 100));
         await saveWeeklyStatsAndRank(session.user.email, weekStart, iac, weekGreen, streakData.best);
       }
-    } catch { /* silencioso */ }
+    } catch { /* streak/rank non-critical */ }
+
+    return res.status(200).json({ synced: true, syncedAt });
   } catch (err: any) {
     console.error("[sync-now] error:", err?.message);
+    return res.status(200).json({ synced: false, reason: "error", error: err?.message });
   }
 }

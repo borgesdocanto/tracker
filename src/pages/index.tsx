@@ -801,11 +801,18 @@ export default function HomePage() {
       if (r.ok) { setData(await r.json()); setFromCache(true); }
     };
 
-    // Dispara sync en background si los datos son viejos (>10 min)
-    // Responde inmediatamente — cuando termina actualiza last_webhook_sync
-    // y el poll lo detecta y recarga la cache
-    const triggerSync = () => {
-      fetch("/api/calendar/sync-now", { method: "POST" }).catch(() => {});
+    // Sincroniza si los datos son viejos (>10 min) — ESPERA la respuesta
+    // porque en Vercel el background work se mata post-respuesta
+    const triggerSync = async () => {
+      try {
+        const r = await fetch("/api/calendar/sync-now", { method: "POST" });
+        if (!r.ok) return;
+        const d = await r.json();
+        // Si hubo sync real, recargar cache inmediatamente
+        if (d.synced) {
+          await reloadCache();
+        }
+      } catch {}
     };
 
     const poll = async () => {
