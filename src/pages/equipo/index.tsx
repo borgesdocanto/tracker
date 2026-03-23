@@ -145,413 +145,259 @@ export default function BrokerDashboard() {
   const todayMeetings = agents.reduce((sum, a) => sum + (a.sparkline?.[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1] ?? 0), 0);
 
   return (
-    <AppLayout greeting={`${agencyName || "Mi Equipo"}`} topbarExtra={
-      <button onClick={syncAll} disabled={syncing}
-        style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: syncing ? "#d97706" : "#6b7280", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
+    <AppLayout greeting={agencyName || "Mi Equipo"} topbarExtra={
+      <button onClick={syncAll} disabled={syncing} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: syncing ? "#d97706" : "#6b7280", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
         <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
         {syncing ? "Sincronizando..." : "Sync equipo"}
       </button>
     }>
       <Head><title>{agencyName || "Mi Equipo"} — InmoCoach</title></Head>
-      <main className="max-w-5xl mx-auto px-5 py-6 space-y-5">
 
-        {/* Errores de sincronización */}
+      <style>{`
+        .eq-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .eq-alerts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 900px) { .eq-kpis { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .eq-alerts { grid-template-columns: 1fr; } }
+      `}</style>
+
+      <div style={{ padding: "24px 24px 60px" }}>
+
+        {/* Page header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 500, color: "#111827", fontFamily: "Georgia, serif" }}>
+                {agencyName || "Mi Equipo"}
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>Dashboard del equipo</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {isOwner && (
+                <button onClick={() => router.push("/cuenta")}
+                  style={{ fontSize: 12, color: "#6b7280", background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 8, padding: "7px 14px", cursor: "pointer" }}>
+                  Gestionar equipo →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sync errors */}
         {syncErrors.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5">⚠️</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-amber-800 mb-1">
-                  {syncErrors.length === 1 ? "1 agente" : `${syncErrors.length} agentes`} sin conexión a Google Calendar
-                </p>
-                <div className="space-y-2">
-                  {syncErrors.map((e, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-xs text-amber-700">
-                        <span className="font-semibold">{e.email.split("@")[0]}</span>
-                        {" — "}{e.status === "no_token" ? "nunca reconectó" : "error al sincronizar"}
-                      </span>
-                      <button
-                        onClick={async () => {
-                          await fetch("/api/admin/ops", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ action: "revoke_google_token", email: e.email }),
-                          });
-                          setSyncErrors(prev => prev.filter(x => x.email !== e.email));
-                        }}
-                        className="text-xs font-bold px-2.5 py-1 rounded-lg ml-3 shrink-0"
-                        style={{ background: "#fef3c7", color: "#92400e" }}>
-                        Forzar reconexión
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-amber-600 mt-2">Al forzar la reconexión, la próxima vez que el agente entre al dashboard lo va a redirigir para reconectar Google Calendar.</p>
+          <div style={{ background: "#FFFBEB", border: "0.5px solid #fcd34d", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10 }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#92400e", marginBottom: 8 }}>
+                {syncErrors.length} agente{syncErrors.length !== 1 ? "s" : ""} sin conexión a Google Calendar
               </div>
-              <button onClick={() => setSyncErrors([])} className="text-amber-400 hover:text-amber-600 text-xs mt-0.5">✕</button>
-            </div>
-          </div>
-        )}
-
-        {agents.length > 0 && (needsAttention.length > 0 || onStreak.length > 0) && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="rounded-2xl overflow-hidden border border-red-100" style={{ background: "#fff5f5" }}>
-              <div className="px-5 py-3 flex items-center gap-2 border-b border-red-100">
-                <AlertTriangle size={13} style={{ color: RED }} />
-                <span className="text-xs font-black uppercase tracking-wide" style={{ color: RED }}>Necesitan atención</span>
-                <span className="ml-auto text-xs font-black px-2 py-0.5 rounded-full bg-white" style={{ color: RED }}>{needsAttention.length}</span>
-              </div>
-              {needsAttention.length === 0 ? (
-                <p className="px-5 py-4 text-xs text-gray-400">¡Todos por encima del 40% 🎉</p>
-              ) : (
-                <div className="divide-y divide-red-50">
-                  {needsAttention.map(a => (
-                    <button key={a.email} onClick={() => router.push(`/equipo/agente?email=${encodeURIComponent(a.email)}`)}
-                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-red-50 transition-colors text-left">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: `${RED}20`, color: RED }}>
-                        {(a.name || a.email)[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-gray-800 truncate">{a.name || a.email}</div>
-                        <div className="text-xs font-black mt-0.5" style={{ color: RED }}>IAC {a.iac}% · {a.weekTotal}/{a.weeklyGoal ?? 15} reuniones</div>
-                      </div>
-                      <ChevronRight size={13} className="text-red-300 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl overflow-hidden border border-orange-100" style={{ background: "#fff8f0" }}>
-              <div className="px-5 py-3 flex items-center gap-2 border-b border-orange-100">
-                <Flame size={13} className="text-orange-500" />
-                <span className="text-xs font-black text-orange-700 uppercase tracking-wide">En racha</span>
-                <span className="ml-auto text-xs font-black px-2 py-0.5 rounded-full bg-white text-orange-600">{onStreak.length}</span>
-              </div>
-              {onStreak.length === 0 ? (
-                <p className="px-5 py-4 text-xs text-gray-400">Nadie con racha ≥ 3 días aún.</p>
-              ) : (
-                <div className="divide-y divide-orange-50">
-                  {onStreak.sort((a, b) => b.streak - a.streak).map(a => (
-                    <button key={a.email} onClick={() => router.push(`/equipo/agente?email=${encodeURIComponent(a.email)}`)}
-                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-orange-50 transition-colors text-left">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0 bg-orange-100 text-orange-600">
-                        {(a.name || a.email)[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-gray-800 truncate">{a.name || a.email}</div>
-                        <div className="text-xs font-black text-orange-600 mt-0.5">{a.streak >= 5 ? "🔥" : "⚡"} {a.streak} días consecutivos</div>
-                      </div>
-                      <ChevronRight size={13} className="text-orange-300 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── IAC DEL EQUIPO ── */}
-        {overview && overview.totalAgents > 0 && (
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-            <div className="px-6 pt-6 pb-4 flex items-end justify-between gap-4 flex-wrap">
-              <div>
-                <div className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">IAC del equipo esta semana</div>
-                <div className="flex items-end gap-3">
-                  <span className="font-black leading-none" style={{ fontFamily: "Georgia, serif", fontSize: 64, color: teamIacColor }}>{teamIac}%</span>
-                  <div className="mb-2">
-                    <div className="text-sm font-black" style={{ color: teamIacColor }}>{iacLabel(teamIac)}</div>
-                    <div className="text-xs text-gray-400">{overview.weekTotalMeetings} / {overview.totalAgents * (overview.weeklyGoal ?? 15)} reuniones · {overview.totalAgents} agentes</div>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Hoy en el equipo</div>
-                <div className="font-black text-4xl text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{todayMeetings}</div>
-                <div className="text-xs text-gray-400">reuniones cara a cara</div>
-              </div>
-            </div>
-            <div className="px-6 mb-5">
-              <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700 relative"
-                  style={{ width: `${Math.min(teamIac, 100)}%`, background: teamIacColor }}>
-                  {teamIac >= 15 && (
-                    <span className="absolute right-2 top-0 bottom-0 flex items-center text-white font-black" style={{ fontSize: 9 }}>{teamIac}%</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 border-t border-gray-50">
-              {[
-                { label: "Total reuniones", value: overview.weekTotalMeetings, sub: `meta ${overview.totalAgents * (overview.weeklyGoal ?? 15)}`, color: "#111827" },
-                { label: "Productivos 🟢", value: overview.greenAgents, sub: "IAC ≥ 70%", color: "#16a34a" },
-                { label: "En construcción 🟡", value: overview.yellowAgents, sub: "IAC 40–70%", color: "#d97706" },
-                { label: "En riesgo 🔴", value: overview.redAgents, sub: "IAC < 40%", color: RED },
-              ].map((s, i) => (
-                <div key={i} className="px-4 py-4 border-r border-gray-50 last:border-0 text-center">
-                  <div className="font-black text-3xl" style={{ fontFamily: "Georgia, serif", color: s.color }}>{s.value}</div>
-                  <div className="text-xs text-gray-400 mt-1 leading-tight">{s.label}</div>
-                  <div className="text-xs font-semibold mt-0.5" style={{ color: s.color }}>{s.sub}</div>
+              {syncErrors.map((e, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: "#b45309" }}>
+                    <strong>{e.email.split("@")[0]}</strong> — {e.status === "no_token" ? "nunca reconectó" : "error al sincronizar"}
+                  </span>
+                  <button onClick={async () => {
+                      await fetch("/api/admin/ops", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "revoke_google_token", email: e.email }) });
+                      setSyncErrors(prev => prev.filter(x => x.email !== e.email));
+                    }}
+                    style={{ fontSize: 11, color: "#92400e", background: "#fef3c7", border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer", marginLeft: 8, flexShrink: 0 }}>
+                    Forzar reconexión
+                  </button>
                 </div>
               ))}
             </div>
+            <button onClick={() => setSyncErrors([])} style={{ background: "none", border: "none", color: "#d97706", cursor: "pointer", fontSize: 16, flexShrink: 0 }}>×</button>
           </div>
         )}
 
-        {/* ── RANKING ── */}
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-3">
-            <Users size={13} className="text-gray-400" />
-            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Ranking del equipo</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              {/* Navegación de semanas */}
-              <div className="flex items-center gap-1 mr-2 bg-gray-100 rounded-lg px-1 py-0.5">
-                <button onClick={() => setWeekOffset(w => w - 1)} className="text-gray-400 hover:text-gray-700 px-1 py-0.5 text-xs font-bold">←</button>
-                <span className="text-xs font-semibold text-gray-600 px-1 min-w-[90px] text-center">
-                  {(() => {
-                    const mon = new Date();
-                    mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) + weekOffset * 7);
-                    mon.setHours(0,0,0,0);
-                    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-                    const fmt = (d: Date) => d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
-                    if (weekOffset === 0) return "Esta semana";
-                    return `${fmt(mon)} – ${fmt(sun)}`;
-                  })()}
-                </span>
-                <button onClick={() => setWeekOffset(w => Math.min(0, w + 1))} disabled={weekOffset === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 px-1 py-0.5 text-xs font-bold">→</button>
+        {/* KPIs del equipo */}
+        {overview && overview.totalAgents > 0 && (
+          <div className="eq-kpis" style={{ marginBottom: 16 }}>
+            {[
+              { label: "IAC equipo", value: `${teamIac}%`, color: teamIacColor, sub: `${overview.weekTotalMeetings} / ${overview.totalAgents * (overview.weeklyGoal ?? 15)} reuniones` },
+              { label: "En objetivo 🟢", value: overview.greenAgents, color: "#16a34a", sub: "IAC ≥ 70%" },
+              { label: "En construcción 🟡", value: overview.yellowAgents, color: "#d97706", sub: "IAC 40–70%" },
+              { label: "En riesgo 🔴", value: overview.redAgents, color: RED, sub: "IAC < 40%" },
+            ].map(k => (
+              <div key={k.label} style={{ background: "#fff", border: `0.5px solid ${k.color}20`, borderTop: `3px solid ${k.color}`, borderRadius: "0 0 12px 12px", padding: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>{k.label}</div>
+                <div style={{ fontSize: 36, fontWeight: 500, fontFamily: "Georgia, serif", color: k.color, lineHeight: 1 }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>{k.sub}</div>
               </div>
-              <button onClick={() => setSortBy("iac")} title="Reuniones cara a cara vs meta semanal"
-                className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
-                style={{ background: sortBy === "iac" ? RED : "#f3f4f6", color: sortBy === "iac" ? "white" : "#9ca3af" }}>IAC</button>
-              <button onClick={() => setSortBy("trend")} title="Variación vs semana anterior (↑ mejoró, ↓ bajó)"
-                className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
-                style={{ background: sortBy === "trend" ? RED : "#f3f4f6", color: sortBy === "trend" ? "white" : "#9ca3af" }}>Tendencia</button>
-              <button onClick={() => setSortBy("streak")} title="Días consecutivos con al menos 1 reunión verde"
-                className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
-                style={{ background: sortBy === "streak" ? RED : "#f3f4f6", color: sortBy === "streak" ? "white" : "#9ca3af" }}>Racha</button>
-              <button onClick={() => loadAnalytics(weekOffset)} disabled={syncing} className="ml-1 text-gray-400 hover:text-gray-600 disabled:opacity-50">
-                {syncing || analyticsLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Alertas rápidas */}
+        {agents.length > 0 && (needsAttention.length > 0 || onStreak.length > 0) && (
+          <div className="eq-alerts" style={{ marginBottom: 16 }}>
+            <div style={{ background: "#fff", border: "1px solid #fecaca", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #fecaca", display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2" }}>
+                <AlertTriangle size={13} style={{ color: RED, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 500, color: RED, textTransform: "uppercase", letterSpacing: "0.06em" }}>Necesitan atención</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, background: "#fff", color: RED, borderRadius: 10, padding: "1px 7px" }}>{needsAttention.length}</span>
+              </div>
+              {needsAttention.length === 0
+                ? <div style={{ padding: "16px", fontSize: 12, color: "#9ca3af" }}>¡Todos por encima del 40% 🎉</div>
+                : needsAttention.map(a => (
+                  <button key={a.email} onClick={() => router.push(`/equipo/agente?email=${encodeURIComponent(a.email)}`)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #f9fafb", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${RED}15`, color: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+                      {(a.name || a.email)[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name || a.email}</div>
+                      <div style={{ fontSize: 11, color: RED, marginTop: 2 }}>IAC {a.iac}% · {a.weekTotal}/{a.weeklyGoal ?? 15} reuniones</div>
+                    </div>
+                    <ChevronRight size={13} style={{ color: "#fca5a5", flexShrink: 0 }} />
+                  </button>
+                ))
+              }
+            </div>
+
+            <div style={{ background: "#fff", border: "0.5px solid #fed7aa", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #fed7aa", display: "flex", alignItems: "center", gap: 8, background: "#FFF7ED" }}>
+                <Flame size={13} style={{ color: "#ea580c", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 500, color: "#ea580c", textTransform: "uppercase", letterSpacing: "0.06em" }}>En racha</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, background: "#fff", color: "#ea580c", borderRadius: 10, padding: "1px 7px" }}>{onStreak.length}</span>
+              </div>
+              {onStreak.length === 0
+                ? <div style={{ padding: "16px", fontSize: 12, color: "#9ca3af" }}>Nadie con racha ≥ 3 días aún.</div>
+                : [...onStreak].sort((a, b) => b.streak - a.streak).map(a => (
+                  <button key={a.email} onClick={() => router.push(`/equipo/agente?email=${encodeURIComponent(a.email)}`)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "0.5px solid #fff7ed", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FFF7ED", color: "#ea580c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+                      {(a.name || a.email)[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name || a.email}</div>
+                      <div style={{ fontSize: 11, color: "#ea580c", marginTop: 2 }}>{a.streak >= 5 ? "🔥" : "⚡"} {a.streak} días consecutivos</div>
+                    </div>
+                    <ChevronRight size={13} style={{ color: "#fdba74", flexShrink: 0 }} />
+                  </button>
+                ))
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Ranking */}
+        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <Users size={13} style={{ color: "#9ca3af" }} />
+            <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Ranking del equipo</span>
+
+            {/* Week nav */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#f3f4f6", borderRadius: 8, padding: "3px 8px" }}>
+              <button onClick={() => setWeekOffset(w => w - 1)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>‹</button>
+              <span style={{ fontSize: 11, color: "#374151", minWidth: 90, textAlign: "center" }}>
+                {weekOffset === 0 ? "Esta semana" : (() => {
+                  const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) + weekOffset * 7); mon.setHours(0,0,0,0);
+                  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                  return `${mon.getDate()} – ${sun.getDate()} ${sun.toLocaleDateString("es-AR", { month: "short" })}`;
+                })()}
+              </span>
+              <button onClick={() => setWeekOffset(w => Math.min(0, w + 1))} disabled={weekOffset === 0} style={{ background: "none", border: "none", color: weekOffset === 0 ? "#d1d5db" : "#9ca3af", cursor: weekOffset === 0 ? "default" : "pointer", fontSize: 14, lineHeight: 1 }}>›</button>
+            </div>
+
+            {/* Sort */}
+            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+              {(["iac", "trend", "streak"] as const).map(s => (
+                <button key={s} onClick={() => setSortBy(s)} style={{ fontSize: 11, fontWeight: 500, background: sortBy === s ? "#111827" : "#f3f4f6", color: sortBy === s ? "#fff" : "#9ca3af", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
+                  {s === "iac" ? "IAC" : s === "trend" ? "Tendencia" : "Racha"}
+                </button>
+              ))}
             </div>
           </div>
 
           {analyticsLoading ? (
-            <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin text-gray-300" /></div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 0" }}>
+              <Loader2 size={20} style={{ color: "#d1d5db" }} className="animate-spin" />
+            </div>
           ) : agents.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <p className="text-sm text-gray-400 mb-3">Todavía no tenés agentes activos.</p>
-              <button onClick={() => router.push("/cuenta")}
-                className="text-xs font-bold px-4 py-2 rounded-xl text-white hover:opacity-90"
-                style={{ background: RED }}>Invitar agentes →</button>
+            <div style={{ padding: "48px 16px", textAlign: "center" }}>
+              <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>Todavía no tenés agentes activos.</div>
+              <button onClick={() => router.push("/cuenta")} style={{ background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                Invitar agentes →
+              </button>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div>
               {sortedAgents.map((agent, idx) => {
                 const color = iacColor(agent.iac);
                 const bg = iacBg(agent.iac);
                 return (
-                  <div key={agent.email} className="px-5 py-5 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-7 text-center shrink-0">
-                        <span className="text-sm font-black" style={{ color: idx === 0 ? "#d97706" : "#d1d5db" }}>
-                          {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
-                        </span>
-                      </div>
-                      {agent.avatar ? (
-                        <img src={agent.avatar} alt="" className="w-12 h-12 rounded-full shrink-0 border-2" style={{ borderColor: color }} />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black shrink-0 border-2"
-                          style={{ background: bg, color, borderColor: color }}>
+                  <div key={agent.email} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "0.5px solid #f9fafb", cursor: "pointer" }}
+                    onClick={() => router.push(`/equipo/agente?email=${encodeURIComponent(agent.email)}`)}>
+                    {/* Posición */}
+                    <div style={{ width: 28, textAlign: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: idx < 3 ? 18 : 12, color: "#d1d5db", fontWeight: 500 }}>
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
+                      </span>
+                    </div>
+
+                    {/* Avatar */}
+                    {agent.avatar
+                      ? <img src={agent.avatar} alt="" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, border: `2px solid ${color}` }} />
+                      : <div style={{ width: 44, height: 44, borderRadius: "50%", background: bg, color, border: `2px solid ${color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 500, flexShrink: 0 }}>
                           {(agent.name || agent.email)[0].toUpperCase()}
                         </div>
+                    }
+
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>{agent.name || agent.email}</span>
+                        <span style={{ fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 5, background: `${ROLE_COLOR[agent.teamRole]}15`, color: ROLE_COLOR[agent.teamRole] }}>
+                          {ROLE_LABEL[agent.teamRole]}
+                        </span>
+                        {agent.streak >= 3 && (
+                          <span style={{ fontSize: 11, color: "#ea580c" }}>{agent.streak >= 5 ? "🔥" : "⚡"} {agent.streak}d</span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, height: 4, background: "#f3f4f6", borderRadius: 2, overflow: "hidden" }}>
+                          <div style={{ height: "100%", background: color, borderRadius: 2, width: `${Math.min(agent.iac, 100)}%` }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 500, color, minWidth: 36, textAlign: "right" }}>{agent.iac}%</span>
+                      </div>
+                    </div>
+
+                    {/* Métrica según sort */}
+                    <div style={{ textAlign: "right", minWidth: 70, flexShrink: 0 }}>
+                      {sortBy === "iac" && (
+                        <>
+                          <div style={{ fontSize: 22, fontWeight: 500, fontFamily: "Georgia, serif", color, lineHeight: 1 }}>
+                            {agent.weekTotal}<span style={{ fontSize: 12, color: "#d1d5db" }}>/{agent.weeklyGoal ?? 15}</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>esta semana</div>
+                        </>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                          <span className="text-base font-black text-gray-900">{agent.name || agent.email}</span>
-                          <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                            style={{ background: `${ROLE_COLOR[agent.teamRole]}15`, color: ROLE_COLOR[agent.teamRole] }}>
-                            {ROLE_LABEL[agent.teamRole]}
-                          </span>
-                          {agent.streak >= 3 && (
-                            <span className="text-xs font-black text-orange-500">{agent.streak >= 5 ? "🔥" : "⚡"} {agent.streak}d</span>
-                          )}
-                        </div>
-                        {agent.name && <div className="text-xs text-gray-400 truncate">{agent.email}</div>}
-                        <div className="mt-2.5 flex items-center gap-2">
-                          <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(agent.iac, 100)}%`, background: color }} />
+                      {sortBy === "trend" && (
+                        <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
+                      )}
+                      {sortBy === "streak" && (
+                        <>
+                          <div style={{ fontSize: 22, fontWeight: 500, fontFamily: "Georgia, serif", color: "#ea580c", lineHeight: 1 }}>
+                            {agent.streak}<span style={{ fontSize: 12, color: "#d1d5db" }}>d</span>
                           </div>
-                          <span className="text-xs font-black w-10 text-right shrink-0" style={{ color }}>{agent.iac}%</span>
-                        </div>
-                      </div>
-                      <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 min-w-[80px]">
-                        {sortBy === "iac" && (<>
-                          <div className="text-2xl font-black leading-none" style={{ fontFamily: "Georgia, serif", color }}>
-                            {agent.weekTotal}<span className="text-sm font-normal text-gray-300">/{agent.weeklyGoal ?? 15}</span>
-                          </div>
-                          <div className="text-xs text-gray-400">esta semana</div>
-                          <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
-                        </>)}
-                        {sortBy === "trend" && (<>
-                          <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
-                          <div className="text-xs text-gray-400 mt-0.5">vs sem. anterior</div>
-                          <div className="text-xs font-semibold" style={{ color }}>{agent.weekTotal}/{agent.weeklyGoal ?? 15} reun.</div>
-                        </>)}
-                        {sortBy === "streak" && (<>
-                          <div className="text-2xl font-black leading-none text-orange-500" style={{ fontFamily: "Georgia, serif" }}>
-                            {agent.streak}<span className="text-sm font-normal text-gray-300">d</span>
-                          </div>
-                          <div className="text-xs text-gray-400">racha activa</div>
-                          <div className="text-xs font-semibold" style={{ color }}>{agent.iac}% IAC</div>
-                        </>)}
-                      </div>
-                      <div className="hidden md:block shrink-0 w-24">
-                        <div className="text-xs text-gray-400 mb-1">7 días</div>
-                        <Sparkline data={agent.sparkline} color={color} />
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => router.push(`/equipo/historial?email=${encodeURIComponent(agent.email)}`)}
-                          title="Ver historial" className="text-sm px-1.5 py-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                          📈
-                        </button>
-                        <button onClick={() => router.push(`/equipo/agente?email=${encodeURIComponent(agent.email)}`)}
-                          className="shrink-0 text-gray-300 hover:text-gray-600 transition-colors">
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
+                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>racha</div>
+                        </>
+                      )}
                     </div>
-                    <div className="sm:hidden mt-3 flex items-center justify-between ml-11 pl-4">
-                      <div className="text-sm font-black" style={{ color }}>{agent.weekTotal}/{agent.weeklyGoal ?? 15} reuniones</div>
-                      <TrendBadge trend={agent.trend} pct={Math.abs(agent.trendPct)} />
+
+                    {/* Sparkline */}
+                    <div style={{ flexShrink: 0 }}>
+                      <Sparkline data={agent.sparkline} color={color} />
                     </div>
+
+                    <ChevronRight size={14} style={{ color: "#d1d5db", flexShrink: 0 }} />
                   </div>
                 );
               })}
             </div>
           )}
         </div>
-
-        {/* Tokko Broker — solo para owners */}
-        {isOwner && <TokkoConfig />}
-
-      </main>
+      </div>
     </AppLayout>
-  );
-}
-
-function TokkoConfig() {
-  const [apiKey, setApiKey] = useState("");
-  const [hasKey, setHasKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [testResult, setTestResult] = useState<{ok: boolean; message: string; properties?: number; users?: number} | null>(null);
-  const [syncing, setSyncing] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/teams/tokko-config")
-      .then(r => r.json())
-      .then(d => { setHasKey(d.hasKey); if (d.keyPreview) setApiKey(d.keyPreview); })
-      .catch(() => {});
-  }, []);
-
-  const RED = "#aa0000";
-
-  return (
-    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden mt-5">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <span className="text-base">🏠</span>
-          <div>
-            <div className="text-sm font-bold text-gray-800">Tokko Broker</div>
-            <div className="text-xs text-gray-400">Conectá tu CRM para ver cartera activa por agente</div>
-          </div>
-          {hasKey && <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-lg bg-green-50 text-green-600">✓ Conectado</span>}
-        </div>
-      </div>
-      <div className="px-5 py-4 space-y-3">
-        <div>
-          <label className="block text-xs font-bold text-gray-600 mb-1">API Key de Tokko</label>
-          <p className="text-xs text-gray-400 mb-2">Encontrala en Tokko → Mi empresa → Permisos → Clave API.</p>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              placeholder={hasKey ? "••••••••••••" : "Pegá tu API key acá"}
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-gray-400"
-            />
-            <button
-              onClick={async () => {
-                setSaving(true); setMsg("");
-                try {
-                  const r = await fetch("/api/teams/tokko-config", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ apiKey }),
-                  });
-                  const d = await r.json();
-                  if (d.ok) { setMsg("✓ Guardada"); setHasKey(true); }
-                  else setMsg(d.error || "Error");
-                } catch { setMsg("Error"); }
-                setSaving(false);
-              }}
-              disabled={saving || !apiKey || apiKey.includes("...")}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
-              style={{ background: RED }}>
-              {saving ? "..." : "Guardar"}
-            </button>
-          </div>
-          {msg && <p className={`text-xs mt-1 font-semibold ${msg.startsWith("✓") ? "text-green-600" : "text-red-500"}`}>{msg}</p>}
-        </div>
-
-        {hasKey && (
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={async () => {
-                setTesting(true); setTestResult(null);
-                try {
-                  const r = await fetch("/api/admin/tokko-test", { method: "POST" });
-                  setTestResult(await r.json());
-                } catch { setTestResult({ ok: false, message: "Error de conexión" }); }
-                setTesting(false);
-              }}
-              disabled={testing}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
-              {testing ? "Probando..." : "Probar conexión"}
-            </button>
-            <button
-              onClick={async () => {
-                setSyncing(true); setMsg("");
-                try {
-                  const r = await fetch("/api/admin/ops", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "sync_tokko" }),
-                  });
-                  const d = await r.json();
-                  setMsg(d.ok ? `✓ ${d.properties ?? 0} propiedades, ${d.users ?? 0} agentes sincronizados` : d.error || "Error");
-                } catch { setMsg("Error"); }
-                setSyncing(false);
-              }}
-              disabled={syncing}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
-              {syncing ? "Sincronizando..." : "Sincronizar ahora"}
-            </button>
-          </div>
-        )}
-
-        {testResult && (
-          <div className={`rounded-xl p-3 text-xs ${testResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-            <span className="font-bold">{testResult.ok ? "✓ " : "✗ "}</span>{testResult.message}
-            {testResult.ok && testResult.properties !== undefined && (
-              <span className="ml-2 font-bold">· 🏠 {testResult.properties} props · 👥 {testResult.users} agentes</span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

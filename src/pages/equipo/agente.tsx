@@ -2,6 +2,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Head from "next/head";
+import AppLayout from "../../components/AppLayout";
 import RankBadge from "../../components/RankBadge";
 import StreakBadge from "../../components/StreakBadge";
 import TokkoPortfolio from "../../components/TokkoPortfolio";
@@ -375,165 +376,179 @@ export default function AgentDashboard() {
 
   const calView = days < 30 ? "week" : "month";
 
-  return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      <Head><title>{data?.user.name || email} — InmoCoach</title></Head>
-      <div className="h-0.5 w-full" style={{ background: RED }} />
+  const iac = (() => {
+    if (!data) return 0;
+    const semanas = Math.max(1, days / 7);
+    return Math.min(100, Math.round((data.totals.totalGreen / semanas) / (data.totals.iacGoal ?? 15) * 100));
+  })();
+  const iacCol = iac >= 100 ? "#16a34a" : iac >= 67 ? "#d97706" : RED;
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-2">
-          {/* Fila 1: back + banner + historial */}
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={() => router.push("/equipo")} className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors shrink-0">
-              <ArrowLeft size={13} /> Equipo
-            </button>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-center" style={{ background: "#fef2f2", color: RED }}>
-                <Eye size={11} className="shrink-0" />
-                <span className="truncate">{data?.user.name || (email as string)?.split("@")[0]}</span>
-              </div>
+  return (
+    <AppLayout
+      greeting={data?.user.name?.split(" ")[0] ? `Viendo a ${data.user.name.split(" ")[0]}` : "Agente"}
+      topbarExtra={
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={() => router.push(`/equipo/historial?email=${encodeURIComponent(email as string)}`)}
+            style={{ fontSize: 12, color: "#6b7280", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
+            📈 Historial
+          </button>
+          <button onClick={() => sync()} disabled={syncing || loading}
+            style={{ fontSize: 12, color: syncing ? "#d97706" : "#6b7280", background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+            <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Sincronizando..." : "Sync"}
+          </button>
+        </div>
+      }>
+      <Head><title>{data?.user.name || email as string} — InmoCoach</title></Head>
+
+      <style>{`
+        .ag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .ag-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 900px) { .ag-kpis { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .ag-grid { grid-template-columns: 1fr; } }
+      `}</style>
+
+      {syncMsg && (
+        <div style={{ background: syncMsg.startsWith("✓") ? "#EAF3DE" : "#FEF2F2", padding: "8px 24px", fontSize: 12, color: syncMsg.startsWith("✓") ? "#16a34a" : RED, borderBottom: "0.5px solid #e5e7eb" }}>
+          {syncMsg}
+        </div>
+      )}
+
+      {data && (
+        <div style={{ padding: "24px 24px 60px" }}>
+
+          {/* Agent header */}
+          <div style={{ background: "#111827", borderRadius: 14, padding: "20px 24px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            {data.user.image
+              ? <img src={data.user.image} alt="" style={{ width: 56, height: 56, borderRadius: "50%", flexShrink: 0, border: `3px solid ${iacCol}` }} />
+              : <div style={{ width: 56, height: 56, borderRadius: "50%", background: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 500, color: "#fff", flexShrink: 0 }}>
+                  {(data.user.name || "?")[0].toUpperCase()}
+                </div>
+            }
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 500, color: "#fff", fontFamily: "Georgia, serif" }}>{data.user.name}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{data.user.email}</div>
             </div>
-            <button onClick={() => router.push(`/equipo/historial?email=${encodeURIComponent(email as string)}`)}
-              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 shrink-0">
-              📈 Historial
-            </button>
-            <button onClick={() => sync()} disabled={syncing || loading} title="Sincronizar"
-              className="flex items-center text-xs text-gray-400 hover:text-gray-700 disabled:opacity-50 p-1.5 rounded-lg hover:bg-gray-100 shrink-0">
-              <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
-            </button>
-          </div>
-          {/* Fila 2: days selector + sync msg */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 flex-1 justify-center">
+            {/* IAC badge */}
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 44, fontWeight: 500, fontFamily: "Georgia, serif", color: iacCol, lineHeight: 1 }}>{iac}%</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>IAC · {days}d</div>
+            </div>
+            {/* Days selector */}
+            <div style={{ display: "flex", background: "rgba(255,255,255,0.08)", borderRadius: 9, padding: 3, gap: 2 }}>
               {([7, 14, 30, 60, 90] as const).map(d => (
-                <button key={d} onClick={() => setDays(d)}
-                  className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all flex-1"
-                  style={{ background: days === d ? "white" : "transparent", color: days === d ? "#111827" : "#9ca3af", boxShadow: days === d ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
-                  {d}d
-                </button>
+                <button key={d} onClick={() => setDays(d)} style={{
+                  background: days === d ? "rgba(255,255,255,0.15)" : "transparent",
+                  color: days === d ? "#fff" : "rgba(255,255,255,0.35)",
+                  border: "none", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 500, cursor: "pointer"
+                }}>{d}d</button>
               ))}
             </div>
-            {syncMsg && (
-              <span className="text-xs font-semibold px-2 py-1 rounded-lg shrink-0" style={{ background: syncMsg.startsWith("✓") ? "#f0fdf4" : "#fef2f2", color: syncMsg.startsWith("✓") ? "#16a34a" : RED }}>
-                {syncMsg}
-              </span>
-            )}
           </div>
-        </div>
-      </header>
 
-      <main className="max-w-6xl mx-auto px-5 py-6 pb-16 space-y-5">
-        {data && (
-          <>
-            {/* Greeting / identity */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                {data.user.image ? (
-                  <img src={data.user.image} alt="" className="w-12 h-12 rounded-full ring-2" style={{ outlineColor: RED }} />
-                ) : (
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-black text-white" style={{ background: RED }}>
-                    {(data.user.name || "?")[0].toUpperCase()}
+          {/* KPIs */}
+          <div className="ag-kpis" style={{ marginBottom: 16 }}>
+            {[
+              { label: "IAC período", value: `${iac}%`, color: iacCol, sub: `${data.totals.totalGreen} / ${Math.round((data.totals.iacGoal ?? 15) * days / 7)} reuniones` },
+              { label: "Visitas", value: data.totals.visitas, color: "#374151", sub: "venta · alquiler" },
+              { label: "Tasac. + Prop.", value: `${data.totals.tasaciones} · ${data.totals.propuestas}`, color: "#374151", sub: "captaciones + presentaciones" },
+              { label: "Firmas", value: data.totals.firmas ?? 0, color: data.totals.firmas ? "#16a34a" : "#9ca3af", sub: "cierres" },
+            ].map(k => (
+              <div key={k.label} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderTop: `3px solid ${k.color}`, borderRadius: "0 0 12px 12px", padding: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>{k.label}</div>
+                <div style={{ fontSize: 32, fontWeight: 500, fontFamily: "Georgia, serif", color: k.color, lineHeight: 1 }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="ag-grid" style={{ marginBottom: 16 }}>
+            {/* Tendencia */}
+            <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 14 }}>Tendencia · eventos verdes</div>
+              <ResponsiveContainer width="100%" height={150}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis dataKey="dateLabel" tick={{ fontSize: 9, fill: "#d1d5db" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: "#d1d5db" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 10, border: "none", fontSize: 11, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }} />
+                  <Line type="monotone" dataKey="meta" stroke="#e5e7eb" strokeWidth={1.5} dot={false} strokeDasharray="4 4" name="Meta" />
+                  <Line type="monotone" dataKey="verdes" stroke="#16a34a" strokeWidth={2} dot={{ fill: "#16a34a", r: 3 }} name="Verdes" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Racha + rango */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {data.streak && (
+                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Racha</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+                      <div style={{ fontSize: 36, fontWeight: 500, fontFamily: "Georgia, serif", color: "#111827", lineHeight: 1 }}>{data.streak.current}</div>
+                      <div style={{ fontSize: 13, color: "#6b7280" }}>días</div>
+                    </div>
+                    <div style={{ fontSize: 28 }}>{data.streak.current >= 20 ? "🔥" : data.streak.current >= 10 ? "⚡" : data.streak.current > 0 ? "✦" : "💤"}</div>
                   </div>
-                )}
-                <div>
-                  <h1 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{data.user.name}</h1>
-                  <p className="text-sm text-gray-400">{data.user.email}</p>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Récord: {data.streak.best} días 🏆</div>
                 </div>
-              </div>
-              {(() => {
-                const semanas = Math.max(1, days / 7);
-                const iacPeriod = Math.round((data.totals.totalGreen / semanas) / (data.totals.iacGoal ?? 15) * 100);
-                const iacColor = iacPeriod >= 100 ? GREEN : iacPeriod >= 67 ? "#d97706" : RED;
-                const iacBg = iacPeriod >= 100 ? "#f0fdf4" : iacPeriod >= 67 ? "#fffbeb" : "#fef2f2";
-                return (
-                  <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold" style={{ background: iacBg, color: iacColor }}>
-                      IAC {iacPeriod}%
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1 text-right">{data.totals.totalGreen} reuniones · {days}d</div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* KPIs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <KpiCard label="Eventos verdes" value={data.totals.totalGreen} accent sub={`${days}d · objetivo ${Math.round((data.totals.iacGoal ?? 15) * days / 7)}`} tooltip="Reuniones cara a cara detectadas en el calendario del agente." />
-              <KpiCard label="Visitas" value={data.totals.visitas} sub="venta · alquiler · propiedad" tooltip="Visitas a propiedades registradas en el período." />
-              <KpiCard label="Tasaciones · Propuestas" value={`${data.totals.tasaciones} · ${data.totals.propuestas}`} sub="captaciones + presentaciones" tooltip="Tasaciones y propuestas registradas como eventos en el calendario." />
-              <KpiCard label="Firmas" value={data.totals.firmas ?? 0} sub="cierres de operación" tooltip="Operaciones cerradas detectadas por la palabra 'Firma' en el evento." />
-            </div>
-
-            {/* Streak */}
-            {data.streak && <StreakBadge current={data.streak.current} best={data.streak.best} todayActive={data.streak.todayActive} />}
-
-            {/* Rango */}
-            {data.rankStats && <RankBadge stats={data.rankStats} />}
-
-            {/* Cartera Tokko */}
-            <TokkoPortfolio agentEmail={email as string} />
-
-            {/* Tendencia + IAC */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 col-span-1 sm:col-span-2">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Tendencia — eventos verdes</div>
-                <ResponsiveContainer width="100%" height={140}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="dateLabel" tick={{ fontSize: 9, fill: "#d1d5db", fontWeight: 600 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: "#d1d5db" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: 10, border: "none", fontSize: 11, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }} />
-                    <Line type="monotone" dataKey="meta" stroke="#e5e7eb" strokeWidth={1.5} dot={false} strokeDasharray="4 4" name="Meta" />
-                    <Line type="monotone" dataKey="verdes" stroke={GREEN} strokeWidth={2} dot={{ fill: GREEN, r: 3 }} name="Verdes" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              {(() => {
-                const semanas = Math.max(1, days / 7);
-                const iacPeriod = Math.round((data.totals.totalGreen / semanas) / (data.totals.iacGoal ?? 15) * 100);
-                const iacColor = iacPeriod >= 100 ? GREEN : iacPeriod >= 67 ? "#d97706" : RED;
-                const avgSem = Math.round((data.totals.totalGreen / semanas) * 10) / 10;
-                const goalPeriod = Math.round((data.totals.iacGoal ?? 15) * semanas);
-                return (
-                  <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-row sm:flex-col justify-between sm:justify-center gap-4">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">IAC · {days}d</div>
-                      <div className="text-4xl font-black" style={{ color: iacColor, fontFamily: "Georgia, serif" }}>{iacPeriod}%</div>
-                      <div className="text-xs text-gray-400 mt-1">{data.totals.totalGreen} de {goalPeriod} · {avgSem}/sem</div>
-                      <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, iacPeriod)}%`, background: iacColor }} /></div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Objetivo semanal</div>
-                      <div className="text-4xl font-black text-gray-900" style={{ fontFamily: "Georgia, serif" }}>{data.totals.iacGoal ?? 15}</div>
-                      <div className="text-xs text-gray-400 mt-1">reuniones cara a cara / semana</div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Calendario */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Calendario · {calView === "week" ? "vista semana" : "vista mes"}</div>
-              </div>
-              {calView === "week" ? (
-                <WeeklyView summaries={data.dailySummaries} weekOffset={weekOffset} onPrev={() => setWeekOffset(w => w - 1)} onNext={() => setWeekOffset(w => w + 1)} />
-              ) : (
-                <MonthlyView summaries={data.dailySummaries} monthOffset={monthOffset} onPrev={() => setMonthOffset(m => m - 1)} onNext={() => setMonthOffset(m => m + 1)} />
               )}
-              <div className="flex items-center gap-4 mt-2 px-1">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-green-200" /><span className="text-xs text-gray-400 font-medium">1 a 1 cara a cara</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-gray-200" /><span className="text-xs text-gray-400 font-medium">Otros eventos</span></div>
+              {data.rankStats && (
+                <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: "14px 16px", flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Rango</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 28 }}>{data.rankStats.currentRank?.icon ?? "🏠"}</span>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 500, color: "#111827" }}>{data.rankStats.currentRank?.label ?? "Agente"}</div>
+                      {data.rankStats.nextRank && (
+                        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                          Próximo: {data.rankStats.nextRank.icon} {data.rankStats.nextRank.label}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Cartera Tokko */}
+          <div style={{ marginBottom: 16 }}>
+            <TokkoPortfolio agentEmail={email as string} />
+          </div>
+
+          {/* Calendario */}
+          <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6" }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>
+                Calendario · {calView === "week" ? "vista semana" : "vista mes"}
               </div>
             </div>
+            <div style={{ padding: "12px 0" }}>
+              {calView === "week"
+                ? <WeeklyView summaries={data.dailySummaries} weekOffset={weekOffset} onPrev={() => setWeekOffset(w => w - 1)} onNext={() => setWeekOffset(w => w + 1)} />
+                : <MonthlyView summaries={data.dailySummaries} monthOffset={monthOffset} onPrev={() => setMonthOffset(m => m - 1)} onNext={() => setMonthOffset(m => m + 1)} />
+              }
+            </div>
+            <div style={{ display: "flex", gap: 14, padding: "8px 16px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#bbf7d0" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>1 a 1 cara a cara</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#f3f4f6" }} /><span style={{ fontSize: 11, color: "#9ca3af" }}>Otros eventos</span></div>
+            </div>
+          </div>
 
-            {/* Inmo Coach */}
-            <CoachPanel data={data} calView={calView} monthOffset={monthOffset} weekOffset={weekOffset} agentEmail={email as string} />
-          </>
-        )}
-      </main>
-    </div>
+          {/* Coach */}
+          <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Análisis del coach</span>
+              <span style={{ fontSize: 11, color: "#9ca3af" }}>Inmo Coach ✦</span>
+            </div>
+            <div style={{ padding: 16 }}>
+              <CoachPanel data={data} calView={calView} monthOffset={monthOffset} weekOffset={weekOffset} agentEmail={email as string} />
+            </div>
+          </div>
+
+        </div>
+      )}
+    </AppLayout>
   );
 }
