@@ -60,6 +60,26 @@ function TrendBadge({ trend, pct }: { trend: string; pct: number }) {
   return <span className="flex items-center gap-0.5 text-xs text-gray-400"><Minus size={10} />estable</span>;
 }
 
+function InviteButton({ email }: { email: string }) {
+  const [sending, setSending] = useState(false);
+  const [done, setDone] = useState(false);
+  const handleInvite = async () => {
+    setSending(true);
+    const r = await fetch("/api/teams/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+    const d = await r.json();
+    if (d.ok) setDone(true);
+    else alert(d.error || "Error al invitar");
+    setSending(false);
+  };
+  if (done) return <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 500 }}>✓ Invitado</span>;
+  return (
+    <button onClick={handleInvite} disabled={sending}
+      style={{ background: sending ? "#e5e7eb" : RED, color: sending ? "#9ca3af" : "#fff", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 11, fontWeight: 500, cursor: sending ? "default" : "pointer", flexShrink: 0 }}>
+      {sending ? "Enviando..." : "Invitar a InmoCoach"}
+    </button>
+  );
+}
+
 export default function BrokerDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -67,26 +87,6 @@ export default function BrokerDashboard() {
   const [overview, setOverview] = useState<TeamOverview | null>(null);
   const [portfolio, setPortfolio] = useState<{ connected: boolean; active: any[]; uninvited: any[] } | null>(null);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
-
-  function InviteButton({ email }: { email: string }) {
-    const [sending, setSending] = useState(false);
-    const [done, setDone] = useState(false);
-    const handleInvite = async () => {
-      setSending(true);
-      const r = await fetch("/api/teams/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-      const d = await r.json();
-      if (d.ok) setDone(true);
-      else alert(d.error || "Error al invitar");
-      setSending(false);
-    };
-    if (done) return <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 500 }}>✓ Invitado</span>;
-    return (
-      <button onClick={handleInvite} disabled={sending}
-        style={{ background: sending ? "#e5e7eb" : RED, color: sending ? "#9ca3af" : "#fff", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 11, fontWeight: 500, cursor: sending ? "default" : "pointer", flexShrink: 0 }}>
-        {sending ? "Enviando..." : "Invitar a InmoCoach"}
-      </button>
-    );
-  }
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [requesterRole, setRequesterRole] = useState<TeamRole | null>(null);

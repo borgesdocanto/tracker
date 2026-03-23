@@ -41,7 +41,7 @@ export default function CarteraPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
     const url = agentEmail
-      ? `/api/tokko-portfolio?agentEmail=${encodeURIComponent(agentEmail)}`
+      ? `/api/tokko-portfolio?email=${encodeURIComponent(agentEmail)}`
       : "/api/tokko-portfolio";
     fetch(url, { cache: "no-store" })
       .then(r => r.ok ? r.json() : null)
