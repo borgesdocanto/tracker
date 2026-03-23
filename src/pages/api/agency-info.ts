@@ -14,7 +14,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const email = session.user.email.toLowerCase().trim();
 
-  // 1. Get team_id
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")
     .select("team_id")
@@ -23,7 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!sub?.team_id) return res.status(200).json({ logo: null });
 
-  // 2. Get API key
   const { data: team } = await supabaseAdmin
     .from("teams")
     .select("tokko_api_key")
@@ -32,15 +30,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!team?.tokko_api_key) return res.status(200).json({ logo: null });
 
-  // 3. Find agent's branch_id — match by team_id AND exact email
+  // 1. Try branch_id from tokko_agents (exact email match)
   const { data: agents } = await supabaseAdmin
     .from("tokko_agents")
-    .select("branch_id, branch_name, email")
+    .select("branch_id, email")
     .eq("team_id", sub.team_id)
-    .eq("email", email);  // exact match, not ilike
+    .eq("email", email);
 
-  const agent = agents?.[0];
-  const branchId = agent?.branch_id ?? null;
+  let branchId: number | null = agents?.[0]?.branch_id ?? null;
+
+  // 2. Fallback: derive branch from tokko_properties via producer_email
+  if (!branchId) {
+    const { data: prop } = await supabaseAdmin
+      .from("tokko_properties")
+      .select("branch_id")
+      .eq("team_id", sub.team_id)
+      .eq("producer_email", email)
+      .not("branch_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    branchId = prop?.branch_id ?? null;
+
+    // Persist it so next sync is faster
+    if (branchId && agents?.[0]) {
+      void supabaseAdmin
+        .from("tokko_agents")
+        .update({ branch_id: branchId })
+        .eq("team_id", sub.team_id)
+        .eq("email", email);
+    }
+  }
 
   if (!branchId) return res.status(200).json({ logo: null });
 
@@ -50,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ logo: cached.logo });
   }
 
-  // 4. Fetch all branches and find the one matching branchId
+  // 3. Fetch branches from Tokko and find matching one
   try {
     const r = await fetch(
       `https://www.tokkobroker.com/api/v1/branch/?key=${team.tokko_api_key}&format=json&limit=50`
@@ -58,9 +78,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (r.ok) {
       const d = await r.json();
       const branches: any[] = d.objects || [];
-      const branch = branches.find((b: any) => b.id === branchId || String(b.id) === String(branchId));
-      // Try multiple possible logo fields from Tokko API
-      const logo = branch?.logo || branch?.logo_url || branch?.picture || branch?.image || null;
+      const branch = branches.find((b: any) =>
+        Number(b.id) === Number(branchId)
+      );
+      const logo = branch?.logo || branch?.logo_url || branch?.picture || null;
       cache[cacheKey] = { logo, ts: Date.now() };
       return res.status(200).json({ logo });
     }

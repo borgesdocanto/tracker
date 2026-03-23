@@ -90,12 +90,45 @@ async function syncTeam(teamId: string, apiKey: string): Promise<{ properties: n
         phone: u.phone || u.cellphone || null,
         picture: u.picture || null,
         position: u.position || null,
-        branch_id: u.branch?.id || null,
-        branch_name: u.branch?.name || null,
+        branch_id: u.branch?.id || u.office?.id || null,
+        branch_name: u.branch?.name || u.office?.name || null,
         synced_at: new Date().toISOString(),
       }));
       await supabaseAdmin.from("tokko_agents").upsert(rows, { onConflict: "tokko_id" });
       results.users = users.length;
+
+      // Patch branch_id from tokko_properties for agents whose branch is null
+      // tokko_properties has producer_email + branch_id from the property listing
+      const nullBranchEmails = rows
+        .filter(r => !r.branch_id && r.email)
+        .map(r => r.email);
+
+      if (nullBranchEmails.length > 0) {
+        const { data: propsWithBranch } = await supabaseAdmin
+          .from("tokko_properties")
+          .select("producer_email, branch_id")
+          .eq("team_id", teamId)
+          .in("producer_email", nullBranchEmails)
+          .not("branch_id", "is", null);
+
+        if (propsWithBranch?.length) {
+          // Build map email -> branch_id (first occurrence)
+          const branchMap: Record<string, number> = {};
+          for (const p of propsWithBranch) {
+            if (p.producer_email && !branchMap[p.producer_email]) {
+              branchMap[p.producer_email] = p.branch_id;
+            }
+          }
+          // Update tokko_agents for each agent
+          for (const [email, branchId] of Object.entries(branchMap)) {
+            await supabaseAdmin
+              .from("tokko_agents")
+              .update({ branch_id: branchId })
+              .eq("team_id", teamId)
+              .eq("email", email);
+          }
+        }
+      }
     }
   } catch (e: any) {
     results.errors.push(`users: ${e.message}`);
