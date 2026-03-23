@@ -44,6 +44,7 @@ export default function AppLayout({ children, agencyLogo, topbarExtra, greeting 
   const navItems: NavItem[] = [
     { label: "Inicio", icon: "⊞", href: "/", active: path === "/" },
     { label: "Actividad (IAC)", icon: "◈", href: "/iac", active: path === "/iac" },
+    { label: "Racha y rango", icon: "✦", href: "/racha-rango", active: path === "/racha-rango" },
     ...(isOwner ? [{ label: "Mi equipo", icon: "⊙", href: "/equipo", active: path.startsWith("/equipo") }] : []),
     {
       label: "Configuración",

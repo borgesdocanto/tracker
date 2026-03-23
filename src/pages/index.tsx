@@ -1042,7 +1042,7 @@ export default function HomePage() {
               <TokkoPortfolioCard />
 
               {/* Racha + Rango */}
-              <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", cursor: "pointer" }}>
+              <div onClick={() => router.push("/racha-rango")} style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", cursor: "pointer" }}>
                 <div style={{ padding: "14px 16px 10px", borderBottom: "0.5px solid #f3f4f6" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
