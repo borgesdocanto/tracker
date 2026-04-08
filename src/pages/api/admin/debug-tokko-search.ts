@@ -12,29 +12,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data: team } = await supabaseAdmin.from("teams").select("tokko_api_key").eq("id", sub?.team_id || "").single();
   if (!team?.tokko_api_key) return res.status(400).json({ error: "no api key" });
 
-  const searchData = JSON.stringify({ only_available: "checked" });
-  const url = `https://tokkobroker.com/api/v1/property/search/?lang=es_ar&format=json&key=${team.tokko_api_key}&data=${encodeURIComponent(searchData)}`;
+  const key = team.tokko_api_key;
 
-  const r = await fetch(url);
-  const d = await r.json();
-  const p = d.objects?.[0];
+  // Try the search endpoint (note: www.tokkobroker.com)
+  const searchData = encodeURIComponent(JSON.stringify({ only_available: "checked" }));
+  const searchUrl = `https://www.tokkobroker.com/api/v1/property/search/?lang=es_ar&format=json&key=${key}&data=${searchData}`;
 
-  if (!p) return res.status(200).json({ error: "no props", raw: d });
+  // Also try the regular endpoint to compare
+  const regularUrl = `https://www.tokkobroker.com/api/v1/property/?key=${key}&format=json&lang=es_ar&limit=1`;
 
-  // Show all keys and values of first property
+  const [searchRes, regularRes] = await Promise.all([
+    fetch(searchUrl).then(r => ({ status: r.status, ok: r.ok, data: r.ok ? r.json() : r.text() })).catch(e => ({ error: e.message })),
+    fetch(regularUrl).then(r => ({ status: r.status, ok: r.ok, data: r.ok ? r.json() : r.text() })).catch(e => ({ error: e.message })),
+  ]);
+
+  const [searchData2, regularData] = await Promise.all([
+    (searchRes as any).data,
+    (regularRes as any).data,
+  ]);
+
+  // Extract interesting fields from first property of each
+  const extractFields = (d: any) => {
+    const p = d?.objects?.[0];
+    if (!p) return { error: "no objects", raw_keys: Object.keys(d || {}) };
+    return {
+      id: p.id,
+      title: p.publication_title,
+      all_keys: Object.keys(p).sort(),
+      owners: p.owners,
+      contact: p.contact,
+      client: p.client,
+      contacts: p.contacts,
+      producer: p.producer,
+      photos_count: p.photos?.length,
+      photos_sample: p.photos?.slice(0, 1)?.map((ph: any) => Object.keys(ph)),
+    };
+  };
+
   return res.status(200).json({
-    totalCount: d.count,
-    paginates: d.meta,
-    firstPropAllKeys: Object.keys(p).sort(),
-    // Key fields we care about
-    owners: p.owners,
-    contact: p.contact,
-    client: p.client,
-    contacts: p.contacts,
-    photos_sample: p.photos?.slice(0, 2),
-    operations_sample: p.operations?.slice(0, 1),
-    producer: p.producer,
-    id: p.id,
-    title: p.publication_title,
+    search: {
+      url: searchUrl.replace(key, "***"),
+      status: (searchRes as any).status,
+      count: searchData2?.count,
+      fields: extractFields(searchData2),
+    },
+    regular: {
+      url: regularUrl.replace(key, "***"),
+      status: (regularRes as any).status,
+      count: regularData?.meta?.total_count,
+      fields: extractFields(regularData),
+    },
   });
 }
