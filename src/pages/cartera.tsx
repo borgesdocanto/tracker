@@ -103,8 +103,8 @@ function PropertyModal({ propId, onClose }: { propId: string; onClose: () => voi
               <button key={t} onClick={() => setTab(t)} style={{
                 padding: "10px 20px", fontSize: 13, fontWeight: tab === t ? 500 : 400,
                 color: tab === t ? RED : "#6b7280",
+                background: "none", border: "none",
                 borderBottom: tab === t ? `2px solid ${RED}` : "2px solid transparent",
-                background: "none", border: "none", borderBottom: tab === t ? `2px solid ${RED}` : "2px solid transparent",
                 cursor: "pointer",
               }}>{label}</button>
             ))}
