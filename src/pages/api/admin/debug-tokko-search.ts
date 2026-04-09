@@ -14,53 +14,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const key = team.tokko_api_key;
 
-  // Try the search endpoint (note: www.tokkobroker.com)
-  const searchData = encodeURIComponent(JSON.stringify({ only_available: "checked" }));
-  const searchUrl = `https://www.tokkobroker.com/api/v1/property/search/?lang=es_ar&format=json&key=${key}&data=${searchData}`;
-
-  // Also try the regular endpoint to compare
-  const regularUrl = `https://www.tokkobroker.com/api/v1/property/?key=${key}&format=json&lang=es_ar&limit=1`;
-
-  const [searchRes, regularRes] = await Promise.all([
-    fetch(searchUrl).then(r => ({ status: r.status, ok: r.ok, data: r.ok ? r.json() : r.text() })).catch(e => ({ error: e.message })),
-    fetch(regularUrl).then(r => ({ status: r.status, ok: r.ok, data: r.ok ? r.json() : r.text() })).catch(e => ({ error: e.message })),
-  ]);
-
-  const [searchData2, regularData] = await Promise.all([
-    (searchRes as any).data,
-    (regularRes as any).data,
-  ]);
-
-  // Extract interesting fields from first property of each
-  const extractFields = (d: any) => {
-    const p = d?.objects?.[0];
-    if (!p) return { error: "no objects", raw_keys: Object.keys(d || {}) };
-    return {
-      id: p.id,
-      title: p.publication_title,
-      all_keys: Object.keys(p).sort(),
-      owners: p.owners,
-      contact: p.contact,
-      client: p.client,
-      contacts: p.contacts,
-      producer: p.producer,
-      photos_count: p.photos?.length,
-      photos_sample: p.photos?.slice(0, 1)?.map((ph: any) => Object.keys(ph)),
-    };
+  // Replicar exactamente el formato de la URL que funciona en Tokko
+  const dataObj = {
+    filters: [],
+    only_available: "checked",
+    only_reserved: "undefined",
+    only_to_be_cotized: "undefined",
+    only_not_available: "undefined",
+    with_tags: [],
+    without_tags: [],
+    with_custom_tags: [],
+    with_or_custom_tags: [],
+    without_custom_tags: [],
+    division_filters: [],
+    state_filters: [],
+    network: [],
+    price_from: "0",
+    price_to: "9999999999",
+    operation_types: [1, 2],
+    property_types: [],
+    currency: "USD",
+    bounding_box: [],
   };
 
-  return res.status(200).json({
-    search: {
-      url: searchUrl.replace(key, "***"),
-      status: (searchRes as any).status,
-      count: searchData2?.count,
-      fields: extractFields(searchData2),
-    },
-    regular: {
-      url: regularUrl.replace(key, "***"),
-      status: (regularRes as any).status,
-      count: regularData?.meta?.total_count,
-      fields: extractFields(regularData),
-    },
-  });
+  const url = `https://www.tokkobroker.com/api/v1/property/search/?lang=es_ar&format=json&key=${key}&data=${JSON.stringify(dataObj)}`;
+
+  try {
+    const r = await fetch(url);
+    const text = await r.text();
+
+    if (!r.ok) {
+      return res.status(200).json({ status: r.status, error: text.slice(0, 500) });
+    }
+
+    const d = JSON.parse(text);
+    const p = d?.objects?.[0];
+
+    if (!p) return res.status(200).json({ status: r.status, count: d.count, meta: d.meta, raw_sample: text.slice(0, 500) });
+
+    return res.status(200).json({
+      status: r.status,
+      count: d.count,
+      all_keys: Object.keys(p).sort(),
+      // Campos de propietario
+      owners: p.owners,
+      owner: p.owner,
+      contacts: p.contacts,
+      contact: p.contact,
+      client: p.client,
+      // Campos conocidos
+      producer: p.producer,
+      id: p.id,
+      title: p.publication_title,
+    });
+  } catch (e: any) {
+    return res.status(200).json({ error: e.message });
+  }
 }
