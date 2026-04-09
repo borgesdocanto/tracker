@@ -68,7 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       name: prop.producer.name || null,
       email: prop.producer.email || null,
       phone: prop.producer.phone || prop.producer.cellphone || null,
+      cellphone: prop.producer.cellphone || null,
       picture: prop.producer.picture || null,
+      position: prop.producer.position || null,
     } : null;
 
     return res.status(200).json({

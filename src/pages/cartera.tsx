@@ -99,7 +99,7 @@ function PropertyModal({ propId, onClose }: { propId: string; onClose: () => voi
 
           {/* Tabs */}
           <div style={{ display: "flex", borderBottom: "0.5px solid #f3f4f6", flexShrink: 0 }}>
-            {([["ficha", "🏠 Ficha"], ["propietario", "👤 Propietario"]] as const).map(([t, label]) => (
+            {([["ficha", "🏠 Ficha"], ["propietario", "👤 Agente"]] as const).map(([t, label]) => (
               <button key={t} onClick={() => setTab(t)} style={{
                 padding: "10px 20px", fontSize: 13, fontWeight: tab === t ? 500 : 400,
                 color: tab === t ? RED : "#6b7280",
@@ -280,7 +280,7 @@ function PropertyModal({ propId, onClose }: { propId: string; onClose: () => voi
                       </div>
                       {[
                         { label: "Email", value: producer.email, href: producer.email ? `mailto:${producer.email}` : null },
-                        { label: "Teléfono", value: producer.phone, href: producer.phone ? `tel:${producer.phone}` : null },
+                        { label: "Teléfono", value: producer.phone || producer.cellphone, href: (producer.phone || producer.cellphone) ? `tel:${producer.phone || producer.cellphone}` : null },
                       ].filter(r => r.value).map(r => (
                         <div key={r.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "0.5px solid #f3f4f6" }}>
                           <span style={{ fontSize: 13, color: "#6b7280" }}>{r.label}</span>
