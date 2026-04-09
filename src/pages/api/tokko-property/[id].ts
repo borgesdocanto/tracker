@@ -108,15 +108,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hasBlueprint: blueprintPhotos.length > 0,
       hasVideo: videos.some((v: any) => v.url.includes("youtube") || v.url.includes("vimeo")),
       hasTour: videos.some((v: any) => v.url.includes("360") || v.url.includes("tour") || v.url.includes("matterport")),
-      // Producer (agent)
+      // Producer (assigned agent) — owners not available via Tokko public API
       producer: prop.producer ? {
         name: prop.producer.name,
         email: prop.producer.email,
         phone: prop.producer.phone || prop.producer.cellphone,
       } : null,
-      // Producer (assigned agent) — owners not available via Tokko API
-      producer,
-      owner: null, // Not available via Tokko API — see Tokko web for owner data
+      owner: null,
       owners: [],
       // Dates
       daysOnline: (prop.deleted_at || prop.created_at)
