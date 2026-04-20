@@ -21,7 +21,7 @@ export default function Document() {
         <meta property="og:site_name" content="InmoCoach" />
         <meta property="og:title" content="InmoCoach — El 80% trabaja. El 20% produce." />
         <meta property="og:description" content="Sincronizá tu agenda, medí tus reuniones cara a cara y recibí feedback real de tu negocio cada semana." />
-        <meta property="og:image" content="https://inmocoach.com.ar/og-image.png" />
+        <meta property="og:image" content="https://inmocoach.com.ar/api/og" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:url" content="https://inmocoach.com.ar" />
@@ -30,7 +30,7 @@ export default function Document() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="InmoCoach — El 80% trabaja. El 20% produce." />
         <meta name="twitter:description" content="Sincronizá tu agenda, medí tus reuniones cara a cara y recibí feedback real de tu negocio cada semana." />
-        <meta name="twitter:image" content="https://inmocoach.com.ar/og-image.png" />
+        <meta name="twitter:image" content="https://inmocoach.com.ar/api/og" />
 
         {/* Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
