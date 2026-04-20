@@ -82,3 +82,17 @@ export default function ExpiredPage() {
     </div>
   );
 }
+
+import { GetServerSideProps } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../lib/auth";
+import { isSuperAdmin } from "../lib/adminGuard";
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const session = await getServerSession(ctx.req, ctx.res, authOptions);
+  // El super admin nunca debe quedar en /expired
+  if (session?.user?.email && isSuperAdmin(session.user.email)) {
+    return { redirect: { destination: "/", permanent: false } };
+  }
+  return { props: {} };
+};
