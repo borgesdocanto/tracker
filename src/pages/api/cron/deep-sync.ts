@@ -5,6 +5,7 @@ import { isSuperAdmin } from "../../../lib/adminGuard";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { syncAndPersist } from "../../../lib/calendarSync";
 import { getValidAccessToken } from "../../../lib/googleToken";
+import { FREEMIUM_DAYS } from "../../../lib/brand";
 import { saveWeeklyStatsAndRank } from "../../../lib/ranks";
 import { computeAndSaveStreak } from "../../../lib/streak";
 import { startOfWeek, format } from "date-fns";
@@ -31,13 +32,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Traer todos los usuarios activos con token de Google
     const { data: users } = await supabaseAdmin
       .from("subscriptions")
-      .select("email, team_id")
+      .select("email, team_id, plan, created_at")
       .eq("status", "active")
       .not("google_access_token", "is", null);
 
     if (!users?.length) return res.status(200).json({ ok: true, ...results });
 
-    for (const user of users) {
+    // Filtrar freemium expirados (plan free con más de FREEMIUM_DAYS desde creación)
+    const nowMs = Date.now();
+    const activeUsers = (users as any[]).filter((u: any) => {
+      if (u.plan && u.plan !== "free") return true;
+      const diffDays = (nowMs - new Date(u.created_at || 0).getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays <= FREEMIUM_DAYS;
+    });
+
+    for (const user of activeUsers) {
       try {
         // Obtener token válido — refresca automáticamente si expiró
         const accessToken = await getValidAccessToken(user.email);

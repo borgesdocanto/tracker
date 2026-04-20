@@ -9,6 +9,7 @@ import { getStoredEvents, calcIAC, PROCESOS_GOAL } from "../../../lib/calendarSy
 import { getGoals } from "../../../lib/appConfig";
 import { getAgentTokkoStats } from "../../../lib/tokkoPortfolio";
 import { generateTeamEmailHtml } from "../../../lib/teamEmailTemplate";
+import { FREEMIUM_DAYS } from "../../../lib/brand";
 
 export const config = { maxDuration: 300 };
 
@@ -148,18 +149,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { targetEmail } = req.body || {};
 
-  // Obtener todos los brokers y team leaders con equipo activo
+  // Obtener brokers y team leaders activos (no freemium expirado)
   let query = supabaseAdmin
     .from("subscriptions")
-    .select("email, team_id, team_role")
+    .select("email, team_id, team_role, plan, created_at")
     .in("team_role", ["owner", "team_leader"])
-    .not("team_id", "is", null);
+    .not("team_id", "is", null)
+    .eq("status", "active");
 
   if (targetEmail) {
     query = query.eq("email", targetEmail) as any;
   }
 
-  const { data: leaders } = await query;
+  const { data: leadersRaw } = await query;
+
+  // Filtrar freemium expirados
+  const nowMs = Date.now();
+  const leaders = (leadersRaw || []).filter(l => {
+    if (l.plan && l.plan !== "free") return true;
+    const diffDays = (nowMs - new Date(l.created_at || 0).getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= FREEMIUM_DAYS;
+  });
   if (!leaders?.length) return res.status(200).json({ ok: true, sent: 0, skipped: 0, failed: 0 });
 
   console.log(`📋 ${leaders.length} brokers/teamleaders a procesar`);
