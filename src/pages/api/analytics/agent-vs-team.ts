@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
+import { getEffectiveEmail } from "../../../lib/impersonation";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getAgentSummary } from "../../../lib/analytics";
 
@@ -10,8 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
-  const email = session.user.email;
-  const weekOffset = parseInt((req.query.weekOffset as string) || "0");
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
+    const weekOffset = parseInt((req.query.weekOffset as string) || "0");
 
   // Datos del agente
   const agentStats = await getAgentSummary(email, weekOffset);

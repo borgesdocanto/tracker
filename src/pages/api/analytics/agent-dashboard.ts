@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
+import { getEffectiveEmail } from "../../../lib/impersonation";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getStoredEvents, PROCESOS_GOAL, calcIAC } from "../../../lib/calendarSync";
 import { getGoals } from "../../../lib/appConfig";
@@ -13,6 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
   const { agentEmail, days: daysParam } = req.query;
   if (!agentEmail || typeof agentEmail !== "string")
     return res.status(400).json({ error: "agentEmail requerido" });
@@ -20,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data: requester } = await supabaseAdmin
     .from("subscriptions")
     .select("team_id, team_role")
-    .eq("email", session.user.email)
+    .eq("email", email)
     .single();
 
   if (!requester?.team_id || !["owner", "team_leader"].includes(requester.team_role))

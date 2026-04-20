@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { getEffectiveEmail } from "../../lib/impersonation";
 import { supabaseAdmin } from "../../lib/supabase";
 
 const cache: Record<string, { logo: string | null; ts: number }> = {};
@@ -12,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).end();
 
-  const email = session.user.email.toLowerCase().trim();
+  const email = (getEffectiveEmail(req, session) ?? session.user.email).toLowerCase().trim();
 
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")

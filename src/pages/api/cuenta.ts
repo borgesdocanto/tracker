@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
+import { getEffectiveEmail } from "../../lib/impersonation";
 import { authOptions } from "../../lib/auth";
 import { supabaseAdmin } from "../../lib/supabase";
 import { calcTeamsTotal, getTierForAgents, pricePerAgent } from "../../lib/pricing";
@@ -22,7 +23,8 @@ async function mp(path: string, method: string, body?: any) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
-  const email = session.user.email;
+
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
 
   // ── GET — datos de cuenta ──────────────────────────────────────────────────
   if (req.method === "GET") {

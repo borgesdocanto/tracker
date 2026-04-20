@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { getEffectiveEmail } from "../../lib/impersonation";
 import { supabaseAdmin } from "../../lib/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,10 +9,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).end();
 
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
   const { data } = await supabaseAdmin
     .from("coach_reports")
     .select("period_key, advice, profile, created_at")
-    .eq("user_email", session.user.email)
+    .eq("user_email", email)
     .order("created_at", { ascending: false })
     .limit(20);
 

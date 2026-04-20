@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { getEffectiveEmail } from "../../lib/impersonation";
 import { supabaseAdmin } from "../../lib/supabase";
 import { getGoals } from "../../lib/appConfig";
 
@@ -8,8 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
-  const email = session.user.email;
-  const mode = (req.query.mode as string) || "iac_week";
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
+    const mode = (req.query.mode as string) || "iac_week";
   const { weeklyGoal } = await getGoals();
 
   try {

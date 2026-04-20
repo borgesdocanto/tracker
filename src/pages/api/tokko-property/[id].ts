@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
+import { getEffectiveEmail } from "../../../lib/impersonation";
 import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../../lib/subscription";
@@ -11,14 +12,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).end();
 
-  const sub = await getOrCreateSubscription(session.user.email);
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
+  const sub = await getOrCreateSubscription(email);
   if (isFreemiumExpired(sub)) return res.status(403).end();
 
   const { id } = req.query;
   if (!id || typeof id !== "string") return res.status(400).json({ error: "id requerido" });
 
   const { data: subData } = await supabaseAdmin
-    .from("subscriptions").select("team_id").eq("email", session.user.email).single();
+    .from("subscriptions").select("team_id").eq("email", email).single();
   if (!subData?.team_id) return res.status(404).json({ error: "Sin equipo" });
 
   const { data: team } = await supabaseAdmin

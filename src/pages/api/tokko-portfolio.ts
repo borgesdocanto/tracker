@@ -2,6 +2,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { getEffectiveEmail } from "../../lib/impersonation";
 import { supabaseAdmin } from "../../lib/supabase";
 
 export const config = { maxDuration: 60 };
@@ -36,8 +37,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).end();
 
-  const email = session.user.email;
-  const targetEmail = (req.query.email as string) || email;
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
+    const targetEmail = (req.query.email as string) || email;
 
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")

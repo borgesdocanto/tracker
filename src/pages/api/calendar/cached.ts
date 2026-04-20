@@ -3,6 +3,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
+import { getEffectiveEmail } from "../../../lib/impersonation";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../../lib/subscription";
 import { getStoredEvents, calcIAC, PROCESOS_GOAL } from "../../../lib/calendarSync";
 import { getGoals } from "../../../lib/appConfig";
@@ -16,7 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
-  const sub = await getOrCreateSubscription(session.user.email);
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
+  const sub = await getOrCreateSubscription(email);
   if (isFreemiumExpired(sub)) return res.status(403).json({ error: "Prueba terminada" });
 
   const requestedDays = parseInt(req.query.days as string) || 30;
@@ -26,12 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const to = endOfDay(addDays(now, 30));
 
   // Leer eventos de DB — siempre disponibles, nunca depende de Google
-  const events = await getStoredEvents(session.user.email, from, to);
+  const events = await getStoredEvents(email, from, to);
 
   const { data: subData } = await supabaseAdmin
     .from("subscriptions")
     .select("team_id, onboarding_done, streak_current, streak_best, streak_shields, rank_slug")
-    .eq("email", session.user.email)
+    .eq("email", email)
     .single();
 
   const { weeklyGoal, productiveDayMin } = await getGoals();
@@ -99,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       shields: subData?.streak_shields ?? 0,
       todayActive: (todaySummary?.greenCount ?? 0) >= productivityGoal,
     };
-    rankStats = await getAgentRankStats(session.user.email);
+    rankStats = await getAgentRankStats(email);
   } catch {}
 
   res.setHeader("Cache-Control", "private, max-age=60");

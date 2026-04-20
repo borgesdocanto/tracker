@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth";
+import { getEffectiveEmail } from "../../lib/impersonation";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../lib/subscription";
 import { supabaseAdmin } from "../../lib/supabase";
 import { getAgentTokkoStats, formatTokkoSectionForPrompt } from "../../lib/tokkoPortfolio";
@@ -34,6 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
   const {
     dailySummaries, productivityGoal, userName,
     periodStart, periodEnd, calView, goal, periodLabel,
@@ -45,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Faltan datos del calendario" });
   }
 
-  const userEmail = session.user.email;
+  const userEmail = email;
 
   // Verificar que el usuario tiene acceso activo
   const sub = await getOrCreateSubscription(userEmail);

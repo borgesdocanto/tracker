@@ -4,6 +4,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
+import { getEffectiveEmail } from "../../../lib/impersonation";
 import { getOrCreateSubscription, isFreemiumExpired } from "../../../lib/subscription";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { syncAndPersist } from "../../../lib/calendarSync";
@@ -22,14 +23,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).end();
 
-  const sub = await getOrCreateSubscription(session.user.email);
+  const email = getEffectiveEmail(req, session) ?? session.user.email;
+
+  const sub = await getOrCreateSubscription(email);
   if (isFreemiumExpired(sub)) return res.status(403).end();
 
   // Revisar cuándo fue la última sync
   const { data: subData } = await supabaseAdmin
     .from("subscriptions")
     .select("last_webhook_sync, team_id, streak_best")
-    .eq("email", session.user.email)
+    .eq("email", email)
     .single();
 
   const lastSync = subData?.last_webhook_sync ? new Date(subData.last_webhook_sync) : null;
@@ -40,21 +43,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Obtener access token
-  const accessToken = await getValidAccessToken(session.user.email);
+  const accessToken = await getValidAccessToken(session.user.email); // token Google del admin real, no impersonado
   if (!accessToken) {
     return res.status(200).json({ synced: false, reason: "no_token" });
   }
 
   try {
     // Sincronizar ANTES de responder (Vercel mata el proceso post-respuesta)
-    await syncAndPersist(accessToken, session.user.email, subData?.team_id ?? null, 90);
+    await syncAndPersist(accessToken, email, subData?.team_id ?? null, 90);
 
     // Marcar sync completada — el polling del dashboard lo detectará
     const syncedAt = new Date().toISOString();
     await supabaseAdmin
       .from("subscriptions")
       .update({ last_webhook_sync: syncedAt })
-      .eq("email", session.user.email);
+      .eq("email", email);
 
     // Actualizar streak y rank con los nuevos datos
     try {
@@ -62,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { data: events } = await supabaseAdmin
         .from("calendar_events")
         .select("start_at, is_productive")
-        .eq("user_email", session.user.email)
+        .eq("user_email", email)
         .gte("start_at", new Date(Date.now() - 90 * 86400000).toISOString());
 
       if (events?.length) {
@@ -72,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           byDay[day] = (byDay[day] || 0) + 1;
         });
         const summaries = Object.entries(byDay).map(([date, greenCount]) => ({ date, greenCount }));
-        const streakData = await computeAndSaveStreak(session.user.email, summaries);
+        const streakData = await computeAndSaveStreak(email, summaries);
 
         const now = new Date();
         const monday = new Date(now);
@@ -81,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const weekStart = monday.toISOString().slice(0, 10);
         const weekGreen = summaries.filter(d => d.date >= weekStart).reduce((s, d) => s + d.greenCount, 0);
         const iac = Math.min(100, Math.round((weekGreen / weeklyGoal) * 100));
-        await saveWeeklyStatsAndRank(session.user.email, weekStart, iac, weekGreen, streakData.best);
+        await saveWeeklyStatsAndRank(email, weekStart, iac, weekGreen, streakData.best);
       }
     } catch { /* streak/rank non-critical */ }
 
