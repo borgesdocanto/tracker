@@ -37,20 +37,39 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
   const [impersonatedUser, setImpersonatedUser] = useState<{ name: string; email: string; avatar: string | null } | null>(null);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status !== "authenticated") return;
+
+    const loadAll = async () => {
+      // Superadmin: primero chequear impersonación activa para que el sidebar
+      // muestre los datos correctos. Los endpoints del servidor ya leen la cookie
+      // ic_impersonate automáticamente — no necesitamos await antes de los otros fetches.
+      if (isSuperAdmin(session?.user?.email)) {
+        try {
+          const imp = await fetch("/api/impersonate").then(r => r.ok ? r.json() : null);
+          if (imp?.impersonating) {
+            setImpersonating(imp.impersonating);
+            setImpersonatedUser({
+              name: imp.displayName ?? imp.impersonating,
+              email: imp.displayEmail ?? imp.impersonating,
+              avatar: imp.displayAvatar ?? null,
+            });
+          }
+        } catch { /* silencioso */ }
+      }
+
+      // El servidor ya usa la cookie de impersonación en estos endpoints
       fetch("/api/subscription")
         .then(r => r.json())
         .then(d => {
           const role = d.subscription?.teamRole;
           setIsOwner(role === "owner" || role === "team_leader");
-          // Redirect expired users to pricing wall
-          // Nunca redirigir si el super admin está impersonando un usuario
           const isAdminImpersonating = isSuperAdmin(session?.user?.email);
           if (d.subscription?.isExpired && !isAdminImpersonating) {
             router.replace("/expired");
           }
         })
         .catch(() => {});
+
       fetch("/api/agency-info")
         .then(r => r.ok ? r.json() : null)
         .then(d => {
@@ -58,27 +77,14 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
           if (d?.agencyName) setAgencyName(d.agencyName);
         })
         .catch(() => {});
+
       fetch("/api/coach-seen")
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d?.unseen) setUnseenCoach(d.unseen); })
         .catch(() => {});
-      // Check impersonation
-      if (isSuperAdmin(session?.user?.email)) {
-        fetch("/api/impersonate")
-          .then(r => r.ok ? r.json() : null)
-          .then(d => {
-            if (d?.impersonating) {
-              setImpersonating(d.impersonating);
-              setImpersonatedUser({
-                name: d.displayName ?? d.impersonating,
-                email: d.displayEmail ?? d.impersonating,
-                avatar: d.displayAvatar ?? null,
-              });
-            }
-          })
-          .catch(() => {});
-      }
-    }
+    };
+
+    loadAll();
   }, [status]);
 
   const path = router.pathname;
