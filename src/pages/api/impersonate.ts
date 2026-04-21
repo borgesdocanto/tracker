@@ -54,7 +54,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const cookies = parse(req.headers.cookie || "");
     const impersonating = cookies[IMPERSONATE_COOKIE] || null;
-    return res.status(200).json({ impersonating });
+    if (!impersonating) return res.status(200).json({ impersonating: null });
+
+    // Fetch display data of the impersonated user
+    const { data: user } = await supabaseAdmin
+      .from("subscriptions")
+      .select("email, name, avatar")
+      .eq("email", impersonating)
+      .single();
+
+    return res.status(200).json({
+      impersonating,
+      displayName: user?.name ?? impersonating,
+      displayEmail: user?.email ?? impersonating,
+      displayAvatar: user?.avatar ?? null,
+    });
   }
 
   return res.status(405).end();

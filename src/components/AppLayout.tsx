@@ -34,6 +34,7 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
   const [agencyName, setAgencyName] = useState<string | null>(null);
   const [unseenCoach, setUnseenCoach] = useState(0);
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [impersonatedUser, setImpersonatedUser] = useState<{ name: string; email: string; avatar: string | null } | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -65,7 +66,16 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
       if (isSuperAdmin(session?.user?.email)) {
         fetch("/api/impersonate")
           .then(r => r.ok ? r.json() : null)
-          .then(d => { if (d?.impersonating) setImpersonating(d.impersonating); })
+          .then(d => {
+            if (d?.impersonating) {
+              setImpersonating(d.impersonating);
+              setImpersonatedUser({
+                name: d.displayName ?? d.impersonating,
+                email: d.displayEmail ?? d.impersonating,
+                avatar: d.displayAvatar ?? null,
+              });
+            }
+          })
           .catch(() => {});
       }
     }
@@ -190,16 +200,25 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
       {/* Footer */}
       <div style={{ padding: "12px 16px", borderTop: "0.5px solid #f3f4f6" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          {session?.user?.image
-            ? <img src={session.user.image} alt="" style={{ width: 28, height: 28, borderRadius: "50%" }} />
-            : <div style={{ width: 28, height: 28, borderRadius: "50%", background: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", fontWeight: 500 }}>
-                {session?.user?.name?.slice(0, 2).toUpperCase() ?? "IC"}
-              </div>
-          }
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{session?.user?.name ?? ""}</div>
-            <div style={{ fontSize: 11, color: "#9ca3af" }}>{session?.user?.email ?? ""}</div>
-          </div>
+          {(() => {
+            const displayImg = impersonatedUser?.avatar ?? session?.user?.image ?? null;
+            const displayName = impersonatedUser?.name ?? session?.user?.name ?? "";
+            const displayEmail = impersonatedUser?.email ?? session?.user?.email ?? "";
+            return (
+              <>
+                {displayImg
+                  ? <img src={displayImg} alt="" style={{ width: 28, height: 28, borderRadius: "50%", ...(impersonatedUser ? { outline: "2px solid #7c3aed", outlineOffset: 1 } : {}) }} />
+                  : <div style={{ width: 28, height: 28, borderRadius: "50%", background: impersonatedUser ? "#7c3aed" : RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", fontWeight: 500 }}>
+                      {displayName?.slice(0, 2).toUpperCase() ?? "IC"}
+                    </div>
+                }
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{displayName}</div>
+                  <div style={{ fontSize: 11, color: "#9ca3af" }}>{displayEmail}</div>
+                </div>
+              </>
+            );
+          })()}
         </div>
         <div onClick={() => signOut({ callbackUrl: "/login" })} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 8, fontSize: 12, cursor: "pointer", color: "#9ca3af" }}>
           <span>↩</span> Cerrar sesión
@@ -238,12 +257,16 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
             {greeting && <div style={{ fontSize: 13, color: "#374151", fontWeight: 500 }} className="ic-greeting">{greeting}</div>}
           </div>
           {topbarExtra && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{topbarExtra}</div>}
-          {session?.user?.image
-            ? <img src={session.user.image} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${RED}`, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })} />
-            : <div style={{ width: 30, height: 30, borderRadius: "50%", background: RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 500, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })}>
-                {session?.user?.name?.slice(0, 2).toUpperCase() ?? "IC"}
-              </div>
-          }
+          {(() => {
+            const displayImg = impersonatedUser?.avatar ?? session?.user?.image ?? null;
+            const displayName = impersonatedUser?.name ?? session?.user?.name ?? "";
+            const borderColor = impersonatedUser ? "#7c3aed" : RED;
+            return displayImg
+              ? <img src={displayImg} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${borderColor}`, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })} />
+              : <div style={{ width: 30, height: 30, borderRadius: "50%", background: borderColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 500, cursor: "pointer" }} onClick={() => signOut({ callbackUrl: "/login" })}>
+                  {displayName?.slice(0, 2).toUpperCase() ?? "IC"}
+                </div>;
+          })()}
         </header>
 
         {/* Content */}
