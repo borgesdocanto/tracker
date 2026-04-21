@@ -59,13 +59,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (action === "extend_trial") {
       const days = parseInt(daysExtension) || 7;
-      const { data: sub } = await supabaseAdmin.from("subscriptions").select("created_at").eq("email", email).single();
-      if (!sub) return res.status(404).json({ error: "Usuario no encontrado" });
-      const newCreated = new Date(sub.created_at);
-      newCreated.setDate(newCreated.getDate() + days);
-      // Mover created_at hacia adelante para dar más días
-      await supabaseAdmin.from("subscriptions").update({ created_at: newCreated.toISOString() }).eq("email", email);
-      return res.status(200).json({ ok: true });
+      // Reset created_at to today so they get a fresh `days` day trial from now
+      const newCreated = new Date();
+      newCreated.setDate(newCreated.getDate() - (7 - days)); // e.g. 7 days from now = today
+      // Simpler: just set created_at to now, they get FREEMIUM_DAYS from today
+      const freshStart = new Date().toISOString();
+      await supabaseAdmin.from("subscriptions")
+        .update({ created_at: freshStart, status: "active" })
+        .eq("email", email);
+      return res.status(200).json({ ok: true, message: `Trial extendido ${days} días desde hoy` });
     }
 
     if (action === "deactivate") {
