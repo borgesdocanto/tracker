@@ -271,13 +271,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       procesosNuevos: greenEvents.filter(e => e.isProceso).length,
       totalGreen: greenEvents.length,
       totalEvents: mappedEvents.length,
-      iac: calcIAC(avgPorSemana),
+      iac: calcIAC(avgPorSemana, weeklyGoal),
       iacGoal: weeklyGoal,
       procesosGoal: PROCESOS_GOAL,
     };
 
-    const productiveDays = dailySummaries.filter(d => d.isProductive).length;
-    const totalDays = dailySummaries.length;
+    // CRÍTICO: filtrar al período seleccionado (statsFromDate..statsToDate)
+    // dailySummaries puede tener 90 días si fetchDays=90 aunque el user pidió 7
+    // Antes: 4 días productivos / 90 días = 4% → ahora: 4/7 = 57%
+    const statsFromDateStr = statsFromDate.slice(0, 10);
+    const statsToDateStr = statsToDate.slice(0, 10);
+    const productiveDays = dailySummaries.filter(d => d.isProductive && d.date >= statsFromDateStr && d.date <= statsToDateStr).length;
+    const totalDays = dailySummaries.filter(d => d.date >= statsFromDateStr && d.date <= statsToDateStr).length;
 
     return res.status(200).json({
       user: { name: session.user?.name, email: session.user?.email, image: session.user?.image },
@@ -294,14 +299,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ...await (async () => {
         try {
           const streakData = await computeAndSaveStreak(session.user?.email!, dailySummaries);
-          // Semana actual: lunes a hoy
-          const now = new Date();
-          const monday = new Date(now);
-          monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-          monday.setHours(0, 0, 0, 0);
+          // Semana actual: lunes a hoy — usar hora Argentina (UTC-3) para no desfasar el lunes
+          const nowAr = new Date(Date.now() - 3 * 60 * 60 * 1000);
+          const monday = new Date(nowAr);
+          monday.setDate(nowAr.getDate() - ((nowAr.getDay() + 6) % 7));
           const weekStart = monday.toISOString().slice(0, 10);
-          // Contar eventos verdes de esta semana por fecha de inicio
-          const weekGreen = mappedEvents.filter(e => e.isGreen && e.start.slice(0, 10) >= weekStart);
+          // Contar eventos verdes de esta semana por fecha de inicio (start ya es ISO UTC, convertimos)
+          const weekGreen = mappedEvents.filter(e => {
+            if (!e.isGreen) return false;
+            const evAr = new Date(new Date(e.start).getTime() - 3 * 60 * 60 * 1000);
+            return evAr.toISOString().slice(0, 10) >= weekStart;
+          });
           const weekIac = Math.min(100, Math.round((weekGreen.length / weeklyGoal) * 100));
           await saveWeeklyStatsAndRank(session.user?.email!, weekStart, weekIac, weekGreen.length, streakData?.best ?? 0);
 

@@ -69,18 +69,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .gte("start_at", new Date(Date.now() - 90 * 86400000).toISOString());
 
       if (events?.length) {
+        // Agrupar por día en horario Argentina (UTC-3) — igual que streak.ts
         const byDay: Record<string, number> = {};
         events.filter(e => e.is_productive).forEach(e => {
-          const day = e.start_at.slice(0, 10);
+          // Convertir a hora local Argentina antes de extraer la fecha
+          const arDate = new Date(new Date(e.start_at).getTime() - 3 * 60 * 60 * 1000);
+          const day = arDate.toISOString().slice(0, 10);
           byDay[day] = (byDay[day] || 0) + 1;
         });
         const summaries = Object.entries(byDay).map(([date, greenCount]) => ({ date, greenCount }));
         const streakData = await computeAndSaveStreak(email, summaries);
 
-        const now = new Date();
-        const monday = new Date(now);
-        monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-        monday.setHours(0, 0, 0, 0);
+        // Lunes de la semana actual en hora Argentina
+        const nowAr = new Date(Date.now() - 3 * 60 * 60 * 1000);
+        const monday = new Date(nowAr);
+        monday.setDate(nowAr.getDate() - ((nowAr.getDay() + 6) % 7));
         const weekStart = monday.toISOString().slice(0, 10);
         const weekGreen = summaries.filter(d => d.date >= weekStart).reduce((s, d) => s + d.greenCount, 0);
         const iac = Math.min(100, Math.round((weekGreen / weeklyGoal) * 100));

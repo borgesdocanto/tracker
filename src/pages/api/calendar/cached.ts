@@ -94,7 +94,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let streak = null;
   let rankStats = null;
   try {
-    const todayStr = now.toISOString().slice(0, 10);
+    // Usar hora Argentina (UTC-3) para que después de las 21hs no se pase al "día siguiente"
+    const nowAr = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const todayStr = nowAr.toISOString().slice(0, 10);
     const todaySummary = dailySummaries.find(d => d.date === todayStr);
     streak = {
       current: subData?.streak_current ?? 0,
