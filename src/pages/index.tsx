@@ -801,17 +801,19 @@ export default function HomePage() {
       if (r.ok) { setData(await r.json()); setFromCache(true); }
     };
 
-    // Sincroniza si los datos son viejos (>10 min) — ESPERA la respuesta
-    // porque en Vercel el background work se mata post-respuesta
-    const triggerSync = async () => {
+    // Sincroniza con Google si los datos son viejos — ESPERA la respuesta
+    // porque en Vercel el background work se mata post-respuesta.
+    // `force=true` baja el stale threshold a 1 min (útil al volver de larga ausencia)
+    const triggerSync = async (force = false) => {
       try {
-        const r = await fetch("/api/calendar/sync-now", { method: "POST" });
+        const url = force ? "/api/calendar/sync-now?force=true" : "/api/calendar/sync-now";
+        const r = await fetch(url, { method: "POST" });
         if (!r.ok) return;
         const d = await r.json();
-        // Si hubo sync real, recargar cache inmediatamente
-        if (d.synced) {
-          await reloadCache();
-        }
+        // Recargar caché siempre: aunque no haya habido sync real, los datos
+        // en DB pueden ser más frescos que lo que hay en pantalla (cron diario, etc.)
+        await reloadCache();
+        return d;
       } catch {}
     };
 
@@ -832,16 +834,23 @@ export default function HomePage() {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       const awayMs = Date.now() - lastVisibleAt;
-      // Volvió después de más de 5 min → forzar sync
-      if (awayMs > 5 * 60 * 1000) triggerSync();
       lastVisibleAt = Date.now();
-      poll();
+      if (awayMs > 5 * 60 * 1000) {
+        // Estuvo ausente más de 5 min (cambió de tab, apagó la compu, etc.)
+        // Forzar sync ignorando el stale guard + recargar caché pase lo que pase
+        triggerSync(true);
+      } else {
+        // Ausencia corta: solo refrescar lo que hay en DB (cron puede haberlo actualizado)
+        reloadCache();
+        poll();
+      }
     };
 
     document.addEventListener("visibilitychange", onVisible);
 
-    // Al montar: disparar sync si los datos son viejos
-    triggerSync();
+    // Al montar: disparar sync (con force para ignorar stale si los datos son viejos)
+    // y siempre recargar caché para mostrar datos actualizados por crons
+    triggerSync(true);
 
     const t = setTimeout(poll, 5000);
     const i = setInterval(poll, 20000);

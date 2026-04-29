@@ -16,6 +16,7 @@ import { getGoals } from "../../../lib/appConfig";
 export const config = { maxDuration: 30 };
 
 const STALE_MINUTES = 10;
+const STALE_MINUTES_FORCED = 1; // cuando viene con ?force=true (usuario volvió de ausencia)
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -38,7 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const lastSync = subData?.last_webhook_sync ? new Date(subData.last_webhook_sync) : null;
   const minutesSince = lastSync ? (Date.now() - lastSync.getTime()) / 60000 : 999;
 
-  if (minutesSince < STALE_MINUTES) {
+  const forceParam = req.query.force === "true";
+  const staleThreshold = forceParam ? STALE_MINUTES_FORCED : STALE_MINUTES;
+
+  if (minutesSince < staleThreshold) {
     return res.status(200).json({ synced: false, reason: "recent", minutesSince: Math.round(minutesSince) });
   }
 
