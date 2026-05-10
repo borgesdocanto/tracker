@@ -5,7 +5,7 @@ import AppLayout from "../components/AppLayout";
 import {
   FileSignature, Plus, Clock, CheckCircle2, XCircle, RefreshCw,
   ChevronRight, Send, X, AlertCircle, FileText, Phone, Mail,
-  Settings, Globe, Building2, Pencil, Trash2, ExternalLink, Upload
+  Settings, Globe, Building2, Pencil, Trash2, ExternalLink, Upload, Download
 } from "lucide-react";
 
 const RED = "#aa0000";
@@ -32,6 +32,7 @@ interface Plantilla {
 
 interface Documento {
   id: string;
+  firma_token: string;
   plantilla_id: string;
   estado: "pendiente" | "firmado" | "vencido" | "cancelado";
   datos_json: Record<string, string>;
@@ -457,37 +458,120 @@ function FormularioDatos({
   );
 }
 
+// ─── Botón para generar PDF firmado si no existe aún ─────────────────────────
+
+function GenerarPdfBtn({ docId, firmaToken, onListo }: { docId: string; firmaToken: string; onListo: () => void }) {
+  const [generando, setGenerando] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
+
+  const generar = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGenerando(true);
+    try {
+      const res = await fetch("/api/firma/generar-pdf-final", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firma_token: firmaToken }),
+      });
+      const json = await res.json();
+      if (json.pdf_url) {
+        setUrl(json.pdf_url);
+        onListo();
+      } else {
+        alert(json.error || "Error al generar PDF");
+      }
+    } catch { alert("Error de conexión"); }
+    setGenerando(false);
+  };
+
+  if (url) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: "#065f46", color: "#fff", borderRadius: 8,
+          padding: "7px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none"
+        }}>
+        <Download size={13} /> Descargar PDF firmado
+      </a>
+    );
+  }
+
+  return (
+    <button onClick={generar} disabled={generando} style={{
+      display: "flex", alignItems: "center", gap: 6,
+      background: generando ? "#9ca3af" : "#065f46", color: "#fff",
+      border: "none", borderRadius: 8, padding: "7px 14px",
+      fontSize: 12, fontWeight: 700, cursor: generando ? "not-allowed" : "pointer"
+    }}>
+      <Download size={13} /> {generando ? "Generando PDF..." : "Generar PDF firmado"}
+    </button>
+  );
+}
+
 // ─── Fila de documento ─────────────────────────────────────────────────────────
 
 function FilaDocumento({ doc, onVer }: { doc: Documento; onVer: () => void }) {
   const alertar = esPendienteMasDe48h(doc);
+  const firmado = doc.estado === "firmado";
+
   return (
-    <div onClick={onVer} style={{
-      background: "#fff", border: `1.5px solid ${alertar ? "#fca5a5" : "#e5e7eb"}`,
-      borderRadius: 12, padding: "14px 16px", cursor: "pointer",
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      gap: 12, transition: "all .15s"
-    }}
-      onMouseOver={e => { e.currentTarget.style.borderColor = alertar ? "#ef4444" : "#d1d5db"; e.currentTarget.style.background = "#fafafa"; }}
-      onMouseOut={e => { e.currentTarget.style.borderColor = alertar ? "#fca5a5" : "#e5e7eb"; e.currentTarget.style.background = "#fff"; }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-          <FileText size={13} color={RED} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {doc.firma_plantillas?.nombre || "Documento"}
+    <div style={{
+      background: "#fff", border: `1.5px solid ${alertar ? "#fca5a5" : firmado ? "#bbf7d0" : "#e5e7eb"}`,
+      borderRadius: 12, overflow: "hidden", transition: "all .15s"
+    }}>
+      <div onClick={onVer} style={{
+        padding: "14px 16px", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12
+      }}
+        onMouseOver={e => { e.currentTarget.style.background = "#fafafa"; }}
+        onMouseOut={e => { e.currentTarget.style.background = ""; }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+            <FileText size={13} color={firmado ? "#065f46" : RED} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {doc.datos_json?.nombre_documento || doc.firma_plantillas?.nombre || "Documento"}
+            </span>
+            {alertar && <span title="Pendiente más de 48hs" style={{ display: "inline-flex" }}><AlertCircle size={13} color="#ef4444" /></span>}
+          </div>
+          <div style={{ fontSize: 11, color: "#6b7280" }}>{doc.firmante_nombre} · {doc.firmante_email}</div>
+          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+            {formatFecha(doc.created_at)}
+            {doc.signed_at ? ` · ✅ Firmado ${formatFecha(doc.signed_at)}` : ` · Vence ${formatFecha(doc.expires_at)}`}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          {estadoBadge(doc.estado)}
+        </div>
+      </div>
+
+      {/* Botón descarga visible directamente en la fila si está firmado */}
+      {firmado && (
+        <div style={{ borderTop: "1px solid #f0fdf4", padding: "10px 16px", background: "#f0fdf4", display: "flex", gap: 10, alignItems: "center" }}>
+          {doc.url_documento_firmado ? (
+            <a
+              href={doc.url_documento_firmado}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                background: "#065f46", color: "#fff", borderRadius: 8,
+                padding: "7px 14px", fontSize: 12, fontWeight: 700,
+                textDecoration: "none", flexShrink: 0
+              }}
+            >
+              <Download size={13} /> Descargar PDF firmado
+            </a>
+          ) : (
+            <GenerarPdfBtn docId={doc.id} firmaToken={doc.firma_token} onListo={onVer} />
+          )}
+          <span style={{ fontSize: 11, color: "#065f46" }}>
+            Firmado el {formatFecha(doc.signed_at!)}
           </span>
-          {alertar && <span title="Pendiente más de 48hs" style={{ display: "inline-flex" }}><AlertCircle size={13} color="#ef4444" /></span>}
         </div>
-        <div style={{ fontSize: 11, color: "#6b7280" }}>{doc.firmante_nombre} · {doc.firmante_email}</div>
-        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-          {formatFecha(doc.created_at)}
-          {doc.signed_at ? ` · ✅ Firmado ${formatFecha(doc.signed_at)}` : ` · Vence ${formatFecha(doc.expires_at)}`}
-        </div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-        {estadoBadge(doc.estado)}
-      </div>
+      )}
     </div>
   );
 }
@@ -608,15 +692,17 @@ function ModalDetalle({
           )}
 
           <div style={{ display: "grid", gap: 10 }}>
-            {doc.url_documento_firmado && (
+            {doc.url_documento_firmado ? (
               <a href={doc.url_documento_firmado} target="_blank" rel="noopener noreferrer" style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                background: "#065f46", color: "#fff", borderRadius: 10, padding: "11px 0",
-                fontSize: 13, fontWeight: 700, textDecoration: "none"
+                background: "#065f46", color: "#fff", borderRadius: 10, padding: "13px 0",
+                fontSize: 14, fontWeight: 700, textDecoration: "none"
               }}>
-                <CheckCircle2 size={14} /> Descargar PDF firmado
+                <Download size={15} /> Descargar PDF firmado
               </a>
-            )}
+            ) : doc.estado === "firmado" ? (
+              <GenerarPdfBtn docId={doc.id} firmaToken={doc.firma_token} onListo={onClose} />
+            ) : null}
             {doc.estado === "pendiente" && (
               <button onClick={handleReenviar} disabled={reenviando} style={{
                 width: "100%", background: reenviando ? "#9ca3af" : RED, color: "#fff",
