@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
 
   const email = getEffectiveEmail(req, session);
+  if (!email) return res.status(401).json({ error: "No autenticado" });
   const teamId = await getTeamId(email);
 
   if (req.method === "GET") {
