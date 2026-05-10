@@ -60,6 +60,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let docuseal_submission_id: number | null = null;
     let docuseal_slug: string | null = null;
 
+    const agencyName = await getAgencyName(email);
+
     if (isDocusealConfigured() && plantilla.docuseal_template_id) {
       try {
         const fields = Object.entries(datos_json || {}).map(([name, value]) => ({
@@ -67,8 +69,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
         const submissions = await createSubmission({
           template_id: plantilla.docuseal_template_id,
-          send_email: false, // Nosotros manejamos el email
-          submitters: [{ role: "Firmante", name: firmante_nombre, email: firmante_email, fields }],
+          send_email: true, // DocuSeal envía el email directamente
+          submitters: [{
+            role: "First Party",
+            name: firmante_nombre,
+            email: firmante_email,
+            fields,
+          }],
+          message: {
+            subject: `Firma para ${agencyName}: ${plantilla.nombre}`,
+            body: `Hola ${firmante_nombre}, ${agencyName} te envió el documento "${plantilla.nombre}" para que lo firmes digitalmente.`,
+          },
         });
         if (submissions?.[0]) {
           docuseal_submission_id = submissions[0].id;
@@ -100,16 +111,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Enviar email con link del portal público
-    const agencyName = await getAgencyName(email);
-    const nombreDoc = plantilla.nombre;
-    await enviarEmailFirma({
-      firmante_nombre,
-      firmante_email,
-      firma_token: doc.firma_token,
-      nombre_documento: nombreDoc,
-      agency_name: agencyName,
-    });
+    // Si DocuSeal no procesó (sin template_id), enviamos nuestro email
+    if (!docuseal_submission_id) {
+      await enviarEmailFirma({
+        firmante_nombre,
+        firmante_email,
+        firma_token: doc.firma_token,
+        nombre_documento: plantilla.nombre,
+        agency_name: agencyName,
+      });
+    }
 
     return res.status(201).json(doc);
   }

@@ -98,7 +98,9 @@ export async function resendSubmitterEmail(submitterId: number): Promise<void> {
   });
 }
 
-// Crear submission desde PDF en base64 (sin template previo)
+// Crear template + submission desde PDF en base64 (sin template previo)
+// DocuSeal API: POST /api/templates/pdf → crea el template
+// Luego: POST /api/submissions → crea la submission con el firmante
 export async function createSubmissionFromPdf(payload: {
   name: string;
   base64: string;
@@ -106,34 +108,59 @@ export async function createSubmissionFromPdf(payload: {
   firmante_email: string;
   firmante_telefono?: string;
   send_email?: boolean;
+  email_subject?: string;
+  email_body?: string;
 }): Promise<DocusealSubmission[]> {
-  const body = {
-    name: payload.name,
-    send_email: payload.send_email ?? true,
-    documents: [
-      {
-        name: payload.name,
-        file: payload.base64,
-      },
-    ],
-    submitters: [
-      {
-        role: "Firmante",
-        name: payload.firmante_nombre,
-        email: payload.firmante_email,
-        ...(payload.firmante_telefono ? { phone: payload.firmante_telefono } : {}),
-      },
-    ],
-  };
-  const res = await docusealFetch("/submissions/pdf", {
+  // Paso 1: Crear template desde PDF
+  const templateRes = await docusealFetch("/templates/pdf", {
     method: "POST",
-    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      "X-Auth-Token": DOCUSEAL_API_KEY,
+    },
+    body: JSON.stringify({
+      name: payload.name,
+      documents: [{ name: payload.name, file: payload.base64 }],
+    }),
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`DocuSeal error ${res.status}: ${err}`);
+
+  if (!templateRes.ok) {
+    const err = await templateRes.text();
+    throw new Error(`DocuSeal template error ${templateRes.status}: ${err}`);
   }
-  return res.json();
+
+  const template = await templateRes.json();
+  const templateId = template.id;
+
+  // Paso 2: Crear submission con el firmante
+  const submissionRes = await docusealFetch("/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      template_id: templateId,
+      send_email: payload.send_email ?? true,
+      submitters: [
+        {
+          role: "First Party",
+          name: payload.firmante_nombre,
+          email: payload.firmante_email,
+          ...(payload.firmante_telefono ? { phone: payload.firmante_telefono } : {}),
+        },
+      ],
+      ...(payload.email_subject ? {
+        message: {
+          subject: payload.email_subject,
+          body: payload.email_body || "",
+        }
+      } : {}),
+    }),
+  });
+
+  if (!submissionRes.ok) {
+    const err = await submissionRes.text();
+    throw new Error(`DocuSeal submission error ${submissionRes.status}: ${err}`);
+  }
+
+  return submissionRes.json();
 }
 
 // Verificar que la config de DocuSeal esté presente
