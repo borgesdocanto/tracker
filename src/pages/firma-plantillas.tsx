@@ -462,8 +462,8 @@ export default function FirmaPlantillas() {
                   <FileText size={14} color={RED} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{p.nombre}</span>
                   {p.es_global
-                    ? <Globe size={11} color="#9ca3af" title="Plantilla del sistema" />
-                    : <Building2 size={11} color="#0ea5e9" title="Plantilla de tu inmobiliaria" />}
+                    ? <span title="Plantilla del sistema"><Globe size={11} color="#9ca3af" /></span>
+                    : <span title="Plantilla de tu inmobiliaria"><Building2 size={11} color="#0ea5e9" /></span>}
                 </div>
                 {p.descripcion && <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{p.descripcion}</div>}
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
