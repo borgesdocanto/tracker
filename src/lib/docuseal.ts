@@ -98,6 +98,44 @@ export async function resendSubmitterEmail(submitterId: number): Promise<void> {
   });
 }
 
+// Crear submission desde PDF en base64 (sin template previo)
+export async function createSubmissionFromPdf(payload: {
+  name: string;
+  base64: string;
+  firmante_nombre: string;
+  firmante_email: string;
+  firmante_telefono?: string;
+  send_email?: boolean;
+}): Promise<DocusealSubmission[]> {
+  const body = {
+    name: payload.name,
+    send_email: payload.send_email ?? true,
+    documents: [
+      {
+        name: payload.name,
+        file: payload.base64,
+      },
+    ],
+    submitters: [
+      {
+        role: "Firmante",
+        name: payload.firmante_nombre,
+        email: payload.firmante_email,
+        ...(payload.firmante_telefono ? { phone: payload.firmante_telefono } : {}),
+      },
+    ],
+  };
+  const res = await docusealFetch("/submissions/pdf", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`DocuSeal error ${res.status}: ${err}`);
+  }
+  return res.json();
+}
+
 // Verificar que la config de DocuSeal esté presente
 export function isDocusealConfigured(): boolean {
   return Boolean(DOCUSEAL_BASE_URL && DOCUSEAL_API_KEY);

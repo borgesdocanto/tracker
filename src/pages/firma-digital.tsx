@@ -5,7 +5,7 @@ import AppLayout from "../components/AppLayout";
 import {
   FileSignature, Plus, Clock, CheckCircle2, XCircle, RefreshCw,
   ChevronRight, Send, X, AlertCircle, FileText, Phone, Mail,
-  Settings, Globe, Building2, Pencil, Trash2, ExternalLink
+  Settings, Globe, Building2, Pencil, Trash2, ExternalLink, Upload
 } from "lucide-react";
 
 const RED = "#aa0000";
@@ -108,7 +108,15 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 // ─── Selector de plantilla ─────────────────────────────────────────────────────
 
-function SelectorPlantilla({ plantillas, onSelect }: { plantillas: Plantilla[]; onSelect: (p: Plantilla) => void }) {
+function SelectorPlantilla({
+  plantillas,
+  onSelect,
+  onSubirPdf,
+}: {
+  plantillas: Plantilla[];
+  onSelect: (p: Plantilla) => void;
+  onSubirPdf: () => void;
+}) {
   const globales = plantillas.filter(p => p.es_global);
   const propias = plantillas.filter(p => !p.es_global);
 
@@ -146,22 +154,189 @@ function SelectorPlantilla({ plantillas, onSelect }: { plantillas: Plantilla[]; 
     ) : null
   );
 
-  if (plantillas.length === 0) {
-    return (
-      <div style={{ textAlign: "center", padding: "20px 0", color: "#6b7280", fontSize: 13 }}>
-        No hay plantillas disponibles.<br />
-        <span style={{ fontSize: 12 }}>Andá a "Plantillas" para agregar la tuya.</span>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 16 }}>
         Elegí el tipo de documento
       </div>
+
+      {/* Opción: subir PDF propio */}
+      <button onClick={onSubirPdf} style={{
+        width: "100%", background: "#fff8f8", border: `2px solid ${RED}`,
+        borderRadius: 12, padding: "14px 15px", textAlign: "left",
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: 20, transition: "all .15s"
+      }}
+        onMouseOver={e => { e.currentTarget.style.background = "#fff0f0"; }}
+        onMouseOut={e => { e.currentTarget.style.background = "#fff8f8"; }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: RED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Upload size={16} color="#fff" />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: RED }}>Subir PDF para firmar</div>
+            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+              Cualquier documento PDF · Sin plantilla necesaria
+            </div>
+          </div>
+        </div>
+        <ChevronRight size={15} color={RED} />
+      </button>
+
+      {plantillas.length > 0 && (
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+          O usá una plantilla
+        </div>
+      )}
+
       <GrupoPlantillas lista={propias} label="Mis plantillas" />
       <GrupoPlantillas lista={globales} label="Plantillas del sistema" />
+
+      {plantillas.length === 0 && (
+        <div style={{ textAlign: "center", padding: "10px 0", color: "#9ca3af", fontSize: 12 }}>
+          No hay plantillas configuradas aún.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Formulario subir PDF libre ────────────────────────────────────────────────
+
+function FormularioPdf({
+  onBack, onSubmit, loading
+}: {
+  onBack: () => void;
+  onSubmit: (payload: { nombre_documento: string; firmante_nombre: string; firmante_email: string; firmante_telefono: string; pdf_base64: string }) => void;
+  loading: boolean;
+}) {
+  const [nombreDoc, setNombreDoc] = useState("");
+  const [firmante, setFirmante] = useState({ nombre: "", email: "", telefono: "" });
+  const [pdfBase64, setPdfBase64] = useState("");
+  const [pdfNombre, setPdfNombre] = useState("");
+  const [dragging, setDragging] = useState(false);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", border: "1.5px solid #e5e7eb", borderRadius: 8,
+    padding: "8px 12px", fontSize: 13, outline: "none", boxSizing: "border-box",
+    fontFamily: "inherit", background: "#fff", color: "#111"
+  };
+
+  const procesarPdf = (file: File) => {
+    if (file.type !== "application/pdf") { alert("Solo se aceptan archivos PDF"); return; }
+    if (file.size > 9 * 1024 * 1024) { alert("El PDF no puede superar 9 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = e.target?.result as string;
+      setPdfBase64(result); // data:application/pdf;base64,XXXX
+      setPdfNombre(file.name);
+      if (!nombreDoc) setNombreDoc(file.name.replace(/\.pdf$/i, ""));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) procesarPdf(file);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) procesarPdf(file);
+  };
+
+  const handleSubmit = () => {
+    if (!pdfBase64) { alert("Seleccioná un PDF"); return; }
+    if (!firmante.nombre || !firmante.email) { alert("Nombre y email del firmante son obligatorios"); return; }
+    if (!nombreDoc) { alert("Ingresá un nombre para el documento"); return; }
+    onSubmit({ nombre_documento: nombreDoc, firmante_nombre: firmante.nombre, firmante_email: firmante.email, firmante_telefono: firmante.telefono, pdf_base64: pdfBase64 });
+  };
+
+  return (
+    <div>
+      <button onClick={onBack} style={{
+        background: "none", border: "none", color: RED, fontSize: 12,
+        fontWeight: 600, cursor: "pointer", padding: 0, marginBottom: 16,
+        display: "flex", alignItems: "center", gap: 4
+      }}>
+        ← Volver
+      </button>
+
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>Subir PDF para firmar</div>
+      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 20 }}>El cliente recibe el link por email y firma desde su celular</div>
+
+      {/* Drop zone PDF */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        style={{
+          border: `2px dashed ${dragging ? RED : pdfBase64 ? "#10b981" : "#d1d5db"}`,
+          borderRadius: 12, padding: "24px 16px", textAlign: "center",
+          background: dragging ? "#fff8f8" : pdfBase64 ? "#f0fdf4" : "#fafafa",
+          marginBottom: 18, transition: "all .2s", cursor: "pointer"
+        }}
+        onClick={() => document.getElementById("pdf-input")?.click()}
+      >
+        <input id="pdf-input" type="file" accept="application/pdf" style={{ display: "none" }} onChange={handleFileInput} />
+        {pdfBase64 ? (
+          <div>
+            <CheckCircle2 size={28} color="#10b981" style={{ marginBottom: 8 }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#065f46" }}>{pdfNombre}</div>
+            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>Clic para cambiar el archivo</div>
+          </div>
+        ) : (
+          <div>
+            <Upload size={28} color="#9ca3af" style={{ marginBottom: 8 }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Arrastrá el PDF acá</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>o hacé clic para buscarlo · Máx 9 MB</div>
+          </div>
+        )}
+      </div>
+
+      {/* Nombre del documento */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Nombre del documento *</label>
+        <input value={nombreDoc} onChange={e => setNombreDoc(e.target.value)} style={inputStyle} placeholder="Ej: Contrato de alquiler Pérez" />
+      </div>
+
+      {/* Datos del firmante */}
+      <div style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 12, textTransform: "uppercase", letterSpacing: .5 }}>
+          ¿Quién tiene que firmar?
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Nombre y apellido *</label>
+            <input value={firmante.nombre} onChange={e => setFirmante(f => ({ ...f, nombre: e.target.value }))} style={inputStyle} placeholder="Juan García" />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "flex", alignItems: "center", gap: 3, marginBottom: 4 }}>
+                <Mail size={10} /> Email *
+              </label>
+              <input type="email" value={firmante.email} onChange={e => setFirmante(f => ({ ...f, email: e.target.value }))} style={inputStyle} placeholder="juan@gmail.com" />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "flex", alignItems: "center", gap: 3, marginBottom: 4 }}>
+                <Phone size={10} /> Teléfono
+              </label>
+              <input value={firmante.telefono} onChange={e => setFirmante(f => ({ ...f, telefono: e.target.value }))} style={inputStyle} placeholder="+54 11..." />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button onClick={handleSubmit} disabled={loading || !pdfBase64} style={{
+        width: "100%", background: loading || !pdfBase64 ? "#9ca3af" : RED, color: "#fff",
+        border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13,
+        fontWeight: 700, cursor: loading || !pdfBase64 ? "not-allowed" : "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+      }}>
+        <Send size={14} /> {loading ? "Enviando..." : "Enviar para firma"}
+      </button>
     </div>
   );
 }
@@ -560,7 +735,7 @@ export default function FirmaDigital() {
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalNuevo, setModalNuevo] = useState(false);
-  const [paso, setPaso] = useState<"selector" | "formulario">("selector");
+  const [paso, setPaso] = useState<"selector" | "formulario" | "subir-pdf">("selector");
   const [plantillaSel, setPlantillaSel] = useState<Plantilla | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [docSel, setDocSel] = useState<Documento | null>(null);
@@ -581,6 +756,27 @@ export default function FirmaDigital() {
   }, [status, cargarDatos]);
 
   const abrirNuevo = () => { setModalNuevo(true); setPaso("selector"); setPlantillaSel(null); };
+
+  const handleEnviarPdf = async (payload: { nombre_documento: string; firmante_nombre: string; firmante_email: string; firmante_telefono: string; pdf_base64: string }) => {
+    setEnviando(true);
+    try {
+      const res = await fetch("/api/firma/subir-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error");
+      setModalNuevo(false);
+      await cargarDatos();
+      setExito(`✅ PDF enviado a ${payload.firmante_email} para firma`);
+      setTimeout(() => setExito(""), 5000);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error al enviar");
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const handleEnviar = async (datos: Record<string, string>, firmante: { nombre: string; email: string; telefono: string }) => {
     if (!plantillaSel) return;
@@ -755,6 +951,13 @@ export default function FirmaDigital() {
               <SelectorPlantilla
                 plantillas={plantillas}
                 onSelect={p => { setPlantillaSel(p); setPaso("formulario"); }}
+                onSubirPdf={() => setPaso("subir-pdf")}
+              />
+            ) : paso === "subir-pdf" ? (
+              <FormularioPdf
+                onBack={() => setPaso("selector")}
+                onSubmit={handleEnviarPdf}
+                loading={enviando}
               />
             ) : plantillaSel ? (
               <FormularioDatos
