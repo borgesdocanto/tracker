@@ -1467,7 +1467,7 @@ export default function FirmaDigital() {
           <div style={{ display: "flex", gap: 4, background: "#f3f4f6", borderRadius: 10, padding: 4, marginBottom: 20 }}>
             {[
               { id: "documentos", label: "Documentos", Icon: FileText },
-              { id: "plantillas", label: "Plantillas", Icon: Settings },
+              // { id: "plantillas", label: "Plantillas", Icon: Settings },
             ].map(t => (
               <button key={t.id} onClick={() => setTab(t.id as "documentos" | "plantillas")} style={{
                 flex: 1, background: tab === t.id ? "#fff" : "transparent",
@@ -1518,9 +1518,7 @@ export default function FirmaDigital() {
           )}
 
           {/* Tab: Plantillas */}
-          {tab === "plantillas" && (
-            <TabPlantillas plantillas={plantillas} onRefresh={cargarDatos} />
-          )}
+          {/* tab plantillas oculto temporalmente */}
         </div>
 
         {/* Modal Nuevo Documento */}

@@ -44,13 +44,7 @@ const PASOS = [
             color: "#eff6ff",
             border: "#bfdbfe",
           },
-          {
-            icono: "📋",
-            titulo: "Usar una plantilla",
-            descripcion: "Creás plantillas de tus documentos más usados (boleto, mandato, alquiler). Completás los campos y listo, sin tocar el PDF.",
-            color: "#f0fdf4",
-            border: "#bbf7d0",
-          },
+          // plantillas oculto temporalmente
         ].map((item, i) => (
           <div key={i} style={{ background: item.color, border: `1px solid ${item.border}`, borderRadius: 10, padding: 14, display: "flex", gap: 12 }}>
             <span style={{ fontSize: 22, flexShrink: 0 }}>{item.icono}</span>
@@ -167,7 +161,7 @@ const PASOS = [
         {[
           { icono: "✅", texto: <span>Siempre <strong>subí el PDF final y definitivo</strong> antes de enviarlo. Podés reemplazarlo después, pero los firmantes tienen que volver a abrir el link.</span> },
           { icono: "👤", texto: <span>Usá <strong>roles específicos</strong> (Vendedor, Comprador) en vez de "Firmante" genérico — aparece en el PDF de auditoría y queda más prolijo.</span> },
-          { icono: "📋", texto: <span>Si usás los mismos documentos frecuentemente, creá <strong>plantillas</strong> en "Plantillas de Firma" — ahorrás tiempo llenando los campos cada vez.</span> },
+// tip plantillas oculto
           { icono: "📲", texto: <span>Después de enviar, <strong>avisale al cliente por WhatsApp</strong> que le llegó un mail para firmar — muchos lo tienen en spam.</span> },
           { icono: "🔐", texto: <span>Los documentos firmados tienen <strong>validez legal</strong> pero te recomendamos consultá a tu escribano para contratos de alto valor.</span> },
         ].map((item, i) => (
