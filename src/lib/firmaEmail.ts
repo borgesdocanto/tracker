@@ -50,7 +50,7 @@ export function buildFirmaEmailHtml(params: {
     ${infoFirmantes}
     <a href="${link_firma}" style="display:block;background:#aa0000;color:#fff;text-align:center;
       padding:16px;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;margin-bottom:16px;">
-      ✍ Firmar documento
+      📄 Ver documento para firmar
     </a>
 
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;line-height:1.6;">
