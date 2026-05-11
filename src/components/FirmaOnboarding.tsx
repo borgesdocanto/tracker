@@ -96,28 +96,22 @@ const PASOS = [
     subtitulo: "El proceso que vive tu cliente",
     contenido: (
       <div>
-        <div style={{ display: "flex", gap: 0, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
-            { num: "1", label: "Ve el documento", desc: "El PDF se muestra en pantalla. Tiene que leerlo antes de continuar." },
-            { num: "2", label: "Foto del DNI", desc: "Saca foto del frente y dorso de su DNI." },
-            { num: "3", label: "Selfie", desc: "Se saca una foto sosteniendo el DNI — prueba de identidad." },
-            { num: "4", label: "Firma", desc: "Dibuja su firma con el dedo en la pantalla." },
-          ].map((item, i, arr) => (
-            <div key={i} style={{ flex: 1, textAlign: "center", position: "relative" }}>
-              {i < arr.length - 1 && (
-                <div style={{ position: "absolute", top: 16, right: 0, width: "50%", height: 2, background: "rgba(255,255,255,.3)" }} />
-              )}
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.2)", border: "2px solid rgba(255,255,255,.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontSize: 13, fontWeight: 800, color: "#fff" }}>
-                {item.num}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.9)", marginBottom: 4 }}>{item.label}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.65)", lineHeight: 1.4, padding: "0 4px" }}>{item.desc}</div>
+            { num: "1", emoji: "📄", label: "Ve el documento", desc: "El PDF se muestra en pantalla. Debe leerlo antes de continuar.", color: "#eff6ff", border: "#bfdbfe" },
+            { num: "2", emoji: "🪪", label: "Foto del DNI", desc: "Saca foto del frente y dorso de su DNI con la cámara del celu.", color: "#fef9c3", border: "#fde047" },
+            { num: "3", emoji: "🤳", label: "Selfie", desc: "Se saca una foto sosteniendo el DNI — prueba de identidad.", color: "#f0fdf4", border: "#bbf7d0" },
+            { num: "4", emoji: "✍️", label: "Firma", desc: "Dibuja su firma con el dedo directamente en la pantalla.", color: "#fff7ed", border: "#fed7aa" },
+          ].map((item, i) => (
+            <div key={i} style={{ background: item.color, border: `1.5px solid ${item.border}`, borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>{item.emoji}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#111", marginBottom: 4, lineHeight: 1.3 }}>{item.label}</div>
+              <div style={{ fontSize: 10, color: "#6b7280", lineHeight: 1.4 }}>{item.desc}</div>
             </div>
           ))}
         </div>
-        <div style={{ background: "rgba(255,255,255,.1)", borderRadius: 10, padding: 12, fontSize: 12, color: "rgba(255,255,255,.85)", lineHeight: 1.6 }}>
-          🔒 Todo queda registrado: IP del dispositivo, timestamp exacto, fotos y firma. 
-          Si alguien cuestiona la firma, tenés evidencia completa.
+        <div style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, fontSize: 12, color: "#374151", lineHeight: 1.7 }}>
+          🔒 <strong>Todo queda registrado:</strong> IP del dispositivo, timestamp exacto, fotos del DNI y selfie, y la firma manuscrita digital. Si alguien cuestiona la firma, tenés evidencia completa.
         </div>
       </div>
     ),
