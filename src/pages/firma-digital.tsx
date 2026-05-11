@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import AppLayout from "../components/AppLayout";
+import FirmaOnboarding from "../components/FirmaOnboarding";
 import {
   FileSignature, Plus, Clock, CheckCircle2, XCircle, RefreshCw,
   ChevronRight, Send, X, AlertCircle, FileText, Phone, Mail,
@@ -1201,6 +1202,7 @@ function TabPlantillas({ plantillas, onRefresh }: { plantillas: Plantilla[]; onR
 export default function FirmaDigital() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
   const [tab, setTab] = useState<"documentos" | "plantillas">("documentos");
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
@@ -1225,8 +1227,20 @@ export default function FirmaDigital() {
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") cargarDatos();
+    if (status === "authenticated") {
+      cargarDatos();
+      // Mostrar onboarding si no fue visto antes
+      const visto = localStorage.getItem("firma_onboarding_visto");
+      if (!visto) setMostrarOnboarding(true);
+    }
   }, [status, cargarDatos]);
+
+  const cerrarOnboarding = (noMostrarMas: boolean) => {
+    setMostrarOnboarding(false);
+    if (noMostrarMas) localStorage.setItem("firma_onboarding_visto", "1");
+  };
+
+  const abrirOnboarding = () => setMostrarOnboarding(true);
 
   const abrirNuevo = () => {
     if (!disclaimerAceptado) {
@@ -1354,13 +1368,24 @@ export default function FirmaDigital() {
                 </div>
               </div>
             </div>
-            <button onClick={abrirNuevo} style={{
-              background: RED, color: "#fff", border: "none", borderRadius: 10,
-              padding: "9px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 6
-            }}>
-              <Plus size={14} /> Nuevo documento
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={abrirOnboarding} style={{
+                background: "none", border: "1.5px solid #e5e7eb", color: "#6b7280",
+                borderRadius: 10, padding: "9px 12px", fontSize: 12, fontWeight: 600,
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 5
+              }}
+                title="Ver tutorial"
+              >
+                💡 Tutorial
+              </button>
+              <button onClick={abrirNuevo} style={{
+                background: RED, color: "#fff", border: "none", borderRadius: 10,
+                padding: "9px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6
+              }}>
+                <Plus size={14} /> Nuevo documento
+              </button>
+            </div>
           </div>
 
           {/* Éxito */}
@@ -1492,7 +1517,11 @@ export default function FirmaDigital() {
           />
         )}
 
-        {/* Modal Disclaimer legal */}
+        {/* Onboarding tutorial */}
+        {mostrarOnboarding && (
+          <FirmaOnboarding onClose={cerrarOnboarding} />
+        )}
+
         {modalDisclaimer && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
             onClick={() => setModalDisclaimer(false)}>
