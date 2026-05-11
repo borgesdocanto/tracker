@@ -48,6 +48,8 @@ interface Documento {
   id: string;
   firma_token: string;
   plantilla_id: string;
+  usuario_email?: string;
+  agente_nombre?: string; // solo en vista de equipo
   estado: "pendiente" | "firmado" | "vencido" | "cancelado";
   datos_json: Record<string, string>;
   firmante_nombre: string;
@@ -751,6 +753,9 @@ function FilaDocumento({ doc, onVer }: { doc: Documento; onVer: () => void }) {
 
           <div style={{ fontSize: 11, color: "#9ca3af" }}>
             {formatFecha(doc.created_at)}
+            {doc.agente_nombre && (
+              <span style={{ color: "#0ea5e9", marginLeft: 6, fontWeight: 600 }}>· {doc.agente_nombre}</span>
+            )}
             {completado && doc.signed_at ? ` · ✅ Completado ${formatFecha(doc.signed_at)}` : ` · Vence ${formatFecha(doc.expires_at)}`}
           </div>
 
@@ -1207,6 +1212,8 @@ export default function FirmaDigital() {
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [loading, setLoading] = useState(true);
+  const [esBroker, setEsBroker] = useState(false);
+  const [verEquipo, setVerEquipo] = useState(false);
   const [modalNuevo, setModalNuevo] = useState(false);
   const [modalDisclaimer, setModalDisclaimer] = useState(false);
   const [disclaimerAceptado, setDisclaimerAceptado] = useState(false);
@@ -1216,24 +1223,30 @@ export default function FirmaDigital() {
   const [docSel, setDocSel] = useState<Documento | null>(null);
   const [exito, setExito] = useState("");
 
-  const cargarDatos = useCallback(async () => {
-    const [docsRes, plantRes] = await Promise.all([
-      fetch("/api/firma/documentos"),
+  const cargarDatos = useCallback(async (equipoActivo = false) => {
+    const url = equipoActivo ? "/api/firma/documentos?verEquipo=1" : "/api/firma/documentos";
+    const [docsRes, plantRes, subRes] = await Promise.all([
+      fetch(url),
       fetch("/api/firma/plantillas"),
+      fetch("/api/subscription"),
     ]);
     if (docsRes.ok) setDocumentos(await docsRes.json());
     if (plantRes.ok) setPlantillas(await plantRes.json());
+    if (subRes.ok) {
+      const sub = await subRes.json();
+      const role = sub.subscription?.teamRole;
+      setEsBroker(role === "owner" || role === "team_leader");
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     if (status === "authenticated") {
-      cargarDatos();
-      // Mostrar onboarding si no fue visto antes
+      cargarDatos(verEquipo);
       const visto = localStorage.getItem("firma_onboarding_visto");
       if (!visto) setMostrarOnboarding(true);
     }
-  }, [status, cargarDatos]);
+  }, [status, cargarDatos, verEquipo]);
 
   const cerrarOnboarding = (noMostrarMas: boolean) => {
     setMostrarOnboarding(false);
@@ -1365,9 +1378,26 @@ export default function FirmaDigital() {
                 </div>
                 <div style={{ fontSize: 11, color: "#9ca3af" }}>
                   {documentos.length} doc{documentos.length !== 1 ? "s" : ""} · {firmados.length} firmado{firmados.length !== 1 ? "s" : ""}
+                  {verEquipo && <span style={{ color: "#0ea5e9", marginLeft: 6 }}>· Todo el equipo</span>}
                 </div>
               </div>
             </div>
+
+            {/* Toggle equipo — solo para brokers */}
+            {esBroker && (
+              <button
+                onClick={() => setVerEquipo(v => !v)}
+                style={{
+                  background: verEquipo ? "#eff6ff" : "none",
+                  border: `1.5px solid ${verEquipo ? "#bfdbfe" : "#e5e7eb"}`,
+                  color: verEquipo ? "#1d4ed8" : "#6b7280",
+                  borderRadius: 10, padding: "7px 12px", fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                  transition: "all .15s"
+                }}>
+                👥 {verEquipo ? "Mi equipo" : "Mi equipo"}
+              </button>
+            )}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={abrirOnboarding} style={{
                 background: "none", border: "1.5px solid #e5e7eb", color: "#6b7280",

@@ -19,24 +19,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: subData } = await supabaseAdmin
     .from("subscriptions")
-    .select("team_id, plan")
+    .select("team_id, plan, team_role")
     .eq("email", email)
     .single();
   const teamId = subData?.team_id || null;
+  const teamRole = subData?.team_role || null;
+  const esBroker = teamRole === "owner" || teamRole === "team_leader";
 
   // GET — listar documentos con firmantes
   if (req.method === "GET") {
-    const { data, error } = await supabaseAdmin
+    const { verEquipo } = req.query;
+
+    // Broker/team_leader puede ver todos los documentos de su equipo
+    let query = supabaseAdmin
       .from("firma_documentos")
       .select(`
         *,
         firma_plantillas (nombre, descripcion),
         firma_firmantes (id, nombre, email, rol, orden, estado, signed_at, firma_token, email_enviado_at)
       `)
-      .eq("usuario_email", email)
       .order("created_at", { ascending: false });
 
+    if (esBroker && verEquipo === "1" && teamId) {
+      // Ver documentos de todo el equipo
+      // Obtener emails de todos los miembros del equipo
+      const { data: miembros } = await supabaseAdmin
+        .from("subscriptions")
+        .select("email")
+        .eq("team_id", teamId);
+
+      const emails = (miembros || []).map(m => m.email);
+      if (emails.length > 0) {
+        query = query.in("usuario_email", emails);
+      } else {
+        query = query.eq("usuario_email", email);
+      }
+    } else {
+      // Vista personal — solo documentos propios
+      query = query.eq("usuario_email", email);
+    }
+
+    const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
+
+    // Agregar nombre del agente para vista de equipo
+    if (esBroker && verEquipo === "1") {
+      const { data: subs } = await supabaseAdmin
+        .from("subscriptions")
+        .select("email, name")
+        .eq("team_id", teamId);
+      const nombrePorEmail: Record<string, string> = {};
+      (subs || []).forEach(s => { nombrePorEmail[s.email] = s.name; });
+      const dataConAgente = (data || []).map(d => ({
+        ...d,
+        agente_nombre: nombrePorEmail[d.usuario_email] || d.usuario_email,
+      }));
+      return res.json(dataConAgente);
+    }
+
     return res.json(data);
   }
 

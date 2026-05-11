@@ -1,7 +1,10 @@
 // pages/api/firma/generar-pdf-final.ts — Genera PDF con página de auditoría multi-firmante
 
 import { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { getEffectiveEmail } from "../../../lib/impersonation";
 import { generarPdfConAuditoria, FirmanteDatos } from "../../../lib/firmaAuditPdf";
 import { getAgencyName } from "../../../lib/firmaEmail";
 import { Resend } from "resend";
@@ -14,8 +17,20 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  // Acepta firma_token (de firmante o de documento) o documento_id directo
   const { firma_token, documento_id } = req.body;
+
+  // Si viene firma_token es llamado desde el portal público (firmante acaba de firmar)
+  // Si viene documento_id es llamado desde el panel del inmobiliario (requiere sesión)
+  const esLlamadaPublica = !!firma_token && !documento_id;
+
+  let emailUsuario: string | null = null;
+
+  if (!esLlamadaPublica) {
+    const session = await getServerSession(req, res, authOptions);
+    if (!session?.user?.email) return res.status(401).json({ error: "No autenticado" });
+    emailUsuario = getEffectiveEmail(req, session);
+    if (!emailUsuario) return res.status(401).json({ error: "No autenticado" });
+  }
 
   let docId: string | null = documento_id || null;
 
@@ -50,6 +65,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
 
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
+
+  // Si es llamada autenticada, verificar que el documento pertenece al usuario
+  if (!esLlamadaPublica && emailUsuario && doc.usuario_email !== emailUsuario) {
+    // Verificar si el usuario es broker/owner del mismo equipo
+    const { data: subCaller } = await supabaseAdmin
+      .from("subscriptions")
+      .select("team_id, team_role")
+      .eq("email", emailUsuario)
+      .single();
+
+    const { data: subOwner } = await supabaseAdmin
+      .from("subscriptions")
+      .select("team_id")
+      .eq("email", doc.usuario_email)
+      .single();
+
+    const mismEquipo = subCaller?.team_id && subCaller.team_id === subOwner?.team_id;
+    const esBroker = subCaller?.team_role === "owner" || subCaller?.team_role === "team_leader";
+
+    if (!mismEquipo || !esBroker) {
+      return res.status(403).json({ error: "Sin permisos sobre este documento" });
+    }
+  }
 
   // Obtener TODOS los firmantes individuales con sus imágenes
   const { data: firmantesDb } = await supabaseAdmin
