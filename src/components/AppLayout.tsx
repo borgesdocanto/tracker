@@ -32,7 +32,6 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
   const [isOwner, setIsOwner] = useState(false);
   const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
   const [agencyName, setAgencyName] = useState<string | null>(null);
-  const [agencyName, setAgencyName] = useState<string | null>(null);
   const [unseenCoach, setUnseenCoach] = useState(0);
   const [firmaAlerta, setFirmaAlerta] = useState(0);
   const [impersonating, setImpersonating] = useState<string | null>(null);
