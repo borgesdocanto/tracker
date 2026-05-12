@@ -1,9 +1,26 @@
 // Permite a brokers/owners configurar su API key de Tokko
+// Soporte multitenant: si el usuario no tiene equipo, se crea automáticamente al conectar Tokko
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { isSuperAdmin } from "../../../lib/adminGuard";
 import { supabaseAdmin } from "../../../lib/supabase";
+
+// Obtiene el nombre de la agencia desde la API de Tokko (primera branch disponible)
+async function getAgencyNameFromTokko(apiKey: string): Promise<string | null> {
+  try {
+    const r = await fetch(
+      `https://www.tokkobroker.com/api/v1/branch/?key=${apiKey}&format=json&limit=1`
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    const branch = d.objects?.[0];
+    // branch.display_name o branch.name
+    return branch?.display_name || branch?.name || null;
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -13,15 +30,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")
-    .select("team_id, team_role")
+    .select("team_id, team_role, name")
     .eq("email", email)
     .single();
 
-  const isOwner = sub?.team_role === "owner" || isSuperAdmin(email);
-  if (!isOwner) return res.status(403).json({ error: "Solo el broker puede configurar Tokko" });
-  if (!sub?.team_id) return res.status(400).json({ error: "No tenés un equipo configurado" });
+  if (!sub) return res.status(404).json({ error: "Usuario no encontrado" });
 
+  // Un usuario sin equipo que intenta configurar Tokko = broker de una nueva inmobiliaria
+  // Solo bloqueamos si tiene equipo pero NO es owner (es decir, es member/team_leader de otro)
+  const hasTeam = !!sub.team_id;
+  const isOwner = sub.team_role === "owner" || isSuperAdmin(email);
+
+  if (hasTeam && !isOwner) {
+    return res.status(403).json({ error: "Solo el broker puede configurar Tokko" });
+  }
+
+  // ── GET: estado de conexión ──
   if (req.method === "GET") {
+    if (!hasTeam) {
+      // Sin equipo todavía: no conectado
+      return res.status(200).json({ hasKey: false, keyPreview: null });
+    }
+
     const { data: team } = await supabaseAdmin
       .from("teams")
       .select("tokko_api_key")
@@ -35,11 +65,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  // ── POST: guardar / remover API key ──
   if (req.method === "POST") {
     const { apiKey, remove } = req.body;
 
     if (remove) {
-      await supabaseAdmin.from("teams").update({ tokko_api_key: null }).eq("id", sub.team_id);
+      if (!hasTeam) return res.status(200).json({ ok: true });
+      await supabaseAdmin.from("teams").update({ tokko_api_key: null }).eq("id", sub.team_id!);
       return res.status(200).json({ ok: true });
     }
 
@@ -47,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "API key inválida" });
     }
 
-    // Verificar antes de guardar
+    // Verificar la key contra Tokko antes de guardar
     const testRes = await fetch(
       `https://www.tokkobroker.com/api/v1/property/?key=${apiKey}&format=json&limit=1`
     );
@@ -55,13 +87,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: false, error: "API key inválida — verificá en Tokko → Mi empresa → Permisos" });
     }
 
-    await supabaseAdmin.from("teams").update({ tokko_api_key: apiKey }).eq("id", sub.team_id);
+    let teamId = sub.team_id;
 
-    // Sync inmediato en background
+    // Si el usuario aún no tiene equipo, crearlo ahora
+    if (!teamId) {
+      const agencyName = await getAgencyNameFromTokko(apiKey);
+      const ownerName = sub.name || email.split("@")[0];
+      const displayName = agencyName || `Inmobiliaria de ${ownerName}`;
+
+      const { data: newTeam, error: teamErr } = await supabaseAdmin
+        .from("teams")
+        .insert({
+          name: displayName,
+          agency_name: agencyName || null,
+          owner_email: email,
+          status: "active",
+          max_agents: 9999,
+          tokko_api_key: apiKey,
+        })
+        .select("id")
+        .single();
+
+      if (teamErr || !newTeam) {
+        console.error("Error creando equipo:", teamErr);
+        return res.status(500).json({ error: "Error al crear el equipo" });
+      }
+
+      teamId = newTeam.id;
+
+      // Actualizar la subscription: owner del nuevo equipo, plan individual
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          team_id: teamId,
+          team_role: "owner",
+          plan: "individual",
+        })
+        .eq("email", email);
+
+    } else {
+      // Ya tiene equipo: solo actualizar la API key
+      await supabaseAdmin
+        .from("teams")
+        .update({ tokko_api_key: apiKey })
+        .eq("id", teamId);
+    }
+
+    // Sync de propiedades en background (fire & forget)
     fetch(`${process.env.NEXTAUTH_URL}/api/cron/tokko-sync`, {
       method: "POST",
       headers: { "x-cron-secret": process.env.CRON_SECRET!, "Content-Type": "application/json" },
-      body: JSON.stringify({ targetTeamId: sub.team_id }),
+      body: JSON.stringify({ targetTeamId: teamId }),
     }).catch(() => {});
 
     return res.status(200).json({ ok: true, message: "Conectado con Tokko — sincronizando..." });
