@@ -64,15 +64,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const agencyName = team?.agency_name || team?.name || null;
-  if (!branchId) return res.status(200).json({ logo: null, agencyName });
-
-  const cacheKey = `${sub.team_id}:${branchId}`;
+  // 3. Fetch branches from Tokko
+  const cacheKey = `${sub.team_id}:${branchId ?? "any"}`;
   const cached = cache[cacheKey];
   if (cached && Date.now() - cached.ts < TTL) {
     return res.status(200).json({ logo: cached.logo, agencyName });
   }
 
-  // 3. Fetch branches from Tokko and find matching one
   try {
     const r = await fetch(
       `https://www.tokkobroker.com/api/v1/branch/?key=${team.tokko_api_key}&format=json&limit=50`
@@ -80,9 +78,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (r.ok) {
       const d = await r.json();
       const branches: any[] = d.objects || [];
-      const branch = branches.find((b: any) =>
-        Number(b.id) === Number(branchId)
-      );
+
+      // Si tenemos branchId, buscar la branch exacta; si no, usar la primera disponible
+      const branch = branchId
+        ? branches.find((b: any) => Number(b.id) === Number(branchId))
+        : branches[0] ?? null;
+
       const logo = branch?.logo || branch?.logo_url || branch?.picture || null;
       cache[cacheKey] = { logo, ts: Date.now() };
       return res.status(200).json({ logo, agencyName });
