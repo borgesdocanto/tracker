@@ -45,7 +45,7 @@ function getAgentEmails(op: any): string[] {
   for (const owner of op.owners || []) {
     if (owner.agent?.email) emails.push(owner.agent.email);
   }
-  return Array.from(new Set(emails));
+  return [...new Set(emails)];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
