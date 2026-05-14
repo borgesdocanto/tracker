@@ -103,6 +103,11 @@ export default function AdminPanel() {
   const [suspendMsg, setSuspendMsg] = useState("");
   const [tokkoSyncing, setTokkoSyncing] = useState(false);
   const [tokkoSyncMsg, setTokkoSyncMsg] = useState("");
+  // Cambio de email
+  const [changeEmailModal, setChangeEmailModal] = useState<{ email: string; name?: string } | null>(null);
+  const [changeEmailNew, setChangeEmailNew] = useState("");
+  const [changeEmailLoading, setChangeEmailLoading] = useState(false);
+  const [changeEmailResult, setChangeEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => { loadStats(); }, []);
   useEffect(() => { if (tab === "users" || tab === "teams") loadUsers(); }, [tab, planFilter, search]);
@@ -185,6 +190,35 @@ export default function AdminPanel() {
         .catch(console.error);
     }
   }, [tab]);
+
+  const changeEmail = async () => {
+    if (!changeEmailModal || !changeEmailNew.trim()) return;
+    setChangeEmailLoading(true);
+    setChangeEmailResult(null);
+    try {
+      const res = await fetch("/api/admin/change-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldEmail: changeEmailModal.email, newEmail: changeEmailNew.trim().toLowerCase() }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setChangeEmailResult({ ok: true, message: d.message });
+        // Recargar usuarios después de 2 segundos y cerrar
+        setTimeout(() => {
+          setChangeEmailModal(null);
+          setChangeEmailNew("");
+          setChangeEmailResult(null);
+          loadUsers();
+        }, 3000);
+      } else {
+        setChangeEmailResult({ ok: false, message: d.error || "Error desconocido" });
+      }
+    } catch {
+      setChangeEmailResult({ ok: false, message: "Error de conexión" });
+    }
+    setChangeEmailLoading(false);
+  };
 
   const triggerTokkoSync = async (teamId: string) => {
     setTokkoSyncing(true); setTokkoSyncMsg("");
@@ -628,6 +662,12 @@ export default function AdminPanel() {
                             style={{ fontSize: 11, fontWeight: 500, background: "#f3e8ff", color: "#7c3aed", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                             {impersonateLoading === u.email ? <Loader2 size={10} className="animate-spin" /> : "👤"}
                             Ver como
+                          </button>
+                          {/* Cambiar email */}
+                          <button
+                            onClick={() => { setChangeEmailModal({ email: u.email, name: u.name }); setChangeEmailNew(""); setChangeEmailResult(null); }}
+                            style={{ fontSize: 11, fontWeight: 500, background: "#fef9c3", color: "#854d0e", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                            ✉️ Email
                           </button>
                           <select onChange={e => e.target.value && userAction(u.email, "change_plan", { plan: e.target.value })}
                             value=""
@@ -1574,6 +1614,103 @@ export default function AdminPanel() {
         )}
 
       </main>
+
+      {/* Modal: Cambiar email */}
+      {changeEmailModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 460, padding: 28, boxShadow: "0 25px 50px rgba(0,0,0,0.18)" }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: "#111827", fontFamily: "Georgia, serif" }}>Cambiar email</div>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 3 }}>
+                  {changeEmailModal.name ? `${changeEmailModal.name} · ` : ""}{changeEmailModal.email}
+                </div>
+              </div>
+              <button
+                onClick={() => { setChangeEmailModal(null); setChangeEmailNew(""); setChangeEmailResult(null); }}
+                style={{ fontSize: 16, color: "#9ca3af", background: "none", border: "none", cursor: "pointer", lineHeight: 1, padding: 4 }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Info */}
+            <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 12, padding: "10px 14px", marginBottom: 20 }}>
+              <p style={{ fontSize: 12, color: "#92400e", lineHeight: 1.5, margin: 0 }}>
+                <strong>Qué pasa al cambiar el email:</strong><br />
+                ✓ Se migra todo el historial (calendario, cartera Tokko, stats, coach)<br />
+                ✓ Las propiedades Tokko quedan asignadas al nuevo email<br />
+                ✓ Al loguear con el nuevo Gmail se vincula el nuevo calendario automáticamente<br />
+                ⚠️ El usuario <strong>debe cerrar sesión</strong> y entrar con el nuevo Gmail
+              </p>
+            </div>
+
+            {/* Email actual */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                Email actual
+              </label>
+              <div style={{ background: "#f3f4f6", borderRadius: 10, padding: "9px 14px", fontSize: 13, color: "#374151", fontFamily: "monospace" }}>
+                {changeEmailModal.email}
+              </div>
+            </div>
+
+            {/* Nuevo email */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                Nuevo email (Gmail)
+              </label>
+              <input
+                type="email"
+                value={changeEmailNew}
+                onChange={e => { setChangeEmailNew(e.target.value); setChangeEmailResult(null); }}
+                onKeyDown={e => e.key === "Enter" && changeEmail()}
+                placeholder="nuevoemail@gmail.com"
+                autoFocus
+                style={{ width: "100%", border: "1.5px solid #e5e7eb", borderRadius: 10, padding: "9px 14px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "monospace", transition: "border-color 0.15s" }}
+                onFocus={e => e.target.style.borderColor = "#854d0e"}
+                onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+              />
+            </div>
+
+            {/* Resultado */}
+            {changeEmailResult && (
+              <div style={{
+                background: changeEmailResult.ok ? "#f0fdf4" : "#fef2f2",
+                border: `1px solid ${changeEmailResult.ok ? "#86efac" : "#fca5a5"}`,
+                borderRadius: 10, padding: "10px 14px", marginBottom: 16,
+                fontSize: 12, fontWeight: 600,
+                color: changeEmailResult.ok ? "#15803d" : "#dc2626",
+              }}>
+                {changeEmailResult.ok ? "✓ " : "✗ "}{changeEmailResult.message}
+                {changeEmailResult.ok && <div style={{ fontWeight: 400, marginTop: 4, color: "#16a34a" }}>Cerrando modal en 3 segundos...</div>}
+              </div>
+            )}
+
+            {/* Botones */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => { setChangeEmailModal(null); setChangeEmailNew(""); setChangeEmailResult(null); }}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", fontSize: 13, fontWeight: 600, color: "#6b7280", cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button
+                onClick={changeEmail}
+                disabled={changeEmailLoading || !changeEmailNew.trim() || changeEmailNew.trim() === changeEmailModal.email || !!changeEmailResult?.ok}
+                style={{
+                  flex: 2, padding: "10px 0", borderRadius: 12, border: "none",
+                  background: changeEmailLoading ? "#d97706" : "#854d0e",
+                  fontSize: 13, fontWeight: 900, color: "#fff", cursor: "pointer",
+                  opacity: (changeEmailLoading || !changeEmailNew.trim() || changeEmailNew.trim() === changeEmailModal.email) ? 0.5 : 1,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  transition: "background 0.15s",
+                }}>
+                {changeEmailLoading ? <><Loader2 size={14} className="animate-spin" /> Migrando datos...</> : "Confirmar cambio de email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
