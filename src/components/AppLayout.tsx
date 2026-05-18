@@ -129,7 +129,7 @@ export default function AppLayout({ children, topbarExtra, greeting }: AppLayout
         { label: "Tokko Broker", href: "/tokko-setup", active: path === "/tokko-setup" },
         { label: "Ranking", href: "/config/ranking", active: path === "/config/ranking" },
         ...(isOwner ? [{ label: "Mails", href: "/config/mails", active: path === "/config/mails" }] : []),
-        { label: "Mails automáticos", href: "/config/mails-automaticos", active: path === "/config/mails-automaticos" },
+        { label: "Mails de fidelización", href: "/config/mails-automaticos", active: path === "/config/mails-automaticos" },
       ],
     },
   ];
