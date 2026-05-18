@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!members || members.length === 0) return res.json({ events: [] });
 
-  const DAYS_AHEAD = 15;
+  const DAYS_AHEAD = 7;
   const events: UpcomingEvent[] = [];
 
   for (const m of members) {
