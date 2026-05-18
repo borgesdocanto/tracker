@@ -10,7 +10,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const effectiveEmail = getEffectiveEmail(req, session);
 
-  // Verificar que el requester sea owner o team_leader
   const { data: requester } = await supabaseAdmin
     .from("subscriptions")
     .select("team_id, team_role")
@@ -20,28 +19,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!requester?.team_id) return res.status(403).json({ error: "Sin equipo" });
   const canManage = requester.team_role === "owner" || requester.team_role === "team_leader";
 
-  // GET — obtener cumpleaños de todos los miembros del equipo
+  // GET — todos los miembros con birthday y work_anniversary
   if (req.method === "GET") {
     const { data: members } = await supabaseAdmin
       .from("subscriptions")
-      .select("email, name, birthday, team_role")
+      .select("email, name, birthday, work_anniversary, team_role")
       .eq("team_id", requester.team_id)
       .order("name");
-
     return res.json({ members: members || [] });
   }
 
-  // PUT — actualizar cumpleaños de un agente (o del propio usuario)
+  // PUT — actualizar birthday y/o work_anniversary
   if (req.method === "PUT") {
-    const { agentEmail, birthday } = req.body;
+    const { agentEmail, birthday, work_anniversary } = req.body;
     if (!agentEmail) return res.status(400).json({ error: "Falta agentEmail" });
 
     const isSelf = agentEmail === effectiveEmail;
-
-    // Solo puede editar a otros si es owner o team_leader; siempre puede editarse a sí mismo
     if (!isSelf && !canManage) return res.status(403).json({ error: "Sin permisos" });
 
-    // Verificar que el agente pertenece al mismo equipo
+    // Verificar que pertenece al equipo
     const { data: agent } = await supabaseAdmin
       .from("subscriptions")
       .select("email, team_id")
@@ -51,9 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!agent) return res.status(404).json({ error: "Agente no encontrado en el equipo" });
 
+    const updates: Record<string, string | null> = {};
+    if (birthday !== undefined) updates.birthday = birthday || null;
+    if (work_anniversary !== undefined) updates.work_anniversary = work_anniversary || null;
+
     const { error } = await supabaseAdmin
       .from("subscriptions")
-      .update({ birthday: birthday || null })
+      .update(updates)
       .eq("email", agentEmail);
 
     if (error) return res.status(500).json({ error: error.message });

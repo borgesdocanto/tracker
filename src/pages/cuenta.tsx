@@ -86,6 +86,42 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// Sub-componente stateful para editar fechas de miembros del equipo
+function MemberDateRow({ label, day: initDay, month: initMonth, year: initYear, months, saving, onSave }: {
+  label: string; day: string; month: string; year: string;
+  months: string[]; saving: boolean;
+  onSave: (d: string, m: string, y: string) => void;
+}) {
+  const [d, setD] = useState(initDay);
+  const [m, setM] = useState(initMonth);
+  const [y, setY] = useState(initYear);
+  // Sincronizar si cambia el padre (ej: recarga)
+  // (ignoramos para no re-renderizar innecesariamente)
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "flex-end", marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ fontSize: 11, color: "#6b7280", width: 120, flexShrink: 0, paddingBottom: 8 }}>{label}</div>
+      <select value={d} onChange={e => setD(e.target.value)}
+        style={{ flex: "0 0 52px", border: "1px solid #e5e7eb", borderRadius: 6, padding: "6px 6px", fontSize: 12, color: d ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
+        <option value="">Día</option>
+        {Array.from({ length: 31 }, (_, i) => i + 1).map(n => (
+          <option key={n} value={String(n).padStart(2, "0")}>{n}</option>
+        ))}
+      </select>
+      <select value={m} onChange={e => setM(e.target.value)}
+        style={{ flex: "1 1 90px", border: "1px solid #e5e7eb", borderRadius: 6, padding: "6px 6px", fontSize: 12, color: m ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
+        <option value="">Mes</option>
+        {months.map((mn, i) => <option key={i} value={String(i + 1).padStart(2, "0")}>{mn}</option>)}
+      </select>
+      <input type="number" placeholder="Año" value={y} onChange={e => setY(e.target.value)} min={1900} max={2035}
+        style={{ flex: "0 0 68px", border: "1px solid #e5e7eb", borderRadius: 6, padding: "6px 8px", fontSize: 12, color: "#111827", outline: "none", boxSizing: "border-box" }} />
+      <button onClick={() => onSave(d, m, y)} disabled={saving || !d || !m}
+        style={{ flex: "0 0 60px", background: saving ? "#e5e7eb" : "#111827", color: saving ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "6px 0", fontSize: 11, cursor: saving || !d || !m ? "default" : "pointer" }}>
+        {saving ? "..." : "Guardar"}
+      </button>
+    </div>
+  );
+}
+
 export default function CuentaPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -120,6 +156,23 @@ export default function CuentaPage() {
   const [bdYear, setBdYear] = useState("");
   const [bdSaving, setBdSaving] = useState(false);
   const [bdMsg, setBdMsg] = useState("");
+  // Mi aniversario
+  const [anDay, setAnDay] = useState("");
+  const [anMonth, setAnMonth] = useState("");
+  const [anYear, setAnYear] = useState("");
+  const [anSaving, setAnSaving] = useState(false);
+  const [anMsg, setAnMsg] = useState("");
+  // Mapa de cumpleaños/aniversarios del equipo (para broker y team leader)
+  const [memberDates, setMemberDates] = useState<Record<string, { birthday: string|null; work_anniversary: string|null }>>({});
+  const [memberSaving, setMemberSaving] = useState<string|null>(null);
+  // Templates de mails
+  const [tmplModal, setTmplModal] = useState(false);
+  const [tmplBdAgent, setTmplBdAgent] = useState("");
+  const [tmplBdTeam, setTmplBdTeam] = useState("");
+  const [tmplAnAgent, setTmplAnAgent] = useState("");
+  const [tmplAnTeam, setTmplAnTeam] = useState("");
+  const [tmplLoading, setTmplLoading] = useState(false);
+  const [tmplSaving, setTmplSaving] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [showTeamLeaders, setShowTeamLeaders] = useState(true);
@@ -154,21 +207,49 @@ export default function CuentaPage() {
     fetch("/api/teams/tokko-agents").then(r => r.ok ? r.json() : null).then(d => {
       if (d?.agents) setTokkoAgents(d.agents);
     });
-    // Cargar mi cumpleaños
+    // Cargar cumpleaños y aniversarios del equipo
     fetch("/api/teams/birthday").then(r => r.ok ? r.json() : null).then(d => {
-      if (d?.members) {
-        const me = d.members.find((m: any) => m.email === session?.user?.email);
-        if (me?.birthday) {
-          const bdate = new Date(me.birthday + "T12:00:00");
-          setBdDay(String(bdate.getDate()).padStart(2, "0"));
-          setBdMonth(String(bdate.getMonth() + 1).padStart(2, "0"));
-          const y = bdate.getFullYear();
-          setBdYear(y === 1900 ? "" : String(y));
-        }
+      if (!d?.members) return;
+      const me = d.members.find((m: any) => m.email === session?.user?.email);
+      if (me?.birthday) {
+        const b = new Date(me.birthday + "T12:00:00");
+        setBdDay(String(b.getDate()).padStart(2, "0"));
+        setBdMonth(String(b.getMonth() + 1).padStart(2, "0"));
+        setBdYear(b.getFullYear() === 1900 ? "" : String(b.getFullYear()));
       }
+      if (me?.work_anniversary) {
+        const a = new Date(me.work_anniversary + "T12:00:00");
+        setAnDay(String(a.getDate()).padStart(2, "0"));
+        setAnMonth(String(a.getMonth() + 1).padStart(2, "0"));
+        setAnYear(a.getFullYear() === 1900 ? "" : String(a.getFullYear()));
+      }
+      // Mapa para la tabla del equipo
+      const map: Record<string, { birthday: string|null; work_anniversary: string|null }> = {};
+      for (const m of d.members) {
+        map[m.email] = { birthday: m.birthday || null, work_anniversary: m.work_anniversary || null };
+      }
+      setMemberDates(map);
     });
   }, [status]);
 
+
+  const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  function buildDate(day: string, month: string, year: string): string | null {
+    if (!day || !month) return null;
+    const y = year && year.length === 4 ? year : "1900";
+    return `${y}-${month.padStart(2,"0")}-${day.padStart(2,"0")}`;
+  }
+
+  function parseDateFields(dateStr: string | null): { day: string; month: string; year: string } {
+    if (!dateStr) return { day: "", month: "", year: "" };
+    const d = new Date(dateStr + "T12:00:00");
+    return {
+      day: String(d.getDate()).padStart(2, "0"),
+      month: String(d.getMonth() + 1).padStart(2, "0"),
+      year: d.getFullYear() === 1900 ? "" : String(d.getFullYear()),
+    };
+  }
 
   const saveMyBirthday = async () => {
     if (!bdDay || !bdMonth) { setBdMsg("Completá el día y el mes."); return; }
@@ -186,6 +267,71 @@ export default function CuentaPage() {
       else setBdMsg("Error al guardar");
     } catch { setBdMsg("Error al guardar"); }
     setBdSaving(false);
+  };
+
+  const saveMyAnniversary = async () => {
+    if (!anDay || !anMonth) { setAnMsg("Completá el día y el mes."); return; }
+    setAnSaving(true); setAnMsg("");
+    const work_anniversary = buildDate(anDay, anMonth, anYear);
+    try {
+      const res = await fetch("/api/teams/birthday", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentEmail: session?.user?.email, work_anniversary }),
+      });
+      if (res.ok) setAnMsg("✓ Aniversario guardado");
+      else setAnMsg("Error al guardar");
+    } catch { setAnMsg("Error al guardar"); }
+    setAnSaving(false);
+  };
+
+  const saveMemberDate = async (email: string, field: "birthday" | "work_anniversary", value: string | null) => {
+    setMemberSaving(email + field);
+    try {
+      await fetch("/api/teams/birthday", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentEmail: email, [field]: value }),
+      });
+      setMemberDates(prev => ({
+        ...prev,
+        [email]: { ...prev[email], [field]: value },
+      }));
+    } catch {}
+    setMemberSaving(null);
+  };
+
+  const loadTemplates = async () => {
+    setTmplLoading(true);
+    try {
+      const res = await fetch("/api/teams/birthday-templates");
+      if (res.ok) {
+        const d = await res.json();
+        setTmplBdAgent(d.birthdayMsgAgent || "");
+        setTmplBdTeam(d.birthdayMsgTeam || "");
+        setTmplAnAgent(d.anniversaryMsgAgent || "");
+        setTmplAnTeam(d.anniversaryMsgTeam || "");
+      }
+    } catch {}
+    setTmplLoading(false);
+  };
+
+  const saveTemplates = async () => {
+    setTmplSaving(true);
+    try {
+      const res = await fetch("/api/teams/birthday-templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthdayMsgAgent: tmplBdAgent,
+          birthdayMsgTeam: tmplBdTeam,
+          anniversaryMsgAgent: tmplAnAgent,
+          anniversaryMsgTeam: tmplAnTeam,
+        }),
+      });
+      if (res.ok) setTmplModal(false);
+    } catch {}
+    setTmplSaving(false);
   };
 
   const handleCancel = async () => {
@@ -362,58 +508,175 @@ export default function CuentaPage() {
           </div>
         )}
 
-        {/* ── MI CUMPLEAÑOS ── */}
-        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <span style={{ fontSize: 18 }}>🎂</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>Mi cumpleaños</div>
-              <div style={{ fontSize: 11, color: "#9ca3af" }}>Tu equipo lo verá en el dashboard 15 días antes</div>
+        {/* ── CUMPLEAÑOS Y ANIVERSARIOS ── */}
+        <div style={{ background: "#fff", border: "0.5px solid #e5e7eb", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
+          {/* Header */}
+          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🎂</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>Cumpleaños y aniversarios</div>
+                <div style={{ fontSize: 11, color: "#9ca3af" }}>Tu equipo lo verá en el dashboard 15 días antes</div>
+              </div>
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 60px", minWidth: 60 }}>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Día</div>
-              <select value={bdDay} onChange={e => setBdDay(e.target.value)}
-                style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 14, color: bdDay ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                <option value="">--</option>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                  <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ flex: "2 1 120px", minWidth: 120 }}>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Mes</div>
-              <select value={bdMonth} onChange={e => setBdMonth(e.target.value)}
-                style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 14, color: bdMonth ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                <option value="">--</option>
-                {["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].map((m, i) => (
-                  <option key={i} value={String(i + 1).padStart(2, "0")}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ flex: "1 1 80px", minWidth: 80 }}>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Año <span style={{ color: "#d1d5db" }}>(opcional)</span></div>
-              <input
-                type="number"
-                placeholder="1990"
-                value={bdYear}
-                onChange={e => setBdYear(e.target.value)}
-                min={1920} max={2010}
-                style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 14, color: "#111827", outline: "none", boxSizing: "border-box" }}
-              />
-            </div>
-            <div style={{ flex: "1 1 80px", minWidth: 80, display: "flex", alignItems: "flex-end" }}>
-              <button onClick={saveMyBirthday} disabled={bdSaving}
-                style={{ width: "100%", background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: bdSaving ? "default" : "pointer", opacity: bdSaving ? 0.7 : 1 }}>
-                {bdSaving ? "..." : "Guardar"}
+            {(data.isOwner || data.userRole === "team_leader") && (
+              <button onClick={() => { setTmplModal(true); loadTemplates(); }}
+                style={{ display: "flex", alignItems: "center", gap: 5, background: "#f9fafb", border: "0.5px solid #e5e7eb", borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "#6b7280", cursor: "pointer" }}>
+                ✉️ <span>Editar mails</span>
               </button>
+            )}
+          </div>
+
+          <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #f9fafb" }}>
+            {/* Mi cumpleaños */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>🎂 Mi cumpleaños</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 60px", minWidth: 60 }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Día</div>
+                  <select value={bdDay} onChange={e => setBdDay(e.target.value)}
+                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: bdDay ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
+                    <option value="">--</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: "2 1 100px", minWidth: 100 }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Mes</div>
+                  <select value={bdMonth} onChange={e => setBdMonth(e.target.value)}
+                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: bdMonth ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
+                    <option value="">--</option>
+                    {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: "1 1 70px", minWidth: 70 }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Año</div>
+                  <input type="number" placeholder="1990" value={bdYear} onChange={e => setBdYear(e.target.value)} min={1920} max={2010}
+                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#111827", outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ flex: "1 1 70px", minWidth: 70, display: "flex", alignItems: "flex-end" }}>
+                  <button onClick={saveMyBirthday} disabled={bdSaving}
+                    style={{ width: "100%", background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: bdSaving ? "default" : "pointer", opacity: bdSaving ? 0.7 : 1 }}>
+                    {bdSaving ? "..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+              {bdMsg && <div style={{ fontSize: 12, marginTop: 6, color: bdMsg.startsWith("✓") ? "#16a34a" : "#dc2626" }}>{bdMsg}</div>}
+            </div>
+
+            {/* Mi aniversario */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>🏡 Mi aniversario en la empresa</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 60px", minWidth: 60 }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Día</div>
+                  <select value={anDay} onChange={e => setAnDay(e.target.value)}
+                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: anDay ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
+                    <option value="">--</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: "2 1 100px", minWidth: 100 }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Mes</div>
+                  <select value={anMonth} onChange={e => setAnMonth(e.target.value)}
+                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: anMonth ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
+                    <option value="">--</option>
+                    {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: "1 1 70px", minWidth: 70 }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Año</div>
+                  <input type="number" placeholder="2020" value={anYear} onChange={e => setAnYear(e.target.value)} min={1990} max={2030}
+                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#111827", outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ flex: "1 1 70px", minWidth: 70, display: "flex", alignItems: "flex-end" }}>
+                  <button onClick={saveMyAnniversary} disabled={anSaving}
+                    style={{ width: "100%", background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: anSaving ? "default" : "pointer", opacity: anSaving ? 0.7 : 1 }}>
+                    {anSaving ? "..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+              {anMsg && <div style={{ fontSize: 12, marginTop: 6, color: anMsg.startsWith("✓") ? "#16a34a" : "#dc2626" }}>{anMsg}</div>}
             </div>
           </div>
-          {bdMsg && (
-            <div style={{ fontSize: 12, marginTop: 8, color: bdMsg.startsWith("✓") ? "#16a34a" : "#dc2626" }}>{bdMsg}</div>
+
+          {/* Tabla del equipo — solo broker y team leader */}
+          {(data.isOwner || data.userRole === "team_leader") && teamMembers.length > 0 && (
+            <div style={{ padding: "14px 20px" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 12 }}>Fechas del equipo</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {teamMembers.map((member: any) => {
+                  const dates = memberDates[member.email] || { birthday: null, work_anniversary: null };
+                  const bd = parseDateFields(dates.birthday);
+                  const an = parseDateFields(dates.work_anniversary);
+                  const key = member.email;
+                  return (
+                    <div key={key} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#111827", marginBottom: 10 }}>
+                        {member.name || member.email}
+                        <span style={{ fontSize: 11, fontWeight: 400, color: "#9ca3af", marginLeft: 6 }}>{member.email}</span>
+                      </div>
+                      {/* Cumpleaños del miembro */}
+                      <MemberDateRow
+                        label="🎂 Cumpleaños"
+                        day={bd.day} month={bd.month} year={bd.year}
+                        months={MONTHS}
+                        saving={memberSaving === key + "birthday"}
+                        onSave={(d, m, y) => saveMemberDate(key, "birthday", buildDate(d, m, y))}
+                      />
+                      {/* Aniversario del miembro */}
+                      <MemberDateRow
+                        label="🏡 Aniversario"
+                        day={an.day} month={an.month} year={an.year}
+                        months={MONTHS}
+                        saving={memberSaving === key + "work_anniversary"}
+                        onSave={(d, m, y) => saveMemberDate(key, "work_anniversary", buildDate(d, m, y))}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
+
+        {/* ── MODAL TEMPLATES ── */}
+        {tmplModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 520, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>✉️ Mensajes automáticos</div>
+                <button onClick={() => setTmplModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#9ca3af" }}>×</button>
+              </div>
+              {tmplLoading ? (
+                <div style={{ textAlign: "center", padding: 32, color: "#9ca3af" }}>Cargando...</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 16 }}>Variables disponibles: {"{nombre}"}, {"{inmobiliaria}"}, {"{años}"}, {"{plural}"}</div>
+                  {[
+                    { label: "🎂 Cumpleaños — mail al festejado", val: tmplBdAgent, set: setTmplBdAgent },
+                    { label: "🎂 Cumpleaños — mail al equipo (día anterior)", val: tmplBdTeam, set: setTmplBdTeam },
+                    { label: "🏡 Aniversario — mail al festejado", val: tmplAnAgent, set: setTmplAnAgent },
+                    { label: "🏡 Aniversario — mail al equipo (día anterior)", val: tmplAnTeam, set: setTmplAnTeam },
+                  ].map(({ label, val, set }) => (
+                    <div key={label} style={{ marginBottom: 16 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>{label}</label>
+                      <textarea value={val} onChange={e => set(e.target.value)} rows={4}
+                        style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#374151", outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
+                    </div>
+                  ))}
+                  <button onClick={saveTemplates} disabled={tmplSaving}
+                    style={{ width: "100%", background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: tmplSaving ? "default" : "pointer", opacity: tmplSaving ? 0.7 : 1 }}>
+                    {tmplSaving ? "Guardando..." : "Guardar todos los mensajes"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── PLAN FULL WIDTH ── */}
         <div style={{ background: "#111827", borderRadius: 14, padding: "20px 24px", marginBottom: 16 }}>

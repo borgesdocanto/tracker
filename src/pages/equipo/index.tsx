@@ -6,8 +6,7 @@ import AppLayout from "../../components/AppLayout";
 import {
   ArrowLeft, Loader2, Users,
   TrendingUp, TrendingDown, Minus, AlertTriangle,
-  ChevronRight, Flame, RefreshCw, Clock, Send, Mail,
-  Cake, Pencil, X, Check, Settings
+  ChevronRight, Flame, RefreshCw, Clock, Send, Mail
 } from "lucide-react";
 
 const RED = "#aa0000";
@@ -109,18 +108,6 @@ export default function BrokerDashboard() {
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
-  // Cumpleaños
-  const [birthdayModal, setBirthdayModal] = useState<{ email: string; name: string; current: string | null } | null>(null);
-  const [bdDay, setBdDay] = useState("");
-  const [bdMonth, setBdMonth] = useState("");
-  const [birthdayLoading, setBirthdayLoading] = useState(false);
-  const [birthdayMap, setBirthdayMap] = useState<Record<string, string | null>>({});
-  // Templates de cumpleaños
-  const [templatesModal, setTemplatesModal] = useState(false);
-  const [tmplAgent, setTmplAgent] = useState("");
-  const [tmplTeam, setTmplTeam] = useState("");
-  const [tmplLoading, setTmplLoading] = useState(false);
-  const [tmplSaving, setTmplSaving] = useState(false);
 
   useEffect(() => { if (status === "unauthenticated") router.replace("/login"); }, [status, router]);
 
@@ -154,7 +141,7 @@ export default function BrokerDashboard() {
     setAnalyticsLoading(false);
   };
 
-  useEffect(() => { if (status === "authenticated") { loadTeam(); loadAnalytics(0); loadBirthdays(); } }, [status]);
+  useEffect(() => { if (status === "authenticated") { loadTeam(); loadAnalytics(0); } }, [status]);
   useEffect(() => { if (status === "authenticated") loadAnalytics(weekOffset); }, [weekOffset]);
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -210,78 +197,6 @@ export default function BrokerDashboard() {
   };
 
   const isOwner = requesterRole === "owner";
-  const canManageBirthdays = requesterRole === "owner" || requesterRole === "team_leader";
-
-  const loadBirthdays = async () => {
-    try {
-      const res = await fetch("/api/teams/birthday");
-      if (res.ok) {
-        const data = await res.json();
-        const map: Record<string, string | null> = {};
-        for (const m of data.members || []) {
-          map[m.email] = m.birthday || null;
-        }
-        setBirthdayMap(map);
-      }
-    } catch {}
-  };
-
-  const openBirthdayModal = (email: string, name: string) => {
-    setBirthdayModal({ email, name, current: birthdayMap[email] || null });
-    const existing = birthdayMap[email];
-    if (existing) {
-      const d = new Date(existing + "T12:00:00");
-      setBdDay(String(d.getDate()).padStart(2, "0"));
-      setBdMonth(String(d.getMonth() + 1).padStart(2, "0"));
-    } else {
-      setBdDay("");
-      setBdMonth("");
-    }
-  };
-
-  const saveBirthday = async () => {
-    if (!birthdayModal) return;
-    setBirthdayLoading(true);
-    try {
-      const birthday = bdDay && bdMonth ? `1900-${bdMonth.padStart(2,"0")}-${bdDay.padStart(2,"0")}` : null;
-      const res = await fetch("/api/teams/birthday", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentEmail: birthdayModal.email, birthday }),
-      });
-      if (res.ok) {
-        setBirthdayMap(prev => ({ ...prev, [birthdayModal.email]: birthday }));
-        setBirthdayModal(null);
-      }
-    } catch {}
-    setBirthdayLoading(false);
-  };
-
-  const loadTemplates = async () => {
-    setTmplLoading(true);
-    try {
-      const res = await fetch("/api/teams/birthday-templates");
-      if (res.ok) {
-        const data = await res.json();
-        setTmplAgent(data.birthdayMsgAgent || "");
-        setTmplTeam(data.birthdayMsgTeam || "");
-      }
-    } catch {}
-    setTmplLoading(false);
-  };
-
-  const saveTemplates = async () => {
-    setTmplSaving(true);
-    try {
-      const res = await fetch("/api/teams/birthday-templates", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birthdayMsgAgent: tmplAgent, birthdayMsgTeam: tmplTeam }),
-      });
-      if (res.ok) setTemplatesModal(false);
-    } catch {}
-    setTmplSaving(false);
-  };
 
   if (status === "loading" || loading) {
     return <div className="min-h-screen bg-white flex items-center justify-center"><Loader2 size={24} className="animate-spin" style={{ color: RED }} /></div>;
@@ -497,15 +412,7 @@ export default function BrokerDashboard() {
           <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #f3f4f6", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <Users size={13} style={{ color: "#9ca3af" }} />
             <span style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Ranking del equipo</span>
-            {canManageBirthdays && (
-              <button
-                onClick={() => { setTemplatesModal(true); loadTemplates(); }}
-                title="Configurar mensajes de cumpleaños"
-                style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff7ed", border: "0.5px solid #fed7aa", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 11, color: "#ea580c" }}>
-                <Cake size={11} />
-                <span>Cumpleaños</span>
-              </button>
-            )}
+
 
             {/* Week nav */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#f3f4f6", borderRadius: 8, padding: "3px 8px" }}>
@@ -574,14 +481,7 @@ export default function BrokerDashboard() {
                         {agent.streak >= 3 && (
                           <span style={{ fontSize: 11, color: "#ea580c" }}>{agent.streak >= 5 ? "🔥" : "⚡"} {agent.streak}d</span>
                         )}
-                        {canManageBirthdays && (
-                          <button
-                            onClick={e => { e.stopPropagation(); openBirthdayModal(agent.email, agent.name || agent.email); }}
-                            title={birthdayMap[agent.email] ? "Editar cumpleaños" : "Agregar cumpleaños"}
-                            style={{ background: "none", border: "none", cursor: "pointer", padding: "1px 3px", borderRadius: 4, color: birthdayMap[agent.email] ? "#f97316" : "#d1d5db", display: "flex", alignItems: "center" }}>
-                            <Cake size={13} />
-                          </button>
-                        )}
+
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ flex: 1, height: 4, background: "#f3f4f6", borderRadius: 2, overflow: "hidden" }}>
@@ -731,127 +631,6 @@ export default function BrokerDashboard() {
         )}
       </div>
 
-      {/* ── MODAL CUMPLEAÑOS ── */}
-      {birthdayModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 22 }}>🎂</span>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Cumpleaños</div>
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>{birthdayModal.name}</div>
-                </div>
-              </div>
-              <button onClick={() => setBirthdayModal(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 4 }}>
-                <X size={18} />
-              </button>
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-                Día y mes de nacimiento
-              </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Día</div>
-                  <select
-                    value={bdDay}
-                    onChange={e => setBdDay(e.target.value)}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "9px 10px", fontSize: 14, color: bdDay ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                    <option value="">--</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                      <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ flex: 2 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Mes</div>
-                  <select
-                    value={bdMonth}
-                    onChange={e => setBdMonth(e.target.value)}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "9px 10px", fontSize: 14, color: bdMonth ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                    <option value="">--</option>
-                    {["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].map((m, i) => (
-                      <option key={i} value={String(i + 1).padStart(2, "0")}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
-                No hace falta el año — solo usamos el día y mes.
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {birthdayModal.current && (
-                <button
-                  onClick={() => { setBdDay(""); setBdMonth(""); }}
-                  style={{ flex: 1, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "9px 0", fontSize: 13, color: "#6b7280", cursor: "pointer" }}>
-                  Borrar fecha
-                </button>
-              )}
-              <button
-                onClick={saveBirthday}
-                disabled={birthdayLoading}
-                style={{ flex: 2, background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, fontWeight: 600, cursor: birthdayLoading ? "default" : "pointer", opacity: birthdayLoading ? 0.7 : 1 }}>
-                {birthdayLoading ? "Guardando..." : "Guardar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL TEMPLATES CUMPLEAÑOS ── */}
-      {templatesModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 20 }}>✉️</span>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Mensajes de cumpleaños</div>
-              </div>
-              <button onClick={() => setTemplatesModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 4 }}>
-                <X size={18} />
-              </button>
-            </div>
-            {tmplLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 32 }}><Loader2 size={20} className="animate-spin" style={{ color: RED }} /></div>
-            ) : (
-              <>
-                <div style={{ marginBottom: 18 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
-                    📨 Mail al festejado
-                  </label>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 6 }}>Variables: {"{ nombre }, { inmobiliaria }"}</div>
-                  <textarea
-                    value={tmplAgent}
-                    onChange={e => setTmplAgent(e.target.value)}
-                    rows={6}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#374151", outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }}
-                  />
-                </div>
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
-                    👥 Mail al equipo (día anterior)
-                  </label>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 6 }}>Variables: {"{ nombre }, { inmobiliaria }"}</div>
-                  <textarea
-                    value={tmplTeam}
-                    onChange={e => setTmplTeam(e.target.value)}
-                    rows={6}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#374151", outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }}
-                  />
-                </div>
-                <button
-                  onClick={saveTemplates}
-                  disabled={tmplSaving}
-                  style={{ width: "100%", background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: tmplSaving ? "default" : "pointer", opacity: tmplSaving ? 0.7 : 1 }}>
-                  {tmplSaving ? "Guardando..." : "Guardar mensajes"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }

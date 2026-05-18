@@ -4,34 +4,30 @@ import { authOptions } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { getEffectiveEmail } from "../../../lib/impersonation";
 
-export interface UpcomingBirthday {
+export interface UpcomingEvent {
   email: string;
   name: string;
-  birthday: string; // "YYYY-MM-DD"
+  date: string; // "YYYY-MM-DD"
   daysUntil: number;
   isToday: boolean;
+  type: "birthday" | "anniversary";
+  years?: number; // años de aniversario (si tiene año real)
 }
 
-function getDaysUntilBirthday(birthday: string): number {
+function getDaysUntil(dateStr: string): number {
   const today = new Date();
-  const todayMonth = today.getMonth() + 1;
-  const todayDay = today.getDate();
+  const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const d = new Date(dateStr + "T12:00:00");
+  let next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+  if (next < todayNorm) next = new Date(today.getFullYear() + 1, d.getMonth(), d.getDate());
+  return Math.round((next.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24));
+}
 
-  const bDate = new Date(birthday);
-  const bMonth = bDate.getMonth() + 1;
-  const bDay = bDate.getDate();
-
-  // Próximo cumpleaños este año o el que viene
-  let nextBirthday = new Date(today.getFullYear(), bMonth - 1, bDay);
-  if (
-    nextBirthday.getMonth() + 1 < todayMonth ||
-    (nextBirthday.getMonth() + 1 === todayMonth && nextBirthday.getDate() < todayDay)
-  ) {
-    nextBirthday = new Date(today.getFullYear() + 1, bMonth - 1, bDay);
-  }
-
-  const diff = nextBirthday.getTime() - new Date(today.getFullYear(), todayMonth - 1, todayDay).getTime();
-  return Math.round(diff / (1000 * 60 * 60 * 24));
+function getYears(dateStr: string): number | undefined {
+  const d = new Date(dateStr + "T12:00:00");
+  if (d.getFullYear() === 1900) return undefined;
+  const today = new Date();
+  return today.getFullYear() - d.getFullYear();
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -48,30 +44,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq("email", effectiveEmail)
     .single();
 
-  if (!requester?.team_id) return res.json({ birthdays: [] });
+  if (!requester?.team_id) return res.json({ events: [] });
 
-  // Traer todos los miembros del equipo con cumpleaños cargado
   const { data: members } = await supabaseAdmin
     .from("subscriptions")
-    .select("email, name, birthday")
+    .select("email, name, birthday, work_anniversary")
     .eq("team_id", requester.team_id)
-    .not("birthday", "is", null);
+    .neq("email", effectiveEmail); // excluir al usuario actual
 
-  if (!members || members.length === 0) return res.json({ birthdays: [] });
+  if (!members || members.length === 0) return res.json({ events: [] });
 
   const DAYS_AHEAD = 15;
+  const events: UpcomingEvent[] = [];
 
-  const upcoming: UpcomingBirthday[] = members
-    .filter((m) => m.email !== effectiveEmail) // excluir al propio usuario
-    .map((m) => ({
-      email: m.email,
-      name: m.name || m.email,
-      birthday: m.birthday,
-      daysUntil: getDaysUntilBirthday(m.birthday),
-      isToday: getDaysUntilBirthday(m.birthday) === 0,
-    }))
-    .filter((m) => m.daysUntil <= DAYS_AHEAD)
-    .sort((a, b) => a.daysUntil - b.daysUntil);
+  for (const m of members) {
+    if (m.birthday) {
+      const days = getDaysUntil(m.birthday);
+      if (days <= DAYS_AHEAD) {
+        events.push({
+          email: m.email,
+          name: m.name || m.email,
+          date: m.birthday,
+          daysUntil: days,
+          isToday: days === 0,
+          type: "birthday",
+        });
+      }
+    }
+    if (m.work_anniversary) {
+      const days = getDaysUntil(m.work_anniversary);
+      if (days <= DAYS_AHEAD) {
+        events.push({
+          email: m.email,
+          name: m.name || m.email,
+          date: m.work_anniversary,
+          daysUntil: days,
+          isToday: days === 0,
+          type: "anniversary",
+          years: getYears(m.work_anniversary),
+        });
+      }
+    }
+  }
 
-  return res.json({ birthdays: upcoming });
+  events.sort((a, b) => a.daysUntil - b.daysUntil);
+  return res.json({ events });
 }
