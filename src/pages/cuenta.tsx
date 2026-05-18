@@ -389,14 +389,8 @@ export default function CuentaPage() {
     setInvitingEmails(prev => { const s = new Set(prev); s.delete(email); return s; });
   };
 
-  const removeAgent = async (email: string, name: string) => {
-    // Paso 1: pedir confirmación al API (devuelve warning)
-    const check = await fetch("/api/teams/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberEmail: email }) });
-    const checkData = await check.json();
-    if (checkData.requiresConfirmation) {
-      setRemoveModal({ email, name });
-      return;
-    }
+  const removeAgent = (email: string, name: string) => {
+    setRemoveModal({ email, name });
   };
 
   const confirmRemove = async () => {
@@ -523,82 +517,6 @@ export default function CuentaPage() {
                 ✉️ <span>Editar mails</span>
               </button>
             )}
-          </div>
-
-          <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #f9fafb" }}>
-            {/* Mi cumpleaños */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>🎂 Mi cumpleaños</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ flex: "1 1 60px", minWidth: 60 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Día</div>
-                  <select value={bdDay} onChange={e => setBdDay(e.target.value)}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: bdDay ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                    <option value="">--</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                      <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ flex: "2 1 100px", minWidth: 100 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Mes</div>
-                  <select value={bdMonth} onChange={e => setBdMonth(e.target.value)}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: bdMonth ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                    <option value="">--</option>
-                    {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
-                  </select>
-                </div>
-                <div style={{ flex: "1 1 70px", minWidth: 70 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Año</div>
-                  <input type="number" placeholder="1990" value={bdYear} onChange={e => setBdYear(e.target.value)} min={1920} max={2010}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#111827", outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <div style={{ flex: "1 1 70px", minWidth: 70, display: "flex", alignItems: "flex-end" }}>
-                  <button onClick={saveMyBirthday} disabled={bdSaving}
-                    style={{ width: "100%", background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: bdSaving ? "default" : "pointer", opacity: bdSaving ? 0.7 : 1 }}>
-                    {bdSaving ? "..." : "Guardar"}
-                  </button>
-                </div>
-              </div>
-              {bdMsg && <div style={{ fontSize: 12, marginTop: 6, color: bdMsg.startsWith("✓") ? "#16a34a" : "#dc2626" }}>{bdMsg}</div>}
-            </div>
-
-            {/* Mi aniversario */}
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>🏡 Mi aniversario en la empresa</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ flex: "1 1 60px", minWidth: 60 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Día</div>
-                  <select value={anDay} onChange={e => setAnDay(e.target.value)}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: anDay ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                    <option value="">--</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                      <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ flex: "2 1 100px", minWidth: 100 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Mes</div>
-                  <select value={anMonth} onChange={e => setAnMonth(e.target.value)}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: anMonth ? "#111827" : "#9ca3af", outline: "none", background: "#fff" }}>
-                    <option value="">--</option>
-                    {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, "0")}>{m}</option>)}
-                  </select>
-                </div>
-                <div style={{ flex: "1 1 70px", minWidth: 70 }}>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>Año</div>
-                  <input type="number" placeholder="2020" value={anYear} onChange={e => setAnYear(e.target.value)} min={1990} max={2030}
-                    style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#111827", outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <div style={{ flex: "1 1 70px", minWidth: 70, display: "flex", alignItems: "flex-end" }}>
-                  <button onClick={saveMyAnniversary} disabled={anSaving}
-                    style={{ width: "100%", background: "#111827", color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: anSaving ? "default" : "pointer", opacity: anSaving ? 0.7 : 1 }}>
-                    {anSaving ? "..." : "Guardar"}
-                  </button>
-                </div>
-              </div>
-              {anMsg && <div style={{ fontSize: 12, marginTop: 6, color: anMsg.startsWith("✓") ? "#16a34a" : "#dc2626" }}>{anMsg}</div>}
-            </div>
           </div>
 
         </div>
@@ -754,7 +672,12 @@ export default function CuentaPage() {
                         <div style={{ fontSize: 13, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
                         <div style={{ fontSize: 11, color: "#9ca3af" }}>{new Date(inv.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</div>
                       </div>
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => openDateModal(inv.email, inv.email)}
+                          title={memberDates[inv.email]?.birthday || memberDates[inv.email]?.work_anniversary ? "Editar fechas" : "Agregar cumpleaños / aniversario"}
+                          style={{ fontSize: 14, background: "none", border: "none", cursor: "pointer", opacity: memberDates[inv.email]?.birthday || memberDates[inv.email]?.work_anniversary ? 1 : 0.35, padding: "0 2px" }}>
+                          🎂
+                        </button>
                         <button onClick={async () => { setResendLoading(inv.token); const r = await fetch("/api/teams/invitation", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"resend", token: inv.token}) }); const d = await r.json(); setResendLoading(null); setResendMsg(d.ok ? inv.token : null); setTimeout(() => setResendMsg(null), 3000); }}
                           disabled={resendLoading === inv.token}
                           style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer" }}>
@@ -807,6 +730,11 @@ export default function CuentaPage() {
                         </div>
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                          <button onClick={() => openDateModal(a.email, a.name || a.email)}
+                            title={memberDates[a.email]?.birthday || memberDates[a.email]?.work_anniversary ? "Editar fechas" : "Agregar cumpleaños / aniversario"}
+                            style={{ fontSize: 14, background: "none", border: "none", cursor: "pointer", opacity: memberDates[a.email]?.birthday || memberDates[a.email]?.work_anniversary ? 1 : 0.35, padding: "0 2px" }}>
+                            🎂
+                          </button>
                           {roleLoading === a.email ? <Loader2 size={12} style={{ color: "#9ca3af" }} className="animate-spin" /> : (
                             <select value={role} onChange={e => changeRole(a.email, e.target.value as "team_leader" | "member")}
                               style={{ fontSize: 11, color: "#374151", background: "#f3f4f6", border: "none", borderRadius: 7, padding: "4px 8px", cursor: "pointer" }}>
@@ -814,11 +742,6 @@ export default function CuentaPage() {
                               <option value="team_leader">Team Leader</option>
                             </select>
                           )}
-                          <button onClick={() => openDateModal(a.email, a.name || a.email)}
-                            title={memberDates[a.email]?.birthday || memberDates[a.email]?.work_anniversary ? "Editar fechas" : "Agregar cumpleaños / aniversario"}
-                            style={{ fontSize: 14, background: "none", border: "none", cursor: "pointer", opacity: memberDates[a.email]?.birthday || memberDates[a.email]?.work_anniversary ? 1 : 0.35, padding: "0 2px" }}>
-                            🎂
-                          </button>
                           <button onClick={() => removeAgent(a.email, a.name || a.email)} disabled={!!removeLoading}
                             style={{ fontSize: 11, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>
                             {removeLoading === a.email ? "..." : "Remover"}
