@@ -821,6 +821,11 @@ export default function HomePage() {
         const r = await fetch(url, { method: "POST" });
         if (!r.ok) return;
         const d = await r.json();
+        // Token revocado o definitivamente vencido — llevar a relogin
+        if (d.reason === "token_expired" || d.reason === "no_token") {
+          router.push("/relogin");
+          return;
+        }
         // Recargar caché siempre: aunque no haya habido sync real, los datos
         // en DB pueden ser más frescos que lo que hay en pantalla (cron diario, etc.)
         await reloadCache();

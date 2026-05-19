@@ -46,10 +46,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ synced: false, reason: "recent", minutesSince: Math.round(minutesSince) });
   }
 
-  // Obtener access token
-  const accessToken = await getValidAccessToken(email); // CRÍTICO: token del usuario que se sincroniza, nunca del admin
+  // Obtener access token — refresca automáticamente si está vencido
+  // Si devuelve null es porque el refresh también falló (token revocado o expirado definitivamente)
+  const accessToken = await getValidAccessToken(email);
   if (!accessToken) {
-    return res.status(200).json({ synced: false, reason: "no_token" });
+    return res.status(200).json({ synced: false, reason: "token_expired" });
   }
 
   try {

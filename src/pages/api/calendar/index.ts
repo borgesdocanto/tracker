@@ -125,8 +125,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
 
-  const sessionToken = (session as any).accessToken;
-  const accessToken = sessionToken || await getValidAccessToken(session.user!.email!);
+  // CRÍTICO: no usar session.accessToken del JWT — expira en 1h sin refresh automático.
+  // getValidAccessToken lee desde Supabase y refresca si es necesario.
+  const accessToken = await getValidAccessToken(session.user!.email!);
   if (!accessToken) return res.status(401).json({ error: "token_invalid: Sin token de Calendar — reconectá Google" });
 
   const requestedDays = parseInt(req.query.days as string) || 30;
